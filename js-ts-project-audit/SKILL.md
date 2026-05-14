@@ -21,6 +21,24 @@ Sobald der Nutzer ein JS/TS-Projekt (Verzeichnis, Repo, Archiv) bereitstellt und
 - Stack klassifizieren: Runtime (Node/Bun/Deno/Browser), Framework, Build-Tool, Test-Runner, Sprachversion, TS-Strictness.
 - **Vorheriges `./audit.html` separat behandeln**: Datei existiert? → Pfad merken, aber **vollständig aus der inhaltlichen Analyse ausschließen** (nicht als Quelltext lesen, nicht als Finding-Quelle nutzen, nicht in der Verzeichnisstruktur als "Code" zählen). Die Datei wird erst in Schritt 5b für den Abgleich geöffnet. Begründung: Der neue Audit muss unvoreingenommen am Code stattfinden, sonst werden alte Findings kopiert statt verifiziert.
 
+### 1b. Projektportrait & Domänen erfassen
+
+Parallel zur technischen Bestandsaufnahme ein **inhaltliches Verständnis** aufbauen — wovon handelt das Projekt überhaupt?
+
+**Quellen (in dieser Reihenfolge auswerten):**
+- `README*` (Beschreibung, Sektionen "About", "Features", "Usage").
+- `package.json` Felder `description`, `keywords`, `name` (Scope kann Domäne andeuten).
+- `CHANGELOG*`, falls nicht trivial — gibt Hinweis auf Entwicklungsschwerpunkte.
+- Top-Level-Verzeichnisse unter `src/` bzw. `packages/` (in Monorepos): die Namen sind oft schon eine Domänen-Liste.
+- Exports aus `index.*` / `package.json#exports` — was das Projekt nach außen anbietet.
+
+**Synthetisieren:**
+- **Kurzbeschreibung**: 2–4 Sätze. Was tut das Projekt, für wen, in welchem Kontext. Kein Marketing-Sprech, keine Wiederholung des README-Wortlauts. Wenn unklar, schreiben "Zweck aus den Quellen nicht eindeutig ableitbar" und unter Offene Fragen aufnehmen — nicht raten.
+- **Domänen** (3–7 Stück): die fachlichen bzw. funktionalen Hauptbereiche. Pro Domäne: Name, ein Satz Beschreibung, repräsentative Pfade (z. B. `src/auth/`, `packages/renderer/`). Domänen sind *fachlich*, nicht jede Schicht ist eine Domäne — "utils" oder "types" sind keine Domäne, "Auth", "Billing", "Renderer", "Storage-Adapter" schon.
+- **Architektur-Diagramm — nur wenn es Mehrwert bringt**: bei klarer Schichtung, Monorepo mit ≥3 Packages, oder erkennbarem Datenfluss zwischen Modulen. Bei einer einzelnen kleinen Lib oder einem CLI-Tool **kein Diagramm** — Domänen-Liste reicht. Form: Inline-SVG oder ASCII in `<pre>` (keine externen Diagramm-Libs, kein Mermaid — verstößt gegen Standalone-Regel). Zeigt Packages/Layer als Boxen, Hauptabhängigkeiten als Pfeile. Max ~10 Knoten, sonst ist es kein Überblick mehr.
+
+Diese Synthese wird im Report **vor** der Executive Summary platziert (siehe Schritt 6).
+
 ### 2. Sampling-Strategie für den Code
 
 Großprojekte nicht zeilenweise lesen. Stattdessen:
@@ -116,13 +134,14 @@ Eine eigenständige HTML-Datei nach `./audit.html` (relativ zum Projekt-Root bzw
 - **Lesbar**: ruhige Typografie (system-ui), klare Hierarchie, ausreichend Whitespace, Light/Dark via `prefers-color-scheme`.
 - **Struktur**:
   1. Header mit Projektname, Stack-Badges, Audit-Datum, Health-Score.
-  2. Executive Summary (3–6 Sätze Prosa, was sticht heraus).
-  3. Severity-Übersicht als Balken/Zahlen.
-  4. Kategorie-Übersicht.
-  5. Backlog-Tabelle: filterbar nach Severity und Kategorie via einfachen `<button>`-Toggles mit Vanilla-JS (keine Frameworks). Jede Zeile aufklappbar für `description` + `recommendation`.
-  6. Sektion "Offene Fragen / Unklarheiten" — explizit Dinge, die nicht aus dem Code allein entschieden werden konnten.
-  7. Sektion "Optimierungspotenzial" — bewusst getrennt von Bugs/Findings: Verbesserungen, die kein Defekt sind.
-  8. Methodik-Sektion: was wurde gelesen, was nicht, wie wurde der Score berechnet. Bei Diff-Lauf zusätzlich: Datum des vorherigen Audits, Match-Strategie, Anzahl entfernter (=behobener) Findings.
+  2. **Projektportrait** (Ergebnis aus Schritt 1b): Kurzbeschreibung als Prosa, danach Domänen als kompakte Liste oder Grid (Name, ein Satz, Pfad-Chips). Wenn ein Architektur-Diagramm sinnvoll ist, hier einbetten — sonst weglassen, keine Platzhalter-Grafik. Diagramm bekommt eine knappe Bildunterschrift, die erklärt, was die Pfeile/Boxen bedeuten.
+  3. Executive Summary (3–6 Sätze Prosa, was sticht heraus). Bezieht sich auf die *Audit-Befunde*, nicht auf das Projekt selbst — Doppelung mit dem Portrait vermeiden.
+  4. Severity-Übersicht als Balken/Zahlen.
+  5. Kategorie-Übersicht.
+  6. Backlog-Tabelle: filterbar nach Severity und Kategorie via einfachen `<button>`-Toggles mit Vanilla-JS (keine Frameworks). Jede Zeile aufklappbar für `description` + `recommendation`.
+  7. Sektion "Offene Fragen / Unklarheiten" — explizit Dinge, die nicht aus dem Code allein entschieden werden konnten.
+  8. Sektion "Optimierungspotenzial" — bewusst getrennt von Bugs/Findings: Verbesserungen, die kein Defekt sind.
+  9. Methodik-Sektion: was wurde gelesen, was nicht, wie wurde der Score berechnet. Bei Diff-Lauf zusätzlich: Datum des vorherigen Audits, Match-Strategie, Anzahl entfernter (=behobener) Findings.
 - Schweregrade farblich konsistent: critical=rot, high=orange, medium=amber, low=blau, info=grau.
 - **Status-Marker im Backlog (nur bei Diff-Lauf)**: Jede Zeile bekommt ein kleines Status-Badge — `new` (Akzent), `unchanged` (neutral), `improved` (grün, mit `previousSeverity → currentSeverity` als Tooltip/Untertitel), `carried-over` (gedämpft). In den Filter-Toggles auch nach Status filterbar machen.
 - **Diff-Header (nur bei Diff-Lauf)**: Im Header oder direkt darunter eine knappe Vergleichszeile: vorheriges Audit-Datum, Score-Delta, "X Findings behoben seit letztem Audit, Y verbessert, Z neu". Behobene Findings bewusst **nicht** in der Backlog-Tabelle auflisten — nur als Zähler. Wer Details will, hat das alte `audit.html` im git-Verlauf.
