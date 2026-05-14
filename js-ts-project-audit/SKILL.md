@@ -19,6 +19,7 @@ Sobald der Nutzer ein JS/TS-Projekt (Verzeichnis, Repo, Archiv) bereitstellt und
 - Schlüsseldateien lesen, sofern vorhanden: `package.json`, `tsconfig*.json`, `pnpm-workspace.yaml` / `lerna.json` / `nx.json` / `turbo.json`, `.eslintrc*`, `.prettierrc*`, `vitest.config.*` / `jest.config.*`, `playwright.config.*`, `vite.config.*` / `webpack.config.*` / `rollup.config.*`, `.github/workflows/*`, `README*`, `CHANGELOG*`, `.nvmrc`, `.node-version`, `Dockerfile`, `docker-compose*`.
 - Verzeichnisstruktur kartieren (max. 3 Ebenen tief), Monorepo erkennen.
 - Stack klassifizieren: Runtime (Node/Bun/Deno/Browser), Framework, Build-Tool, Test-Runner, Sprachversion, TS-Strictness.
+- **Vorheriges `./audit.html` separat behandeln**: Datei existiert? → Pfad merken, aber **vollständig aus der inhaltlichen Analyse ausschließen** (nicht als Quelltext lesen, nicht als Finding-Quelle nutzen, nicht in der Verzeichnisstruktur als "Code" zählen). Die Datei wird erst in Schritt 5b für den Abgleich geöffnet. Begründung: Der neue Audit muss unvoreingenommen am Code stattfinden, sonst werden alte Findings kopiert statt verifiziert.
 
 ### 2. Sampling-Strategie für den Code
 
@@ -67,8 +68,10 @@ Vor dem Rendern strukturierte Daten erzeugen (in-memory JS-Objekt im HTML), nich
 - `description` (Was ist das Problem, was sind die Konsequenzen)
 - `recommendation` (Wie konkret beheben)
 - `effort` (`S` | `M` | `L`)
+- `status` (optional, nur bei Diff-Lauf gesetzt): `new` | `unchanged` | `improved` | `carried-over` — siehe Schritt 5b.
+- `previousSeverity` (optional, nur bei `improved`): die Severity aus dem vorherigen Audit, damit die Verbesserung im Report sichtbar wird.
 
-Zusätzlich ein `summary`-Objekt mit: Projektname, Stack, Anzahl Findings pro Severity, Anzahl Findings pro Kategorie, Gesamt-Health-Score (siehe unten), Datum.
+Zusätzlich ein `summary`-Objekt mit: Projektname, Stack, Anzahl Findings pro Severity, Anzahl Findings pro Kategorie, Gesamt-Health-Score (siehe unten), Datum. Bei Diff-Lauf zusätzlich: Datum des vorherigen Audits, Anzahl behobener Findings, Anzahl verbesserter Findings, Score-Delta.
 
 ### 5. Health-Score (transparent)
 
@@ -77,6 +80,33 @@ Einfache, sichtbar dokumentierte Heuristik:
 - Abzug pro Finding: `critical` -10, `high` -5, `medium` -2, `low` -0.5, `info` 0.
 - Untergrenze: 0.
 - Score und Berechnung im Report explizit ausweisen, damit nicht der Eindruck einer Black-Box-Bewertung entsteht.
+
+### 5b. Abgleich mit vorherigem Audit (nur wenn `./audit.html` existierte)
+
+Wenn in Schritt 1 ein vorheriges `./audit.html` gefunden wurde, **nach** Abschluss des frischen Audits (Schritte 2–5) einen Merge durchführen. Reihenfolge ist entscheidend: erst der unvoreingenommene neue Lauf, dann der Abgleich.
+
+**Vorheriges Audit parsen:**
+- Datei lesen, das eingebettete Daten-Objekt extrahieren (das gemäß Schritt 4 in der HTML als JS-Objekt liegt). Falls das nicht parsebar ist, Findings best-effort aus der Backlog-Tabelle rekonstruieren (Titel, Severity, Location, Kategorie). Datum des alten Audits ebenfalls extrahieren.
+- Bei nicht parsebarer Altdatei: in der Methodik-Sektion vermerken und mit reinem Neu-Audit fortfahren — keinen Merge erzwingen.
+
+**Matching alter ↔ neuer Findings:**
+- Match-Kriterium primär: gleiche `category` + überlappende `location` (Datei-/Verzeichnispfad). Sekundär: semantische Titelähnlichkeit (gleiches Problem, ggf. anders formuliert).
+- Bei Mehrdeutigkeit konservativ matchen — lieber zwei Findings stehen lassen als fälschlich als "gleich" markieren.
+
+**Regeln pro altem Finding:**
+
+1. **Im Code nicht mehr vorhanden** (verifiziert durch Re-Read der betroffenen Stelle): → Finding **entfällt vollständig**. Nicht im neuen Backlog auftauchen lassen. In `summary.resolvedCount` zählen. Begründung: der Nutzer soll nicht durch erledigte Punkte rauschen müssen.
+2. **Im neuen Audit als Finding aufgetaucht, Severity gleich**: → neues Finding übernehmen, `status: "unchanged"`. Altes Finding verwerfen.
+3. **Im neuen Audit aufgetaucht, Severity niedriger** (z. B. vorher `high`, jetzt `medium`): → neues Finding übernehmen, `status: "improved"`, `previousSeverity` setzen.
+4. **Im neuen Audit aufgetaucht, Severity höher**: → neues Finding übernehmen, `status: "unchanged"` (keine künstliche "regressed"-Kategorie — die höhere Severity spricht für sich).
+5. **Im neuen Audit nicht aufgetaucht, aber im Code noch belegbar vorhanden**: → altes Finding mit `status: "carried-over"` ins neue Backlog übernehmen. Vor der Übernahme **Re-Check im Code** durchführen (Location öffnen, Befund verifizieren). Wenn nicht mehr verifizierbar → wie Fall 1 entfernen.
+6. **Im neuen Audit nicht aufgetaucht, im Code nicht mehr belegbar**: → entfällt (Fall 1).
+
+**Wichtig:** Der Re-Check in Fall 5 ist nicht optional. Ohne Verifikation droht das Backlog mit veralteten LLM-Halluzinationen vollzulaufen. Findings, die der neue Lauf weggelassen hat und die nicht mehr im Code belegbar sind, sind keine "übersehenen" Findings — sie sind erledigt.
+
+**Neue Findings (im neuen Audit, kein Match im alten):** → `status: "new"`.
+
+**Score-Delta:** Health-Score des alten Audits (sofern parsebar) merken, im Header neben dem neuen Score zeigen (z. B. `82 → 89  (+7)`).
 
 ### 6. `./audit.html` rendern
 
@@ -92,15 +122,18 @@ Eine eigenständige HTML-Datei nach `./audit.html` (relativ zum Projekt-Root bzw
   5. Backlog-Tabelle: filterbar nach Severity und Kategorie via einfachen `<button>`-Toggles mit Vanilla-JS (keine Frameworks). Jede Zeile aufklappbar für `description` + `recommendation`.
   6. Sektion "Offene Fragen / Unklarheiten" — explizit Dinge, die nicht aus dem Code allein entschieden werden konnten.
   7. Sektion "Optimierungspotenzial" — bewusst getrennt von Bugs/Findings: Verbesserungen, die kein Defekt sind.
-  8. Methodik-Sektion: was wurde gelesen, was nicht, wie wurde der Score berechnet.
+  8. Methodik-Sektion: was wurde gelesen, was nicht, wie wurde der Score berechnet. Bei Diff-Lauf zusätzlich: Datum des vorherigen Audits, Match-Strategie, Anzahl entfernter (=behobener) Findings.
 - Schweregrade farblich konsistent: critical=rot, high=orange, medium=amber, low=blau, info=grau.
+- **Status-Marker im Backlog (nur bei Diff-Lauf)**: Jede Zeile bekommt ein kleines Status-Badge — `new` (Akzent), `unchanged` (neutral), `improved` (grün, mit `previousSeverity → currentSeverity` als Tooltip/Untertitel), `carried-over` (gedämpft). In den Filter-Toggles auch nach Status filterbar machen.
+- **Diff-Header (nur bei Diff-Lauf)**: Im Header oder direkt darunter eine knappe Vergleichszeile: vorheriges Audit-Datum, Score-Delta, "X Findings behoben seit letztem Audit, Y verbessert, Z neu". Behobene Findings bewusst **nicht** in der Backlog-Tabelle auflisten — nur als Zähler. Wer Details will, hat das alte `audit.html` im git-Verlauf.
 - Keine externen Fonts oder Bilder. SVG-Icons inline wenn nötig.
-- Wenn bereits eine `./audit.html` existiert: überschreiben, kein Suffix anhängen.
+- Wenn bereits eine `./audit.html` existiert: überschreiben, kein Suffix anhängen. Das alte Audit ist zu diesem Zeitpunkt bereits in den Merge eingeflossen (Schritt 5b) — die alte Datei darf verloren gehen. Wenn der Nutzer Historie braucht, ist git der richtige Ort.
 
 ### 7. Ergebnis ausliefern
 
 - Datei mit `present_files` an den Nutzer zurückgeben (Pfad: `./audit.html`).
 - Kurzer Begleittext (max. 5–8 Zeilen): Health-Score, Top-3-Critical/High-Findings, Hinweis auf Methodik-Sektion. Keine Wiederholung des Reports im Chat.
+- Bei Diff-Lauf zusätzlich eine Zeile: "X behoben / Y verbessert / Z neu seit `<Datum>`". Behobene Punkte **nicht einzeln** aufzählen — der Nutzer hat sie bewusst nicht mehr im Backlog.
 
 ## Wichtige Prinzipien
 
