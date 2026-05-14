@@ -89,7 +89,7 @@ Vor dem Rendern strukturierte Daten erzeugen (in-memory JS-Objekt im HTML), nich
 - `status` (optional, nur bei Diff-Lauf gesetzt): `new` | `unchanged` | `improved` | `carried-over` — siehe Schritt 5b.
 - `previousSeverity` (optional, nur bei `improved`): die Severity aus dem vorherigen Audit, damit die Verbesserung im Report sichtbar wird.
 
-Zusätzlich ein `summary`-Objekt mit: Projektname, Stack, Anzahl Findings pro Severity, Anzahl Findings pro Kategorie, Gesamt-Health-Score (siehe unten), Datum. Bei Diff-Lauf zusätzlich: Datum des vorherigen Audits, Anzahl behobener Findings, Anzahl verbesserter Findings, Score-Delta.
+Zusätzlich ein `summary`-Objekt mit: Projektname, Stack, Anzahl Findings pro Severity, Anzahl Findings pro Kategorie, Gesamt-Health-Score (siehe unten), Datum, `theme` (`"light"` | `"dark"` — siehe Schritt 6a), `scoreHistory` (chronologische Liste `[{date, score}, ...]`, immer mit dem aktuellen Lauf als letztem Eintrag — siehe Schritt 5). Bei Diff-Lauf zusätzlich: Datum des vorherigen Audits, Anzahl behobener Findings, Anzahl verbesserter Findings, Score-Delta.
 
 ### 5. Health-Score (transparent)
 
@@ -99,13 +99,16 @@ Einfache, sichtbar dokumentierte Heuristik:
 - Untergrenze: 0.
 - Score und Berechnung im Report explizit ausweisen, damit nicht der Eindruck einer Black-Box-Bewertung entsteht.
 
+**Score-Historie:** Jedes Audit führt eine chronologische Liste `scoreHistory: [{date, score}, ...]` mit. Beim ersten Lauf enthält sie genau einen Eintrag (den aktuellen). Bei Folgeläufen wird die Historie aus dem vorherigen Audit übernommen (siehe Schritt 5b) und um den aktuellen Lauf erweitert. Die Liste lebt im eingebetteten Daten-Objekt der HTML — es gibt keinen separaten History-Store, der git-Verlauf der `./audit.html` ist die Quelle der Wahrheit, die Liste im aktuellen Report die bequeme Zusammenfassung. Maximal letzte 20 Einträge halten, ältere abschneiden (FIFO) — der Chart wird sonst unleserlich.
+
 ### 5b. Abgleich mit vorherigem Audit (nur wenn `./audit.html` existierte)
 
 Wenn in Schritt 1 ein vorheriges `./audit.html` gefunden wurde, **nach** Abschluss des frischen Audits (Schritte 2–5) einen Merge durchführen. Reihenfolge ist entscheidend: erst der unvoreingenommene neue Lauf, dann der Abgleich.
 
 **Vorheriges Audit parsen:**
-- Datei lesen, das eingebettete Daten-Objekt extrahieren (das gemäß Schritt 4 in der HTML als JS-Objekt liegt). Falls das nicht parsebar ist, Findings best-effort aus der Backlog-Tabelle rekonstruieren (Titel, Severity, Location, Kategorie). Datum des alten Audits ebenfalls extrahieren.
-- Bei nicht parsebarer Altdatei: in der Methodik-Sektion vermerken und mit reinem Neu-Audit fortfahren — keinen Merge erzwingen.
+- Datei lesen, das eingebettete Daten-Objekt extrahieren (das gemäß Schritt 4 in der HTML als JS-Objekt liegt). Falls das nicht parsebar ist, Findings best-effort aus der Backlog-Tabelle rekonstruieren (Titel, Severity, Location, Kategorie). Datum des alten Audits, Score, `scoreHistory` und `theme` ebenfalls extrahieren.
+- Wenn `scoreHistory` im Altdatensatz fehlt (Audits aus älteren Skill-Versionen), aus dem Altscore und Altdatum einen einzelnen Eintrag synthetisieren: `[{date: <altDatum>, score: <altScore>}]`. Damit beginnt die Historie sinnvoll, statt auf einen sauberen Erstlauf zu warten.
+- Bei nicht parsebarer Altdatei: in der Methodik-Sektion vermerken und mit reinem Neu-Audit fortfahren — keinen Merge erzwingen, `scoreHistory` startet bei einem einzigen Eintrag.
 
 **Matching alter ↔ neuer Findings:**
 - Match-Kriterium primär: gleiche `category` + überlappende `location` (Datei-/Verzeichnispfad). Sekundär: semantische Titelähnlichkeit (gleiches Problem, ggf. anders formuliert).
@@ -124,16 +127,34 @@ Wenn in Schritt 1 ein vorheriges `./audit.html` gefunden wurde, **nach** Abschlu
 
 **Neue Findings (im neuen Audit, kein Match im alten):** → `status: "new"`.
 
-**Score-Delta:** Health-Score des alten Audits (sofern parsebar) merken, im Header neben dem neuen Score zeigen (z. B. `82 → 89  (+7)`).
+**Score-Delta:** Health-Score des alten Audits (sofern parsebar) merken, im Header neben dem neuen Score zeigen (z. B. `82 → 89  (+7)`). Tendenz-Indikator dazusetzen: `▲` bei Verbesserung, `▼` bei Verschlechterung, `–` bei Gleichstand. Diese Anzeige ist die Mindeststufe der Historie — sie erscheint ab dem zweiten Audit.
+
+**Score-Historie fortschreiben:** Die übernommene `scoreHistory` aus dem Altdatensatz um einen neuen Eintrag `{date: <heutiges Datum>, score: <neuer Score>}` ergänzen. Auf maximal 20 Einträge begrenzen (FIFO). Diese Liste wird in den eingebetteten Daten der neuen `./audit.html` persistiert.
+
+### 6a. Theme bestimmen
+
+Vor dem Rendering ein Theme festlegen — `"light"` oder `"dark"`. Reihenfolge der Auflösung:
+
+1. **Explizite Nutzeranweisung** in der aktuellen Konversation hat Vorrang. "Mach das im Dark Mode", "bitte hell halten", "dark theme" o. ä. → entsprechendes Theme. Auch verneinte Formen beachten ("nicht so dunkel" → light).
+2. **Theme des vorherigen Audits**, sofern parsebar und ohne Nutzeranweisung. Aus `summary.theme` der Altdatei übernehmen. Damit bleibt die Optik über Folgeläufe stabil.
+3. **Default `"light"`**, wenn weder Anweisung noch parsebare Vorgängerdatei existiert.
+
+Das gewählte Theme wird in `summary.theme` persistiert, damit der nächste Lauf es übernehmen kann. Im Report selbst **fix ausliefern**, nicht `prefers-color-scheme` verwenden — der Nutzer hat eine bewusste Wahl getroffen (oder der Skill hat sie für ihn getroffen) und die soll nicht durch die OS-Einstellung des Lesers überschrieben werden.
+
+**Light-Theme** (Default): hell, dezent, professionell. Hintergrund nahezu weiß (z. B. `#fafaf9`), Fließtext sehr dunkles Grau (`#1c1917`), Akzentfarbe gedämpft (gedämpftes Indigo/Slate, kein knalliges Blau). Severity-Farben kräftig genug, um auf hellem Grund lesbar zu sein, aber nicht plakativ. Typografie: system-ui mit großzügigem Zeilenabstand (1.6–1.7), Überschriften in moderatem Gewicht (600, nicht 800), klare Hierarchie über Größe und Whitespace statt über Farbe.
+
+**Dark-Theme**: ruhige dunkle Flächen (`#0f172a` o. ä., nicht reines Schwarz), Fließtext hellgrau (`#e2e8f0`), gleiche Akzentlogik. Severity-Farben leicht entsättigt, damit sie nicht glühen.
+
+Beide Themes folgen derselben typografischen Grundhaltung — Wechsel ist nur eine Farbumkehr, nicht ein anderes Design.
 
 ### 6. `./audit.html` rendern
 
 Eine eigenständige HTML-Datei nach `./audit.html` (relativ zum Projekt-Root bzw. aktuellen Arbeitsverzeichnis) schreiben. Anforderungen:
 
 - **Standalone**: kein externes CSS/JS, keine CDN-Imports. Alles inline.
-- **Lesbar**: ruhige Typografie (system-ui), klare Hierarchie, ausreichend Whitespace, Light/Dark via `prefers-color-scheme`.
+- **Lesbar**: ruhige Typografie (system-ui oder vergleichbar, z. B. `ui-sans-serif, -apple-system, "Segoe UI", Inter, Roboto, sans-serif`), klare Hierarchie, ausreichend Whitespace. Theme **fix** gemäß Schritt 6a einsetzen — kein `prefers-color-scheme`.
 - **Struktur**:
-  1. Header mit Projektname, Stack-Badges, Audit-Datum, Health-Score.
+  1. Header mit Projektname, Stack-Badges, Audit-Datum, Health-Score. Score-Anzeige folgt der Historien-Stufe (siehe unten "Score-Anzeige & Verlauf").
   2. **Projektportrait** (Ergebnis aus Schritt 1b): Kurzbeschreibung als Prosa, danach Domänen als kompakte Liste oder Grid (Name, ein Satz, Pfad-Chips). Wenn ein Architektur-Diagramm sinnvoll ist, hier einbetten — sonst weglassen, keine Platzhalter-Grafik. Diagramm bekommt eine knappe Bildunterschrift, die erklärt, was die Pfeile/Boxen bedeuten.
   3. Executive Summary (3–6 Sätze Prosa, was sticht heraus). Bezieht sich auf die *Audit-Befunde*, nicht auf das Projekt selbst — Doppelung mit dem Portrait vermeiden.
   4. Severity-Übersicht als Balken/Zahlen.
@@ -141,10 +162,15 @@ Eine eigenständige HTML-Datei nach `./audit.html` (relativ zum Projekt-Root bzw
   6. Backlog-Tabelle: filterbar nach Severity und Kategorie via einfachen `<button>`-Toggles mit Vanilla-JS (keine Frameworks). Jede Zeile aufklappbar für `description` + `recommendation`.
   7. Sektion "Offene Fragen / Unklarheiten" — explizit Dinge, die nicht aus dem Code allein entschieden werden konnten.
   8. Sektion "Optimierungspotenzial" — bewusst getrennt von Bugs/Findings: Verbesserungen, die kein Defekt sind.
-  9. Methodik-Sektion: was wurde gelesen, was nicht, wie wurde der Score berechnet. Bei Diff-Lauf zusätzlich: Datum des vorherigen Audits, Match-Strategie, Anzahl entfernter (=behobener) Findings.
+  9. Methodik-Sektion: was wurde gelesen, was nicht, wie wurde der Score berechnet. Bei Diff-Lauf zusätzlich: Datum des vorherigen Audits, Match-Strategie, Anzahl entfernter (=behobener) Findings. Theme-Entscheidung kurz vermerken (z. B. "Theme: light (Default, kein Vorgängeraudit)" bzw. "Theme: dark (vom Nutzer angefordert / aus vorherigem Audit übernommen)").
+- **Score-Anzeige & Verlauf** (direkt im Header bzw. unmittelbar darunter, abhängig von `scoreHistory.length`):
+  - **1 Eintrag** (Erstlauf): nur der aktuelle Score, ohne Vergleichswert oder Tendenz.
+  - **2 Einträge** (zweiter Lauf): aktueller Score plus vorheriger Score mit Tendenz-Indikator und Delta, z. B. `89  ▲ +7  (vorher 82, 2026-03-10)`. Kein Chart.
+  - **≥3 Einträge**: zusätzlich zur Vergleichszeile ein **Liniendiagramm** des Verlaufs als Inline-SVG. X-Achse Audit-Datum (chronologisch, gleichabständig), Y-Achse Score 0–100. Punkte beschriftet, der aktuelle Punkt visuell hervorgehoben (gefüllter Kreis, kleiner Score-Tooltip darüber). Achsen dezent, Gitterlinien nur bei 0/50/100. Diagrammbreite responsiv via `viewBox`, max ~640px hoch ~200px. Keine Diagramm-Library, kein Mermaid — handgeschriebenes SVG (Polyline + Circles + Text). Bildunterschrift: "Verlauf der Health-Scores seit `<frühestes Datum>`".
+  - Das Diagramm verwendet die Akzentfarbe des Themes, Achsen/Beschriftungen im gedämpften Sekundär-Ton.
 - Schweregrade farblich konsistent: critical=rot, high=orange, medium=amber, low=blau, info=grau.
 - **Status-Marker im Backlog (nur bei Diff-Lauf)**: Jede Zeile bekommt ein kleines Status-Badge — `new` (Akzent), `unchanged` (neutral), `improved` (grün, mit `previousSeverity → currentSeverity` als Tooltip/Untertitel), `carried-over` (gedämpft). In den Filter-Toggles auch nach Status filterbar machen.
-- **Diff-Header (nur bei Diff-Lauf)**: Im Header oder direkt darunter eine knappe Vergleichszeile: vorheriges Audit-Datum, Score-Delta, "X Findings behoben seit letztem Audit, Y verbessert, Z neu". Behobene Findings bewusst **nicht** in der Backlog-Tabelle auflisten — nur als Zähler. Wer Details will, hat das alte `audit.html` im git-Verlauf.
+- **Diff-Header (nur bei Diff-Lauf)**: Im Header oder direkt darunter eine knappe Vergleichszeile: vorheriges Audit-Datum, Score-Delta mit Tendenz-Indikator, "X Findings behoben seit letztem Audit, Y verbessert, Z neu". Behobene Findings bewusst **nicht** in der Backlog-Tabelle auflisten — nur als Zähler. Wer Details will, hat das alte `audit.html` im git-Verlauf. Die Score-Anzeige-Stufe (s. o.) bestimmt, ob hier zusätzlich der Chart erscheint.
 - Keine externen Fonts oder Bilder. SVG-Icons inline wenn nötig.
 - Wenn bereits eine `./audit.html` existiert: überschreiben, kein Suffix anhängen. Das alte Audit ist zu diesem Zeitpunkt bereits in den Merge eingeflossen (Schritt 5b) — die alte Datei darf verloren gehen. Wenn der Nutzer Historie braucht, ist git der richtige Ort.
 
