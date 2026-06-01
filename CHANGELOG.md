@@ -2,6 +2,15 @@
 
 Alle nennenswerten Änderungen an den Skills in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-06-01
+
+### Hinzugefügt
+- `js-ts-project-audit`: **Anhang "Akzeptierte / zurückgestellte Punkte"**. Der Nutzer kann per Konversations-Anweisung einzelne Findings künftig aus dem Backlog ausblenden, ohne dass sie als "gelöst" gelten. Solche Punkte wandern mit Begründung und Datum in eine persistente `acknowledged`-Liste, erscheinen nur noch im Anhang (gedämpft, ohne Score-Gewicht) und werden bei Folgeläufen nicht erneut als Finding aufgeführt — bis der Nutzer sie ausdrücklich widerruft.
+
+### Geändert
+- `js-ts-project-audit`: Der carry-over-Re-Check (Diff-Lauf) prüft jetzt nicht nur die Code-Stelle, sondern auch den **Kontext** — geänderte Architektur/Docs/Specs/Proposals/Roadmap. Wird ein übernommener Punkt dadurch gegenstandslos, fällt er komplett raus (mit Quellenangabe), statt unreflektiert weitergeschleppt zu werden.
+- `js-ts-project-audit`: Neues Leitprinzip **„Schlank statt historisch"**. Als geklärt/umgesetzt/erledigt markierte Punkte — ob vom Lauf verifiziert oder vom Nutzer benannt — fallen komplett aus dem Report (kein Status-Badge, keine Archiv-Tabelle), nur als Diff-Zähler zusammengefasst. Das Audit zeigt den aktuellen Zustand, keine Projekthistorie; einzige Ausnahmen sind der Score-Verlaufsgraph und der Anhang akzeptierter Punkte. Die Anweisungen „erledigt" (→ verifizieren & entfernen) und „akzeptabel" (→ Anhang) werden explizit getrennt.
+
 ## 2026-05-14
 
 ### Geändert

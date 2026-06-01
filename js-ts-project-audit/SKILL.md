@@ -91,6 +91,8 @@ Vor dem Rendern strukturierte Daten erzeugen (in-memory JS-Objekt im HTML), nich
 
 Zusätzlich ein `summary`-Objekt mit: Projektname, Stack, Anzahl Findings pro Severity, Anzahl Findings pro Kategorie, Gesamt-Health-Score (siehe unten), Datum, `theme` (`"light"` | `"dark"` — siehe Schritt 6a), `scoreHistory` (chronologische Liste `[{date, score}, ...]`, immer mit dem aktuellen Lauf als letztem Eintrag — siehe Schritt 5). Bei Diff-Lauf zusätzlich: Datum des vorherigen Audits, Anzahl behobener Findings, Anzahl verbesserter Findings, Score-Delta.
 
+Außerdem — parallel zum Backlog in denselben eingebetteten Daten — eine separate Liste `acknowledged` für vom Nutzer bewusst zurückgestellte Punkte (siehe Schritt 5c). Einträge dort sind **keine** Backlog-Findings und fließen **nicht** in den Health-Score ein.
+
 ### 5. Health-Score (transparent)
 
 Einfache, sichtbar dokumentierte Heuristik:
@@ -106,7 +108,7 @@ Einfache, sichtbar dokumentierte Heuristik:
 Wenn in Schritt 1 ein vorheriges `./audit.html` gefunden wurde, **nach** Abschluss des frischen Audits (Schritte 2–5) einen Merge durchführen. Reihenfolge ist entscheidend: erst der unvoreingenommene neue Lauf, dann der Abgleich.
 
 **Vorheriges Audit parsen:**
-- Datei lesen, das eingebettete Daten-Objekt extrahieren (das gemäß Schritt 4 in der HTML als JS-Objekt liegt). Falls das nicht parsebar ist, Findings best-effort aus der Backlog-Tabelle rekonstruieren (Titel, Severity, Location, Kategorie). Datum des alten Audits, Score, `scoreHistory` und `theme` ebenfalls extrahieren.
+- Datei lesen, das eingebettete Daten-Objekt extrahieren (das gemäß Schritt 4 in der HTML als JS-Objekt liegt). Falls das nicht parsebar ist, Findings best-effort aus der Backlog-Tabelle rekonstruieren (Titel, Severity, Location, Kategorie). Datum des alten Audits, Score, `scoreHistory`, `theme` und die `acknowledged`-Liste (siehe Schritt 5c) ebenfalls extrahieren.
 - Wenn `scoreHistory` im Altdatensatz fehlt (Audits aus älteren Skill-Versionen), aus dem Altscore und Altdatum einen einzelnen Eintrag synthetisieren: `[{date: <altDatum>, score: <altScore>}]`. Damit beginnt die Historie sinnvoll, statt auf einen sauberen Erstlauf zu warten.
 - Bei nicht parsebarer Altdatei: in der Methodik-Sektion vermerken und mit reinem Neu-Audit fortfahren — keinen Merge erzwingen, `scoreHistory` startet bei einem einzigen Eintrag.
 
@@ -120,16 +122,40 @@ Wenn in Schritt 1 ein vorheriges `./audit.html` gefunden wurde, **nach** Abschlu
 2. **Im neuen Audit als Finding aufgetaucht, Severity gleich**: → neues Finding übernehmen, `status: "unchanged"`. Altes Finding verwerfen.
 3. **Im neuen Audit aufgetaucht, Severity niedriger** (z. B. vorher `high`, jetzt `medium`): → neues Finding übernehmen, `status: "improved"`, `previousSeverity` setzen.
 4. **Im neuen Audit aufgetaucht, Severity höher**: → neues Finding übernehmen, `status: "unchanged"` (keine künstliche "regressed"-Kategorie — die höhere Severity spricht für sich).
-5. **Im neuen Audit nicht aufgetaucht, aber im Code noch belegbar vorhanden**: → altes Finding mit `status: "carried-over"` ins neue Backlog übernehmen. Vor der Übernahme **Re-Check im Code** durchführen (Location öffnen, Befund verifizieren). Wenn nicht mehr verifizierbar → wie Fall 1 entfernen.
+5. **Im neuen Audit nicht aufgetaucht, aber im Code noch belegbar vorhanden**: → Kandidat für `status: "carried-over"`. Vor der Übernahme einen **Relevanz-Re-Check** durchführen — nicht nur "ist die Code-Stelle noch da", sondern "ist der Punkt überhaupt noch relevant":
+   - **Code-Beleg**: Location öffnen, Befund verifizieren. Nicht mehr auffindbar → wie Fall 1 entfernen.
+   - **Kontext-Beleg**: hat sich seit dem alten Audit der *Rahmen* geändert — Architektur, `README`/Docs, Specs, Proposals/ADRs, Roadmap —, so dass der Befund gegenstandslos geworden ist (bewusste Entscheidung dokumentiert, Feature gestrichen, Pattern offiziell sanktioniert)? Dann **komplett entfernen**, auch wenn die Code-Stelle technisch noch existiert. Wie Fall 1 in `summary.resolvedCount` zählen.
+   - Nur als `status: "carried-over"` übernehmen, wenn der Punkt **nach beiden Prüfungen** weiterhin relevant ist.
 6. **Im neuen Audit nicht aufgetaucht, im Code nicht mehr belegbar**: → entfällt (Fall 1).
 
-**Wichtig:** Der Re-Check in Fall 5 ist nicht optional. Ohne Verifikation droht das Backlog mit veralteten LLM-Halluzinationen vollzulaufen. Findings, die der neue Lauf weggelassen hat und die nicht mehr im Code belegbar sind, sind keine "übersehenen" Findings — sie sind erledigt.
+**Wichtig:** Der Re-Check in Fall 5 ist nicht optional. Ohne Verifikation droht das Backlog mit veralteten LLM-Halluzinationen vollzulaufen. Findings, die der neue Lauf weggelassen hat und die nicht mehr im Code belegbar sind, sind keine "übersehenen" Findings — sie sind erledigt. Dasselbe gilt für den Kontext-Beleg: ein Punkt, den geänderte Docs/Specs/Architektur ausgehebelt haben, ist erledigt, nicht "übersehen". Beim kontextbedingten Entfernen die maßgebliche Quelle (Doc/Spec/Proposal/Commit) kurz benennen, statt nach Bauchgefühl zu streichen.
 
 **Neue Findings (im neuen Audit, kein Match im alten):** → `status: "new"`.
 
 **Score-Delta:** Health-Score des alten Audits (sofern parsebar) merken, im Header neben dem neuen Score zeigen (z. B. `82 → 89  (+7)`). Tendenz-Indikator dazusetzen: `▲` bei Verbesserung, `▼` bei Verschlechterung, `–` bei Gleichstand. Diese Anzeige ist die Mindeststufe der Historie — sie erscheint ab dem zweiten Audit.
 
 **Score-Historie fortschreiben:** Die übernommene `scoreHistory` aus dem Altdatensatz um einen neuen Eintrag `{date: <heutiges Datum>, score: <neuer Score>}` ergänzen. Auf maximal 20 Einträge begrenzen (FIFO). Diese Liste wird in den eingebetteten Daten der neuen `./audit.html` persistiert.
+
+### 5c. Akzeptierte / zurückgestellte Punkte (Anhang)
+
+Manche Befunde sind dokumentiert, bewusst akzeptiert oder schlicht nicht mehr verfolgenswert — der Nutzer will sie nicht bei jedem Lauf erneut im Backlog sehen, obwohl sie nicht im klassischen Sinn "gelöst" sind. Solche Punkte wandern in die separate Liste `acknowledged` und erscheinen im Report nur noch als **Anhang**, nicht im aktiven Backlog.
+
+**Erledigt ≠ akzeptiert — zwei unterschiedliche Nutzeranweisungen sauber trennen:**
+- Markiert der Nutzer einen Punkt als **geklärt / umgesetzt / erledigt / behoben** ("FOO ist umgesetzt", "den Punkt habe ich gefixt"), dann ist das **kein** Anhang-Fall: kurz im Code re-verifizieren und das Finding wie Schritt 5b Fall 1 **vollständig entfernen** (in `resolvedCount` zählen, nicht in `acknowledged`). Wenn die Re-Verifikation den Punkt im Code weiterhin belegt (Nutzer sagt erledigt, Code widerspricht), das Finding **behalten** und den Widerspruch unter "Offene Fragen" notieren — nicht stillschweigend löschen.
+- Markiert der Nutzer einen Punkt als **akzeptabel / zurückgestellt / bekannt** (nicht gelöst, soll aber nicht mehr stören), dann greift der Anhang-Mechanismus unten.
+
+**Daten-Modell:** `acknowledged: [{id, title, category, location, reason, acknowledgedDate}, ...]` — lebt wie `scoreHistory` in den eingebetteten Daten der `./audit.html`. `reason` = kurze Begründung, warum der Punkt akzeptabel/zurückgestellt ist (bzw. wo er dokumentiert ist). `acknowledgedDate` = Datum der Akzeptanz.
+
+**Aufnahme — ausschließlich auf ausdrückliche Nutzeranweisung.** Niemals von sich aus Punkte akzeptieren; das ist immer eine bewusste Nutzerentscheidung. Sagt der Nutzer in der Konversation, ein Befund solle künftig nicht mehr im Audit auftauchen ("ignoriere ARCH-003 künftig", "das ist akzeptabel so", "der Punkt ist bekannt, nimm ihn raus"), dann:
+- Das betroffene Finding aus dem aktiven Backlog entfernen und als Eintrag in `acknowledged` aufnehmen.
+- **Begründung erfragen, wenn der Nutzer keine genannt hat** — ein Satz genügt ("Warum ist der Punkt akzeptabel / wo ist er dokumentiert?"). Ohne Begründung den Punkt **nicht** verschieben, sonst ist später nicht nachvollziehbar, warum er versteckt ist.
+- `acknowledgedDate` auf das heutige Datum setzen.
+
+**Persistenz & Übernahme:** Die `acknowledged`-Liste wird bei jedem Folgelauf aus dem vorherigen Audit übernommen (analog `scoreHistory`, siehe Schritt 5b) und unverändert weitergeführt. Akzeptierte Punkte werden **nicht** erneut gegen den Code geprüft und **nicht** automatisch entfernt — sie bleiben im Anhang stehen, bis der Nutzer sie ausdrücklich widerruft. (Das unterscheidet sie bewusst von carry-over-Findings, die jeder Lauf neu verifiziert.)
+
+**Unterdrückung im Backlog:** Beim Merge (Schritt 5b) jeden neu aufgetauchten *und* jeden carry-over-Befund gegen die `acknowledged`-Liste matchen (gleiche Heuristik: `category` + überlappende `location`, sekundär Titelähnlichkeit). Treffer → **nicht ins Backlog aufnehmen**, der Punkt bleibt allein im Anhang. So taucht ein akzeptierter Befund nicht wieder als `new` auf.
+
+**Widerruf:** Sagt der Nutzer, ein akzeptierter Punkt solle wieder berücksichtigt werden ("zeig ARCH-003 wieder", "reaktiviere den Punkt"), dann aus `acknowledged` entfernen. Im aktuellen Lauf durchläuft er wieder die normale Finding-Logik und erscheint — sofern im Code noch belegbar — als reguläres Finding im Backlog.
 
 ### 6a. Theme bestimmen
 
@@ -162,7 +188,8 @@ Eine eigenständige HTML-Datei nach `./audit.html` (relativ zum Projekt-Root bzw
   6. Backlog-Tabelle: filterbar nach Severity und Kategorie via einfachen `<button>`-Toggles mit Vanilla-JS (keine Frameworks). Jede Zeile aufklappbar für `description` + `recommendation`.
   7. Sektion "Offene Fragen / Unklarheiten" — explizit Dinge, die nicht aus dem Code allein entschieden werden konnten.
   8. Sektion "Optimierungspotenzial" — bewusst getrennt von Bugs/Findings: Verbesserungen, die kein Defekt sind.
-  9. Methodik-Sektion: was wurde gelesen, was nicht, wie wurde der Score berechnet. Bei Diff-Lauf zusätzlich: Datum des vorherigen Audits, Match-Strategie, Anzahl entfernter (=behobener) Findings. Theme-Entscheidung kurz vermerken (z. B. "Theme: light (Default, kein Vorgängeraudit)" bzw. "Theme: dark (vom Nutzer angefordert / aus vorherigem Audit übernommen)").
+  9. Methodik-Sektion: was wurde gelesen, was nicht, wie wurde der Score berechnet. Bei Diff-Lauf zusätzlich: Datum des vorherigen Audits, Match-Strategie, Anzahl entfernter (=behobener) Findings, davon kontextbedingt entfernte (Docs/Specs/Architektur geändert). Theme-Entscheidung kurz vermerken (z. B. "Theme: light (Default, kein Vorgängeraudit)" bzw. "Theme: dark (vom Nutzer angefordert / aus vorherigem Audit übernommen)").
+  10. **Anhang "Akzeptierte / zurückgestellte Punkte"** — nur rendern, wenn `acknowledged` nicht leer ist. Kompakte Liste der vom Nutzer bewusst zurückgestellten Befunde, pro Eintrag: Titel, Kategorie, Location, Begründung (`reason`) und Akzeptanz-Datum (`acknowledgedDate`). Deutlich gedämpfte Optik, klar vom aktiven Backlog abgesetzt; **kein** Severity-Gewicht, fließt **nicht** in den Health-Score ein. Eine knappe Einleitung erklärt, dass diese Punkte auf Nutzerwunsch nicht weiterverfolgt werden und jederzeit reaktivierbar sind.
 - **Score-Anzeige & Verlauf** (direkt im Header bzw. unmittelbar darunter, abhängig von `scoreHistory.length`):
   - **1 Eintrag** (Erstlauf): nur der aktuelle Score, ohne Vergleichswert oder Tendenz.
   - **2 Einträge** (zweiter Lauf): aktueller Score plus vorheriger Score mit Tendenz-Indikator und Delta, z. B. `89  ▲ +7  (vorher 82, 2026-03-10)`. Kein Chart.
@@ -179,10 +206,12 @@ Eine eigenständige HTML-Datei nach `./audit.html` (relativ zum Projekt-Root bzw
 - Datei mit `present_files` an den Nutzer zurückgeben (Pfad: `./audit.html`).
 - Kurzer Begleittext (max. 5–8 Zeilen): Health-Score, Top-3-Critical/High-Findings, Hinweis auf Methodik-Sektion. Keine Wiederholung des Reports im Chat.
 - Bei Diff-Lauf zusätzlich eine Zeile: "X behoben / Y verbessert / Z neu seit `<Datum>`". Behobene Punkte **nicht einzeln** aufzählen — der Nutzer hat sie bewusst nicht mehr im Backlog.
+- Wenn der Nutzer in diesem Lauf Punkte akzeptiert/zurückgestellt hat (Schritt 5c), das in einer Zeile bestätigen (Anzahl, Verweis auf den Anhang) — nicht den ganzen Anhang im Chat wiederholen.
 
 ## Wichtige Prinzipien
 
 - **Belegt statt vermutet**: Jedes Finding mit Datei-/Zeilenreferenz, sonst weglassen. Bei Unsicherheit → "Offene Fragen", nicht als Finding.
+- **Schlank statt historisch**: Das Audit bildet den *aktuellen* Zustand ab, nicht die Projekthistorie. Jeder Punkt, der als geklärt, umgesetzt, erledigt, behoben o. ä. gilt — egal ob vom neuen Lauf verifiziert (Schritt 5b, Fall 1) oder vom Nutzer so markiert —, **fällt vollständig aus dem Report**: kein "resolved"-Badge, keine durchgestrichene Zeile, keine Archiv-/History-Tabelle, kein Eintrag im Backlog. Nur als Zähler im Diff-Header zusammengefasst. Einzige Ausnahmen von dieser Schlankheit: der optionale Score-Verlaufsgraph (Schritte 5/6) und der Anhang akzeptierter Punkte (Schritt 5c). Wer den Verlauf einzelner Findings braucht, findet ihn im git-Verlauf der `./audit.html`.
 - **Keine Stiltyrannei**: keine Findings für Geschmacksfragen ohne Wirkung (Tabs vs. Spaces, wenn Formatter konsistent läuft, ist kein Finding).
 - **Sprache des Reports**: in derselben Sprache wie die Nutzeranfrage. Default Deutsch, wenn der Nutzer Deutsch schreibt.
 - **Kein Auto-Fix**: Dieser Skill schreibt keinen Code im Projekt um. Empfehlungen sind Empfehlungen.
