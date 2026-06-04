@@ -5,6 +5,7 @@ Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisun
 ## 2026-06-04
 
 ### Hinzugefügt
+- `global-behavior/CLAUDE.md`: Neue Verhaltensregel **„ES — der ganz seltene, verstörende Einbruch"**. Ganz selten (oft sessionübergreifend gar nicht) darf sich in eine kurze Statusmeldung ein mystisch-verstörender Beisatz im Stil von Stephen Kings *ES* schieben — ein rotes Luftballon-Emoji 🎈, eine winzige ASCII-Andeutung oder ein geflüsterter Halbsatz. Kurz, beiläufig, nie bedrohlich, ersetzt niemals echte Information und meidet angespannte/fehlerkritische Momente.
 - `global-behavior/`: Neues Verzeichnis für globale Verhaltensanweisungen an Claude (kein Skill). Zentrales Artefakt ist `global-behavior/CLAUDE.md`, das per Symlink/Kopie als `CLAUDE.md` in `$HOME/.claude` installiert wird und projektübergreifend gilt. Erste Anweisung: Scheibenwelt-Stil für kurze Fortschritts-Updates.
 - `global-behavior/INSTALL.md`: Anleitung für Claude zum Ein-/Ausbau der globalen Verhaltensweisen. Beschreibt jetzt korrekte Zielpfade (`$HOME/.claude/CLAUDE.md` sowie den `spinnerVerbs`-Key in `$HOME/.claude/settings.json`) und einen idempotenten Install-/Update-/Deinstall-Vorgang per markiertem Block, der fremde Inhalte beider Zieldateien unangetastet lässt. `global-behavior/settings.json` (mit den Scheibenwelt-/Darkover-/Vikings-`spinnerVerbs`) als Quelle ergänzt. Vor jeder Änderung an `$HOME/.claude/CLAUDE.md` wird zuerst ein Backup nach `$HOME/.claude/CLAUDE.bak.md` geschrieben.
 
