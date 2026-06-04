@@ -60,6 +60,10 @@ machen muss, *bevor* er sich der eigentlichen Anweisung widmet — dann hat er
 schon mal geübt, mit der Realität klarzukommen. DER TOD würde sagen: GUTE
 ÜBUNG.
 
+## External Links
+
+- [Lessons from building Claude Code: How we use skills](https://claude.com/blog/lessons-from-building-claude-code-how-we-use-skills)
+
 ---
 
 *P. S. — Ja, das sind Terry-Pratchett-Anspielungen. Ist ein Weilchen her, dass
