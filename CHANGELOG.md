@@ -6,8 +6,10 @@ Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisun
 
 ### Hinzugefügt
 - `global-behavior/`: Neues Verzeichnis für globale Verhaltensanweisungen an Claude (kein Skill). Zentrales Artefakt ist `global-behavior/CLAUDE.md`, das per Symlink/Kopie als `CLAUDE.md` in `$HOME/.claude` installiert wird und projektübergreifend gilt. Erste Anweisung: Scheibenwelt-Stil für kurze Fortschritts-Updates.
+- `global-behavior/INSTALL.md`: Anleitung für Claude zum Ein-/Ausbau der globalen Verhaltensweisen. Beschreibt jetzt korrekte Zielpfade (`$HOME/.claude/CLAUDE.md` sowie den `spinnerVerbs`-Key in `$HOME/.claude/settings.json`) und einen idempotenten Install-/Update-/Deinstall-Vorgang per markiertem Block, der fremde Inhalte beider Zieldateien unangetastet lässt. `global-behavior/settings.json` (mit den Scheibenwelt-/Darkover-/Vikings-`spinnerVerbs`) als Quelle ergänzt. Vor jeder Änderung an `$HOME/.claude/CLAUDE.md` wird zuerst ein Backup nach `$HOME/.claude/CLAUDE.bak.md` geschrieben.
 
 ### Geändert
+- Repo-`CLAUDE.md`: Neuer Abschnitt **„Installing skills and behaviors for the user"**. Legt fest, dass „Skills installieren" das Symlinken der Skill-Verzeichnisse nach `$HOME/.agents/skills/` bedeutet (pro Skill ein Link, einzeln möglich), inklusive Backup gleichnamiger Fremd-Einträge nach `$HOME/.agents/skills--backupz/` und Deinstallation per Link-Entfernung. Verweist für Verhaltensweisen auf `global-behavior/INSTALL.md` und schreibt ein Protokoll in die (gitignorierte) `.install-history.md` vor.
 - Repo-`CLAUDE.md`: Dokumentiert jetzt den zweiten Artefakttyp (globale Verhaltensanweisungen) neben Skills, inkl. eigenem Abschnitt zum `global-behavior`-Verzeichnis und der Regel, dass Aussagen über Claudes „Verhalten/Verhaltensweisen" auf `global-behavior/CLAUDE.md` zielen. Die Changelog-Pflicht gilt nun ausdrücklich auch für Änderungen an den globalen Verhaltensanweisungen.
 
 ## 2026-06-01

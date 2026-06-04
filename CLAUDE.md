@@ -35,6 +35,32 @@ The `description` field is **load-bearing**. It is the only part of the skill an
 - Unlike skills, this content is *always active* once installed; there is no `description` trigger and no on-demand loading. Write the instructions so they hold up as standing rules.
 - The body follows the author's working language (German prose), matching the rest of the repo.
 
+## Installing skills and behaviors for the user
+
+When the user asks to **install / update / uninstall** the contents of this repo into their machine, two kinds of artifact are handled differently. In all cases, after a successful action, record it in the install log (see below).
+
+### Skills
+
+"Install the skills" means: make this repo's skills available to the user's agents by symlinking each skill directory into the user's agent skills directory `$HOME/.agents/skills/`.
+
+- **Target directory:** `$HOME/.agents/skills/` — create it if it does not exist yet.
+- **One symlink per skill:** for skill `<name>`, create `$HOME/.agents/skills/<name>` → the absolute path of this repo's `<name>/` directory. Example: `$HOME/.agents/skills/js-ts-project-audit` → `<repo>/js-ts-project-audit`.
+- **Granularity:** install all skills, or only the specific skill(s) the user names. "Install `js-ts-project-audit`" links only that one.
+- **Collision on first install:** if `$HOME/.agents/skills/<name>` already exists and is *not already* a symlink into this repo (i.e. it is a real directory, or a symlink pointing at some unknown/foreign folder), move that existing entry into `$HOME/.agents/skills--backupz/` first (create that backup directory if needed), then create the symlink. Never overwrite or delete foreign content — always back it up. If the entry already points at this repo's skill, the skill is already installed (treat as an update / no-op).
+- **Uninstall / remove / delete a skill:** just remove the symlink in `$HOME/.agents/skills/`. Do this per-skill when the user names specific skills. Never touch the skill source in this repo, and never delete anything that was moved to `--backupz/`.
+
+### Global behavior (the `global-behavior/` directory)
+
+This is **not** a skill and is not symlinked into `$HOME/.agents/skills/`. When the user asks to install, update, adjust, or remove Claude's *behavior* (German: *Verhalten* / *Verhaltensweisen*), follow the dedicated steps in `global-behavior/INSTALL.md` exactly — those handle the `$HOME/.claude/CLAUDE.md` block and the `spinnerVerbs` key in `$HOME/.claude/settings.json`.
+
+### Install log (`.install-history.md`)
+
+Every install, update, or removal of a skill or of the global behavior — anything that changes the user-wide config — gets logged to `.install-history.md` at the repo root.
+
+- Create the file if it does not exist yet.
+- **It must never be committed.** Ensure it is listed in `.gitignore`.
+- Append one entry per action with the date (`YYYY-MM-DD`, from the session's current date) and what happened: which skill or which behavior, and whether it was **installed**, **updated**, or **removed** (from the user-wide config). Keep it to one short line per action; newest at the bottom is fine.
+
 ## Language conventions in this repo
 
 - Frontmatter `description` is written in **English** so it matches the language of most agent host environments and is universally discoverable.
