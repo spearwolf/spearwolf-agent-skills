@@ -1,6 +1,14 @@
 # Changelog
 
-Alle nennenswerten Änderungen an den Skills in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
+Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
+
+## 2026-06-04
+
+### Hinzugefügt
+- `global-behavior/`: Neues Verzeichnis für globale Verhaltensanweisungen an Claude (kein Skill). Zentrales Artefakt ist `global-behavior/CLAUDE.md`, das per Symlink/Kopie als `CLAUDE.md` in `$HOME/.claude` installiert wird und projektübergreifend gilt. Erste Anweisung: Scheibenwelt-Stil für kurze Fortschritts-Updates.
+
+### Geändert
+- Repo-`CLAUDE.md`: Dokumentiert jetzt den zweiten Artefakttyp (globale Verhaltensanweisungen) neben Skills, inkl. eigenem Abschnitt zum `global-behavior`-Verzeichnis und der Regel, dass Aussagen über Claudes „Verhalten/Verhaltensweisen" auf `global-behavior/CLAUDE.md` zielen. Die Changelog-Pflicht gilt nun ausdrücklich auch für Änderungen an den globalen Verhaltensanweisungen.
 
 ## 2026-06-01
 
