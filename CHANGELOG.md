@@ -5,6 +5,7 @@ Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisun
 ## 2026-07-10
 
 ### Hinzugefügt
+- **`scenario-tests/`**: Neues Verzeichnis (kein Skill) mit agent-ausgeführten Szenario-Tests für die Verhaltensanweisungen dieses Repos: `install-drift.md` (Drift-Check & Fremdinhalt-Schutz der INSTALL.md), `audit-followup.md` (Folgelauf-Logik des Audit-Skills mit Köderprojekt-Fixture `pixel-cart`) und `es-frequency.md` (deterministische Anteile der ES-Regel: Sperre, Baseline, Grenzen, Logbuch-Pflege). Repo-`CLAUDE.md` verdrahtet die Tests: nach Änderungen am jeweiligen Artefakt ist der zugeordnete Test auszuführen (auch als neuer Punkt in der Abschluss-Checkliste).
 - `global-behavior/CLAUDE.md`: Sektion **„Kürzel-Befehle"** (`ci` = „commit this") aus der installierten Fassung in die Quelle zurückportiert — sie existierte bisher nur in `$HOME/.claude/CLAUDE.md` und wäre beim nächsten Update verloren gegangen.
 - `js-ts-project-audit`: Neue Referenzdatei `references/report-rendering.md` mit der visuellen Spezifikation des Reports (Themes, Typografie, Severity-Farben, Score-Chart, Status-Badges). Die `SKILL.md` verweist an den Rendering-Stellen darauf und bleibt selbst bei Workflow und Entscheidungsregeln.
 
@@ -18,6 +19,7 @@ Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisun
 - `global-behavior/INSTALL.md`: Backup vor Änderungen an `$HOME/.claude/CLAUDE.md` führt jetzt **zwei Generationen** (`CLAUDE.bak.md` + `CLAUDE.bak.prev.md`), damit zwei kurz aufeinanderfolgende Aktionen den Ausgangszustand nicht mehr vernichten.
 - Repo-`CLAUDE.md`: Neue Abschluss-Checkliste **„Before finishing any change"** — Changelog-Eintrag, `name:`↔Verzeichnis-Sync und Install-Log werden vor dem Abschluss jeder Änderung explizit abgehakt statt nur als Prosa-Pflicht erinnert.
 - `README.md`: Install-Beschreibung präzisiert — Symlinks gelten nur für Skills; das globale Verhalten wird als markierter Block in `~/.claude/CLAUDE.md` eingebaut.
+- `global-behavior/CLAUDE.md`: ES-Frequenzregel nach Szenario-Test-Befund nachgeschärft — die beobachtbaren Bedingungen (Session lang / Kontext > 50 %) sind ausdrücklich **notwendig, nicht hinreichend**: eine Erlaubnis, keine Aufforderung. Der Erstlauf des Tests zeigte 5/5 Auftritte, sobald das erlaubte Fenster offen war; mit dem neuen Wording 0/5 (bei intakter Sperre, Baseline und Grenzen-Regel).
 
 ## 2026-06-04
 

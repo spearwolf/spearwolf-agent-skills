@@ -1,0 +1,12 @@
+{
+  "name": "pixel-cart",
+  "version": "0.3.1",
+  "description": "Tiny in-memory shopping cart with pluggable persistence",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "keywords": ["cart", "shopping", "in-memory"],
+  "license": "MIT"
+}

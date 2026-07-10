@@ -75,6 +75,20 @@ Every install, update, or removal of a skill or of the global behavior — anyth
 - Skills here lean toward producing concrete artifacts (the existing `js-ts-project-audit` writes `./audit.html`). When an output file is part of the contract, the skill body must state the exact path, overwrite policy, and standalone-ness requirements explicitly — host agents will not infer these.
 - No external dependencies (no CDN imports, no fonts, no remote assets) inside artifacts the skill produces unless the skill itself argues for them. The `js-ts-project-audit` skill's "standalone HTML" rule is the local convention.
 
+## Scenario tests (`scenario-tests/`)
+
+`scenario-tests/` is **not** a skill. It holds agent-executed test scenarios that verify the behavior instructions in this repo actually bind when a fresh agent runs them (fixtures with known ground truth → fresh subagent → pass/fail checklist). General rules live in `scenario-tests/README.md`.
+
+**After modifying one of these artifacts, run the mapped scenario test before finishing the change:**
+
+| Changed artifact | Run this test |
+| --- | --- |
+| `global-behavior/INSTALL.md` | `scenario-tests/install-drift.md` |
+| `js-ts-project-audit/` (SKILL.md or `references/`) | `scenario-tests/audit-followup.md` |
+| ES rule in `global-behavior/CLAUDE.md` | `scenario-tests/es-frequency.md` |
+
+If a test fails: capture the agent's rationalization verbatim, add a counter-rule to the instruction, re-run until it passes. Test results are reported in the conversation, not committed.
+
 ## Before finishing any change (checklist)
 
 Run through this before committing or handing a change back to the user:
@@ -82,6 +96,7 @@ Run through this before committing or handing a change back to the user:
 - [ ] `CHANGELOG.md` has an entry under today's date for every skill or global-behavior change (append to today's section if it already exists).
 - [ ] Every touched skill's frontmatter `name:` still matches its directory name.
 - [ ] If the user-wide config was changed (install/update/removal), the action is logged in `.install-history.md`.
+- [ ] If a mapped artifact changed (see "Scenario tests"), the corresponding scenario test was run and passed.
 
 ## What this repo is *not*
 

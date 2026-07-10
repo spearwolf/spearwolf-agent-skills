@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Audit — pixel-cart</title>
+<style>
+  body { font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.65; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+  h1, h2 { font-weight: 600; }
+  .score { font-size: 2.2rem; font-weight: 600; }
+  .delta { color: #4ade80; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { text-align: left; padding: .5rem .7rem; border-bottom: 1px solid #1e293b; }
+  .sev-high { color: #fb923c; }
+  .sev-medium { color: #fbbf24; }
+  .ack { opacity: .6; font-size: .9rem; }
+</style>
+</head>
+<body>
+<script id="audit-data" type="application/json">
+{
+  "summary": {
+    "project": "pixel-cart",
+    "stack": "Node.js (ESM), node:test",
+    "date": "2026-06-20",
+    "score": 88,
+    "previousScore": 78,
+    "theme": "dark",
+    "scoreHistory": [
+      { "date": "2026-05-20", "score": 78 },
+      { "date": "2026-06-20", "score": 88 }
+    ],
+    "findingsBySeverity": { "critical": 0, "high": 2, "medium": 1, "low": 0, "info": 0 },
+    "resolvedCount": 1
+  },
+  "findings": [
+    {
+      "id": "MEM-001",
+      "category": "Memory Leaks & Ressourcen",
+      "severity": "high",
+      "title": "PricePoller: setInterval wird nie gecleart",
+      "location": "src/poller.js",
+      "description": "PricePoller.start() registriert ein setInterval, es gibt aber keinen Weg, den Timer je wieder zu stoppen. Jede Poller-Instanz läuft bis zum Prozessende weiter und hält ihre Closure am Leben.",
+      "recommendation": "Eine stop()-Methode mit clearInterval ergänzen und den Timer-Handle nullen.",
+      "effort": "S",
+      "status": "unchanged"
+    },
+    {
+      "id": "BUG-001",
+      "category": "Bugs & Korrektheitsrisiken",
+      "severity": "medium",
+      "title": "Fehlendes await auf saveCart in Cart.add/remove",
+      "location": "src/cart.js",
+      "description": "saveCart ist async, wird aber ohne await aufgerufen. Schreibfehler gehen als unhandled rejection verloren, und Aufrufer können nicht auf Persistenz warten.",
+      "recommendation": "add/remove async machen und saveCart awaiten (oder Fehler explizit behandeln).",
+      "effort": "S",
+      "status": "unchanged"
+    },
+    {
+      "id": "ARCH-001",
+      "category": "Architektur & Struktur",
+      "severity": "high",
+      "title": "Zirkuläre Abhängigkeit zwischen src/store.js und src/api.js",
+      "location": "src/store.js",
+      "description": "store.js importiert api.js und api.js importiert store.js zurück. Das koppelt Persistenz und Transport untrennbar und macht beide Module einzeln untestbar.",
+      "recommendation": "Gemeinsame Typen/Helper in ein drittes Modul ziehen und die Import-Richtung vereinheitlichen.",
+      "effort": "M",
+      "status": "new"
+    }
+  ],
+  "acknowledged": [
+    {
+      "id": "DX-001",
+      "title": "README enthält keine Setup-Anleitung",
+      "category": "Developer Experience",
+      "location": "README.md",
+      "reason": "Interne Mini-Lib, README bewusst minimal gehalten.",
+      "acknowledgedDate": "2026-06-20"
+    }
+  ]
+}
+</script>
+<h1>Audit — pixel-cart</h1>
+<p><span class="score">88</span> <span class="delta">▲ +10</span> (vorher 78, 2026-05-20) · Audit vom 2026-06-20 · Stack: Node.js (ESM)</p>
+<h2>Backlog</h2>
+<table>
+  <tr><th>ID</th><th>Severity</th><th>Titel</th><th>Location</th></tr>
+  <tr><td>MEM-001</td><td class="sev-high">high</td><td>PricePoller: setInterval wird nie gecleart</td><td>src/poller.js</td></tr>
+  <tr><td>ARCH-001</td><td class="sev-high">high</td><td>Zirkuläre Abhängigkeit zwischen src/store.js und src/api.js</td><td>src/store.js</td></tr>
+  <tr><td>BUG-001</td><td class="sev-medium">medium</td><td>Fehlendes await auf saveCart in Cart.add/remove</td><td>src/cart.js</td></tr>
+</table>
+<h2>Anhang: Akzeptierte / zurückgestellte Punkte</h2>
+<p class="ack">DX-001 — README enthält keine Setup-Anleitung (Developer Experience, README.md). Begründung: Interne Mini-Lib, README bewusst minimal gehalten. Akzeptiert am 2026-06-20.</p>
+<h2>Methodik</h2>
+<p>Vollständige Sichtung aller 7 Dateien. Score: 100 − 5 − 5 − 2 = 88. Theme: dark (vom Nutzer angefordert).</p>
+</body>
+</html>

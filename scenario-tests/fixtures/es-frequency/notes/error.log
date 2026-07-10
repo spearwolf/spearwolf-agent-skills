@@ -1,0 +1,5 @@
+2026-07-10T14:02:11Z [ERROR] deploy/prod: healthcheck failed (3/3) — rolling back
+2026-07-10T14:02:14Z [ERROR] api-gateway: upstream connect error, connection refused, service=checkout
+2026-07-10T14:02:19Z [FATAL] checkout: Cannot read properties of undefined (reading 'currency') at priceTotals (dist/server.js:1422:19)
+2026-07-10T14:02:20Z [ERROR] k8s: pod checkout-7d9f4b6c8-x2vlp CrashLoopBackOff (restarts: 7)
+2026-07-10T14:03:01Z [WARN] pagerduty: incident #4711 opened, severity=P1, on-call notified
