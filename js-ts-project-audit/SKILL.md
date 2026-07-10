@@ -1,21 +1,27 @@
 ---
 name: js-ts-project-audit
-description: Performs a thorough, holistic audit of a JavaScript or TypeScript project and renders a self-contained HTML report to `./audit.html`. Covers architecture, project layout, module boundaries, developer experience, public API quality, implementation status, test coverage and strategy, code readability, clean-code adherence, potential bugs, memory leaks, race conditions, inconsistencies, type safety, security risks, and dependency hygiene. Always use this skill when the user asks for a code review, audit, quality assessment, health check, or technical due diligence of a JS/TS, Node.js, React, Vue, Svelte, Angular, Next.js, NestJS, or monorepo project — even with informal phrasing like "review my repo", "is my code clean?", or "take a look at this project". Output is always a single standalone `./audit.html` with prioritized findings, recommendations, optimization opportunities, and open questions.
+description: Use when the user asks for a code review, audit, quality assessment, health check, or technical due diligence of a JavaScript/TypeScript project (Node.js, React, Vue, Svelte, Angular, Next.js, NestJS, monorepos) — even with informal phrasing like "review my repo", "is my code clean?", "schau mal drauf", or "take a look at this project". Also applies to partial reviews (tests only, architecture only). Output contract, the only fixed promise — a single standalone `./audit.html`.
 ---
 
 # JS/TS Project Audit
 
-Ein Skill für die strukturierte, ganzheitliche Analyse eines JavaScript- oder TypeScript-Projekts. Output ist immer eine `./audit.html` mit priorisierten Findings und Empfehlungen.
+Ein Skill für die strukturierte, ganzheitliche Analyse eines JavaScript- oder TypeScript-Projekts. Output ist immer eine `./audit.html` mit priorisierten Findings und Empfehlungen. Das Audit deckt Architektur, Projektaufbau, Modulgrenzen, Developer Experience, öffentliche API, Implementierungsstand, Teststrategie, Lesbarkeit, Clean Code, Bugs, Memory Leaks, Race Conditions, Konsistenz, Typsicherheit, Sicherheit, Dependencies und Performance ab (die 15 Dimensionen in Schritt 3).
 
-## Wann triggern
+## Ablauf-Übersicht
 
-Sobald der Nutzer ein JS/TS-Projekt (Verzeichnis, Repo, Archiv) bereitstellt und eine inhaltliche Bewertung möchte — egal ob als "Audit", "Review", "Analyse", "Health-Check", "Due Diligence" oder informell ("schau mal drauf"). Auch bei Teilanalysen (nur Tests, nur Architektur) denselben Workflow nutzen und die nicht angefragten Sektionen leerer halten, aber strukturell erhalten.
+1. Projekt erfassen (Schritt 1) + Projektportrait (1b) — ein vorhandenes `./audit.html` nur registrieren, **nicht** lesen.
+2. Code-Sampling (2), Analyse entlang der 15 Dimensionen (3).
+3. Backlog-Modell aufbauen (4), Health-Score berechnen (5).
+4. Nur wenn ein altes `./audit.html` existierte: Merge/Diff (5b) und Abgleich mit akzeptierten Punkten (5c).
+5. Theme bestimmen (6a), Report rendern (6), Ergebnis ausliefern (7).
+
+Kein Schritt wird übersprungen; 5b/5c entfallen nur, wenn es kein Vorgänger-Audit gibt.
 
 ## Workflow
 
 ### 1. Projekt erfassen
 
-- Wurzelverzeichnis bestimmen, `view` auf die Root-Ebene.
+- Wurzelverzeichnis bestimmen, die Root-Ebene auflisten (Verzeichnis-Listing, kein rekursiver Dump).
 - Schlüsseldateien lesen, sofern vorhanden: `package.json`, `tsconfig*.json`, `pnpm-workspace.yaml` / `lerna.json` / `nx.json` / `turbo.json`, `.eslintrc*`, `.prettierrc*`, `vitest.config.*` / `jest.config.*`, `playwright.config.*`, `vite.config.*` / `webpack.config.*` / `rollup.config.*`, `.github/workflows/*`, `README*`, `CHANGELOG*`, `.nvmrc`, `.node-version`, `Dockerfile`, `docker-compose*`.
 - Verzeichnisstruktur kartieren (max. 3 Ebenen tief), Monorepo erkennen.
 - Stack klassifizieren: Runtime (Node/Bun/Deno/Browser), Framework, Build-Tool, Test-Runner, Sprachversion, TS-Strictness.
@@ -45,7 +51,7 @@ Großprojekte nicht zeilenweise lesen. Stattdessen:
 
 - **Entry Points** vollständig lesen: `src/index.*`, `src/main.*`, `app/page.*`, exportierte Module aus `package.json`-Feldern (`main`, `module`, `exports`, `bin`).
 - **Öffentliche API**: alles unter `src/` mit `index.*` und re-exporte.
-- **"Heiße" Module**: die größten Dateien (`bash_tool` mit `find ... -size` oder `wc -l`), zentrale Utility-/Core-Verzeichnisse, alles mit "manager", "service", "store", "controller", "engine" im Namen.
+- **"Heiße" Module**: die größten Dateien (per Shell ermitteln, z. B. `find ... -size` oder `wc -l`), zentrale Utility-/Core-Verzeichnisse, alles mit "manager", "service", "store", "controller", "engine" im Namen.
 - **Risiko-Hotspots**: Dateien mit `useEffect`, `setInterval`, `setTimeout`, `addEventListener`, `subscribe`, `EventEmitter`, manuelle Promise-Konstruktion, `any`, `// @ts-ignore`, `eslint-disable`, `TODO`, `FIXME`, `HACK`.
 - **Tests**: `__tests__/`, `*.test.*`, `*.spec.*` — mindestens Stichprobe pro Bereich.
 - **CI/Build**: Workflow-Dateien und Build-Skripte.
@@ -76,7 +82,7 @@ Befunde sammeln, bevor mit Schritt 4 begonnen wird — nicht parallel HTML zusam
 
 ### 4. Backlog-Modell
 
-Vor dem Rendern strukturierte Daten erzeugen (in-memory JS-Objekt im HTML), nicht direkt Markup schreiben. Jedes Finding hat:
+Vor dem Rendern strukturierte Daten erzeugen, nicht direkt Markup schreiben. Die Daten werden in der HTML als **genau eine** JSON-Insel eingebettet: `<script id="audit-data" type="application/json">…</script>`. Diese Insel ist die maschinenlesbare Quelle der Wahrheit — Folgeläufe parsen sie (Schritt 5b), und das Vanilla-JS der Filter-UI liest sie per `JSON.parse(document.getElementById('audit-data').textContent)`. Jedes Finding hat:
 
 - `id` (z. B. `ARCH-001`)
 - `category` (eine der 15 Dimensionen oben)
@@ -108,7 +114,7 @@ Einfache, sichtbar dokumentierte Heuristik:
 Wenn in Schritt 1 ein vorheriges `./audit.html` gefunden wurde, **nach** Abschluss des frischen Audits (Schritte 2–5) einen Merge durchführen. Reihenfolge ist entscheidend: erst der unvoreingenommene neue Lauf, dann der Abgleich.
 
 **Vorheriges Audit parsen:**
-- Datei lesen, das eingebettete Daten-Objekt extrahieren (das gemäß Schritt 4 in der HTML als JS-Objekt liegt). Falls das nicht parsebar ist, Findings best-effort aus der Backlog-Tabelle rekonstruieren (Titel, Severity, Location, Kategorie). Datum des alten Audits, Score, `scoreHistory`, `theme` und die `acknowledged`-Liste (siehe Schritt 5c) ebenfalls extrahieren.
+- Datei lesen, das eingebettete Daten-Objekt extrahieren — die JSON-Insel `<script id="audit-data" type="application/json">` gemäß Schritt 4; bei Audits aus älteren Skill-Versionen kann es stattdessen ein anders eingebettetes JS-Objekt sein, auch das akzeptieren. Falls nichts davon parsebar ist, Findings best-effort aus der Backlog-Tabelle rekonstruieren (Titel, Severity, Location, Kategorie). Datum des alten Audits, Score, `scoreHistory`, `theme` und die `acknowledged`-Liste (siehe Schritt 5c) ebenfalls extrahieren.
 - Wenn `scoreHistory` im Altdatensatz fehlt (Audits aus älteren Skill-Versionen), aus dem Altscore und Altdatum einen einzelnen Eintrag synthetisieren: `[{date: <altDatum>, score: <altScore>}]`. Damit beginnt die Historie sinnvoll, statt auf einen sauberen Erstlauf zu warten.
 - Bei nicht parsebarer Altdatei: in der Methodik-Sektion vermerken und mit reinem Neu-Audit fortfahren — keinen Merge erzwingen, `scoreHistory` startet bei einem einzigen Eintrag.
 
@@ -167,18 +173,14 @@ Vor dem Rendering ein Theme festlegen — `"light"` oder `"dark"`. Reihenfolge d
 
 Das gewählte Theme wird in `summary.theme` persistiert, damit der nächste Lauf es übernehmen kann. Im Report selbst **fix ausliefern**, nicht `prefers-color-scheme` verwenden — der Nutzer hat eine bewusste Wahl getroffen (oder der Skill hat sie für ihn getroffen) und die soll nicht durch die OS-Einstellung des Lesers überschrieben werden.
 
-**Light-Theme** (Default): hell, dezent, professionell. Hintergrund nahezu weiß (z. B. `#fafaf9`), Fließtext sehr dunkles Grau (`#1c1917`), Akzentfarbe gedämpft (gedämpftes Indigo/Slate, kein knalliges Blau). Severity-Farben kräftig genug, um auf hellem Grund lesbar zu sein, aber nicht plakativ. Typografie: system-ui mit großzügigem Zeilenabstand (1.6–1.7), Überschriften in moderatem Gewicht (600, nicht 800), klare Hierarchie über Größe und Whitespace statt über Farbe.
-
-**Dark-Theme**: ruhige dunkle Flächen (`#0f172a` o. ä., nicht reines Schwarz), Fließtext hellgrau (`#e2e8f0`), gleiche Akzentlogik. Severity-Farben leicht entsättigt, damit sie nicht glühen.
-
-Beide Themes folgen derselben typografischen Grundhaltung — Wechsel ist nur eine Farbumkehr, nicht ein anderes Design.
+Die konkrete visuelle Spezifikation beider Themes (Farbwerte, Typografie) steht in `references/report-rendering.md` — spätestens jetzt lesen.
 
 ### 6. `./audit.html` rendern
 
 Eine eigenständige HTML-Datei nach `./audit.html` (relativ zum Projekt-Root bzw. aktuellen Arbeitsverzeichnis) schreiben. Anforderungen:
 
 - **Standalone**: kein externes CSS/JS, keine CDN-Imports. Alles inline.
-- **Lesbar**: ruhige Typografie (system-ui oder vergleichbar, z. B. `ui-sans-serif, -apple-system, "Segoe UI", Inter, Roboto, sans-serif`), klare Hierarchie, ausreichend Whitespace. Theme **fix** gemäß Schritt 6a einsetzen — kein `prefers-color-scheme`.
+- **Lesbar**: ruhige Typografie, klare Hierarchie, ausreichend Whitespace — verbindliche Details (Font-Stack, Zeilenabstand, Gewichte) in `references/report-rendering.md`. Theme **fix** gemäß Schritt 6a einsetzen — kein `prefers-color-scheme`.
 - **Struktur**:
   1. Header mit Projektname, Stack-Badges, Audit-Datum, Health-Score. Score-Anzeige folgt der Historien-Stufe (siehe unten "Score-Anzeige & Verlauf").
   2. **Projektportrait** (Ergebnis aus Schritt 1b): Kurzbeschreibung als Prosa, danach Domänen als kompakte Liste oder Grid (Name, ein Satz, Pfad-Chips). Wenn ein Architektur-Diagramm sinnvoll ist, hier einbetten — sonst weglassen, keine Platzhalter-Grafik. Diagramm bekommt eine knappe Bildunterschrift, die erklärt, was die Pfeile/Boxen bedeuten.
@@ -193,23 +195,23 @@ Eine eigenständige HTML-Datei nach `./audit.html` (relativ zum Projekt-Root bzw
 - **Score-Anzeige & Verlauf** (direkt im Header bzw. unmittelbar darunter, abhängig von `scoreHistory.length`):
   - **1 Eintrag** (Erstlauf): nur der aktuelle Score, ohne Vergleichswert oder Tendenz.
   - **2 Einträge** (zweiter Lauf): aktueller Score plus vorheriger Score mit Tendenz-Indikator und Delta, z. B. `89  ▲ +7  (vorher 82, 2026-03-10)`. Kein Chart.
-  - **≥3 Einträge**: zusätzlich zur Vergleichszeile ein **Liniendiagramm** des Verlaufs als Inline-SVG. X-Achse Audit-Datum (chronologisch, gleichabständig), Y-Achse Score 0–100. Punkte beschriftet, der aktuelle Punkt visuell hervorgehoben (gefüllter Kreis, kleiner Score-Tooltip darüber). Achsen dezent, Gitterlinien nur bei 0/50/100. Diagrammbreite responsiv via `viewBox`, max ~640px hoch ~200px. Keine Diagramm-Library, kein Mermaid — handgeschriebenes SVG (Polyline + Circles + Text). Bildunterschrift: "Verlauf der Health-Scores seit `<frühestes Datum>`".
-  - Das Diagramm verwendet die Akzentfarbe des Themes, Achsen/Beschriftungen im gedämpften Sekundär-Ton.
-- Schweregrade farblich konsistent: critical=rot, high=orange, medium=amber, low=blau, info=grau.
-- **Status-Marker im Backlog (nur bei Diff-Lauf)**: Jede Zeile bekommt ein kleines Status-Badge — `new` (Akzent), `unchanged` (neutral), `improved` (grün, mit `previousSeverity → currentSeverity` als Tooltip/Untertitel), `carried-over` (gedämpft). In den Filter-Toggles auch nach Status filterbar machen.
+  - **≥3 Einträge**: zusätzlich zur Vergleichszeile ein **Liniendiagramm** des Verlaufs als handgeschriebenes Inline-SVG (keine Diagramm-Library, kein Mermaid). Geometrie, Achsen, Beschriftung und Farben: siehe `references/report-rendering.md`.
+- Schweregrade farblich konsistent (Farbzuordnung in `references/report-rendering.md`).
+- **Status-Marker im Backlog (nur bei Diff-Lauf)**: Jede Zeile bekommt ein kleines Status-Badge (`new` / `unchanged` / `improved` mit `previousSeverity → currentSeverity` / `carried-over`; Optik siehe `references/report-rendering.md`). In den Filter-Toggles auch nach Status filterbar machen.
 - **Diff-Header (nur bei Diff-Lauf)**: Im Header oder direkt darunter eine knappe Vergleichszeile: vorheriges Audit-Datum, Score-Delta mit Tendenz-Indikator, "X Findings behoben seit letztem Audit, Y verbessert, Z neu". Behobene Findings bewusst **nicht** in der Backlog-Tabelle auflisten — nur als Zähler. Wer Details will, hat das alte `audit.html` im git-Verlauf. Die Score-Anzeige-Stufe (s. o.) bestimmt, ob hier zusätzlich der Chart erscheint.
 - Keine externen Fonts oder Bilder. SVG-Icons inline wenn nötig.
 - Wenn bereits eine `./audit.html` existiert: überschreiben, kein Suffix anhängen. Das alte Audit ist zu diesem Zeitpunkt bereits in den Merge eingeflossen (Schritt 5b) — die alte Datei darf verloren gehen. Wenn der Nutzer Historie braucht, ist git der richtige Ort.
 
 ### 7. Ergebnis ausliefern
 
-- Datei mit `present_files` an den Nutzer zurückgeben (Pfad: `./audit.html`).
+- Die Datei dem Nutzer übergeben: den Mechanismus nutzen, den der Host zum Präsentieren von Dateien anbietet (Datei-Anhang, Artefakt, o. ä.); gibt es keinen, den Pfad `./audit.html` klar benennen.
 - Kurzer Begleittext (max. 5–8 Zeilen): Health-Score, Top-3-Critical/High-Findings, Hinweis auf Methodik-Sektion. Keine Wiederholung des Reports im Chat.
 - Bei Diff-Lauf zusätzlich eine Zeile: "X behoben / Y verbessert / Z neu seit `<Datum>`". Behobene Punkte **nicht einzeln** aufzählen — der Nutzer hat sie bewusst nicht mehr im Backlog.
 - Wenn der Nutzer in diesem Lauf Punkte akzeptiert/zurückgestellt hat (Schritt 5c), das in einer Zeile bestätigen (Anzahl, Verweis auf den Anhang) — nicht den ganzen Anhang im Chat wiederholen.
 
 ## Wichtige Prinzipien
 
+- **Teilanalysen**: Auch bei Teilanfragen (nur Tests, nur Architektur) denselben Workflow nutzen und die nicht angefragten Sektionen leerer halten, aber strukturell erhalten.
 - **Belegt statt vermutet**: Jedes Finding mit Datei-/Zeilenreferenz, sonst weglassen. Bei Unsicherheit → "Offene Fragen", nicht als Finding.
 - **Schlank statt historisch**: Das Audit bildet den *aktuellen* Zustand ab, nicht die Projekthistorie. Jeder Punkt, der als geklärt, umgesetzt, erledigt, behoben o. ä. gilt — egal ob vom neuen Lauf verifiziert (Schritt 5b, Fall 1) oder vom Nutzer so markiert —, **fällt vollständig aus dem Report**: kein "resolved"-Badge, keine durchgestrichene Zeile, keine Archiv-/History-Tabelle, kein Eintrag im Backlog. Nur als Zähler im Diff-Header zusammengefasst. Einzige Ausnahmen von dieser Schlankheit: der optionale Score-Verlaufsgraph (Schritte 5/6) und der Anhang akzeptierter Punkte (Schritt 5c). Wer den Verlauf einzelner Findings braucht, findet ihn im git-Verlauf der `./audit.html`.
 - **Keine Stiltyrannei**: keine Findings für Geschmacksfragen ohne Wirkung (Tabs vs. Spaces, wenn Formatter konsistent läuft, ist kein Finding).

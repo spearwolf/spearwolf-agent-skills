@@ -42,16 +42,26 @@ ersetzen, sonst neu anlegen.
 ### 1. `CLAUDE.md` einbauen
 
 **Backup zuerst:** Bevor du `$HOME/.claude/CLAUDE.md` in irgendeiner Weise
-änderst, sichere ihren aktuellen Inhalt nach `$HOME/.claude/CLAUDE.bak.md`
-(vorhandenes Backup darf überschrieben werden). Existiert die Zieldatei noch
-gar nicht, entfällt das Backup.
+änderst, sichere ihren aktuellen Inhalt nach `$HOME/.claude/CLAUDE.bak.md`.
+Existiert dort bereits ein Backup, verschiebe dieses vorher nach
+`$HOME/.claude/CLAUDE.bak.prev.md` (das wiederum überschrieben werden darf).
+So überleben immer die letzten **zwei** Stände, und zwei kurz
+aufeinanderfolgende Aktionen (z. B. Update + Deinstallation) vernichten nicht
+den Ausgangszustand. Existiert die Zieldatei noch gar nicht, entfällt das
+Backup.
 
 1. Lies `global-behavior/CLAUDE.md` (die Quelle).
 2. Existiert `$HOME/.claude/CLAUDE.md` noch nicht, lege sie an und schreibe dort
    nur den markierten Block (siehe oben) hinein. Fertig.
 3. Existiert sie schon, prüfe in dieser Reihenfolge:
    - **Marker vorhanden** (`<!-- BEGIN spearwolf-global-behavior -->` …
-     `<!-- END spearwolf-global-behavior -->`): Ersetze alles zwischen den
+     `<!-- END spearwolf-global-behavior -->`): **Drift-Check zuerst.**
+     Vergleiche den aktuellen Blockinhalt mit der Quelle. Enthält der Block
+     Abweichungen, die *nicht* aus der Quelle stammen (jemand hat direkt in
+     der Zieldatei editiert), ersetze **nicht** stillschweigend — frage den
+     User, ob die Abweichung in die Quelle zurückportiert oder verworfen
+     werden soll, und fahre erst nach dieser Entscheidung fort. Erst dann
+     (bzw. wenn es keine solche Abweichung gibt): Ersetze alles zwischen den
      Markern (inklusive der Marker) durch einen frisch erzeugten Block mit dem
      aktuellen Quellinhalt.
    - **Kein Marker, aber Alt-Inhalt vorhanden** (eine frühere, noch
@@ -80,7 +90,9 @@ Wenn die globalen Verhaltensweisen nicht mehr aktiv sein sollen:
 ### 1. `CLAUDE.md` zurückbauen
 
 **Backup zuerst:** Auch hier gilt — sichere `$HOME/.claude/CLAUDE.md` nach
-`$HOME/.claude/CLAUDE.bak.md`, bevor du etwas entfernst.
+`$HOME/.claude/CLAUDE.bak.md`, bevor du etwas entfernst (gleiche
+Zwei-Generationen-Regel: ein vorhandenes `CLAUDE.bak.md` vorher nach
+`CLAUDE.bak.prev.md` verschieben).
 
 - Marker vorhanden: Entferne alles zwischen `<!-- BEGIN spearwolf-global-behavior -->`
   und `<!-- END spearwolf-global-behavior -->` **inklusive** der beiden Marker.

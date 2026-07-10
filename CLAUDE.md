@@ -8,7 +8,7 @@ This repo is a personal collection of **Claude Code skills** authored by spearwo
 
 A "skill" here means: one directory at the repo root, containing a `SKILL.md` file (and optionally supporting files like `references/`, `assets/`, scripts). The directory name is the skill's invocation name.
 
-A "global behavior" instruction is **not** a skill: it does not get loaded on demand via the `Skill` tool. It is a `CLAUDE.md` file that defines how Claude should behave generally in certain situations, and it takes effect by being installed (symlinked or copied) as `CLAUDE.md` into the user's `$HOME/.claude` directory, where it applies across all of that user's projects.
+A "global behavior" instruction is **not** a skill: it does not get loaded on demand via the `Skill` tool. It is a `CLAUDE.md` file that defines how Claude should behave generally in certain situations, and it takes effect by being installed as a **marked block inside** the user's `$HOME/.claude/CLAUDE.md` (following `global-behavior/INSTALL.md` — never by symlinking or wholesale copying, which would clobber the user's own content), where it applies across all of that user's projects.
 
 ## SKILL.md structure
 
@@ -29,7 +29,7 @@ The `description` field is **load-bearing**. It is the only part of the skill an
 
 ## The `global-behavior` directory
 
-`global-behavior/` is the home of global behavior instructions (see "Repository purpose"). Its central artifact is `global-behavior/CLAUDE.md`, which is installed by symlinking or copying it as `CLAUDE.md` into the user's `$HOME/.claude` directory, so it governs Claude's behavior across all projects.
+`global-behavior/` is the home of global behavior instructions (see "Repository purpose"). Its central artifact is `global-behavior/CLAUDE.md`, which is installed as a marked block inside the user's `$HOME/.claude/CLAUDE.md` via the steps in `global-behavior/INSTALL.md`, so it governs Claude's behavior across all projects.
 
 - **When the user talks about Claude's "behavior" or "behavior rules" (German: *Verhalten* / *Verhaltensweisen*) — how Claude should generally act in some situation — the intended outcome is almost always `global-behavior/CLAUDE.md`.** Edit that file, not a skill and not this project's `CLAUDE.md`.
 - Unlike skills, this content is *always active* once installed; there is no `description` trigger and no on-demand loading. Write the instructions so they hold up as standing rules.
@@ -74,6 +74,14 @@ Every install, update, or removal of a skill or of the global behavior — anyth
 - A skill should describe *workflow and decision rules*, not reproduce reference documentation. If the skill needs lookup material, put it in a sibling file (e.g. `references/foo.md`) and have the workflow instruct the agent to read it on demand.
 - Skills here lean toward producing concrete artifacts (the existing `js-ts-project-audit` writes `./audit.html`). When an output file is part of the contract, the skill body must state the exact path, overwrite policy, and standalone-ness requirements explicitly — host agents will not infer these.
 - No external dependencies (no CDN imports, no fonts, no remote assets) inside artifacts the skill produces unless the skill itself argues for them. The `js-ts-project-audit` skill's "standalone HTML" rule is the local convention.
+
+## Before finishing any change (checklist)
+
+Run through this before committing or handing a change back to the user:
+
+- [ ] `CHANGELOG.md` has an entry under today's date for every skill or global-behavior change (append to today's section if it already exists).
+- [ ] Every touched skill's frontmatter `name:` still matches its directory name.
+- [ ] If the user-wide config was changed (install/update/removal), the action is logged in `.install-history.md`.
 
 ## What this repo is *not*
 
