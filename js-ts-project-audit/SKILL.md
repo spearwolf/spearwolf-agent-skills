@@ -5,217 +5,150 @@ description: Use when the user asks for a code review, audit, quality assessment
 
 # JS/TS Project Audit
 
-Ein Skill für die strukturierte, ganzheitliche Analyse eines JavaScript- oder TypeScript-Projekts. Output ist immer eine `./audit.html` mit priorisierten Findings und Empfehlungen. Das Audit deckt Architektur, Projektaufbau, Modulgrenzen, Developer Experience, öffentliche API, Implementierungsstand, Teststrategie, Lesbarkeit, Clean Code, Bugs, Memory Leaks, Race Conditions, Konsistenz, Typsicherheit, Sicherheit, Dependencies und Performance ab (die 15 Dimensionen in Schritt 3).
+Strukturierte, ganzheitliche Analyse eines JavaScript- oder TypeScript-Projekts entlang der 15 Dimensionen aus Schritt 3. Einziger fester Vertrag ist der Output: eine `./audit.html` mit priorisierten Findings.
 
 ## Ablauf-Übersicht
 
-1. Projekt erfassen (Schritt 1) + Projektportrait (1b) — ein vorhandenes `./audit.html` nur registrieren, **nicht** lesen.
+1. Projekt erfassen (1) + Projektportrait (1b) — ein vorhandenes `./audit.html` nur registrieren, **nicht** lesen.
 2. Code-Sampling (2), Analyse entlang der 15 Dimensionen (3).
 3. Backlog-Modell aufbauen (4), Health-Score berechnen (5).
-4. Nur wenn ein altes `./audit.html` existierte: Merge/Diff (5b) und Abgleich mit akzeptierten Punkten (5c).
+4. Nur bei vorhandenem Vorgänger-Audit: Merge und Abgleich akzeptierter Punkte (5b/5c).
 5. Theme bestimmen (6a), Report rendern (6), Ergebnis ausliefern (7).
 
-Kein Schritt wird übersprungen; 5b/5c entfallen nur, wenn es kein Vorgänger-Audit gibt.
+Die Referenzdateien werden erst gelesen, wenn ihr Schritt dran ist — nicht vorab:
+
+| Datei | Wann lesen |
+| --- | --- |
+| `references/followup-audit.md` | Schritt 5b — nur wenn ein vorheriges `./audit.html` existiert |
+| `references/report-rendering.md` | Schritt 6a — vor jedem Rendern |
 
 ## Workflow
 
 ### 1. Projekt erfassen
 
-- Wurzelverzeichnis bestimmen, die Root-Ebene auflisten (Verzeichnis-Listing, kein rekursiver Dump).
-- Schlüsseldateien lesen, sofern vorhanden: `package.json`, `tsconfig*.json`, `pnpm-workspace.yaml` / `lerna.json` / `nx.json` / `turbo.json`, `.eslintrc*`, `.prettierrc*`, `vitest.config.*` / `jest.config.*`, `playwright.config.*`, `vite.config.*` / `webpack.config.*` / `rollup.config.*`, `.github/workflows/*`, `README*`, `CHANGELOG*`, `.nvmrc`, `.node-version`, `Dockerfile`, `docker-compose*`.
-- Verzeichnisstruktur kartieren (max. 3 Ebenen tief), Monorepo erkennen.
-- Stack klassifizieren: Runtime (Node/Bun/Deno/Browser), Framework, Build-Tool, Test-Runner, Sprachversion, TS-Strictness.
-- **Vorheriges `./audit.html` separat behandeln**: Datei existiert? → Pfad merken, aber **vollständig aus der inhaltlichen Analyse ausschließen** (nicht als Quelltext lesen, nicht als Finding-Quelle nutzen, nicht in der Verzeichnisstruktur als "Code" zählen). Die Datei wird erst in Schritt 5b für den Abgleich geöffnet. Begründung: Der neue Audit muss unvoreingenommen am Code stattfinden, sonst werden alte Findings kopiert statt verifiziert.
+- Wurzelverzeichnis bestimmen, Root-Ebene auflisten (Listing, kein rekursiver Dump).
+- Schlüsseldateien lesen, sofern vorhanden: `package.json`, `tsconfig*.json`, Workspace-Manifeste (`pnpm-workspace.yaml`, `lerna.json`, `nx.json`, `turbo.json`), Lint-/Format-Config, Test-Runner-Config, Bundler-Config, `.github/workflows/*`, `README*`, `CHANGELOG*`, Node-Version-Pins, `Dockerfile` / `docker-compose*`.
+- Verzeichnisstruktur kartieren (max. 3 Ebenen), Monorepo erkennen.
+- Stack klassifizieren: Runtime, Framework, Build-Tool, Test-Runner, Sprachversion, TS-Strictness.
+- **Vorheriges `./audit.html`**: Pfad merken, aber vollständig aus der inhaltlichen Analyse ausschließen — nicht als Quelltext lesen, nicht als Finding-Quelle nutzen, nicht als Code zählen. Es wird erst in Schritt 5b geöffnet, damit der neue Audit unvoreingenommen am Code entsteht.
 
-### 1b. Projektportrait & Domänen erfassen
+### 1b. Projektportrait & Domänen
 
-Parallel zur technischen Bestandsaufnahme ein **inhaltliches Verständnis** aufbauen — wovon handelt das Projekt überhaupt?
+Parallel zur technischen Bestandsaufnahme ein inhaltliches Verständnis aufbauen — wovon handelt das Projekt überhaupt? Quellen in dieser Reihenfolge: `README*`, `package.json` (`description`, `keywords`, `name`), `CHANGELOG*`, Top-Level-Verzeichnisse unter `src/` bzw. `packages/`, Exports aus `index.*` / `package.json#exports`.
 
-**Quellen (in dieser Reihenfolge auswerten):**
-- `README*` (Beschreibung, Sektionen "About", "Features", "Usage").
-- `package.json` Felder `description`, `keywords`, `name` (Scope kann Domäne andeuten).
-- `CHANGELOG*`, falls nicht trivial — gibt Hinweis auf Entwicklungsschwerpunkte.
-- Top-Level-Verzeichnisse unter `src/` bzw. `packages/` (in Monorepos): die Namen sind oft schon eine Domänen-Liste.
-- Exports aus `index.*` / `package.json#exports` — was das Projekt nach außen anbietet.
+Daraus synthetisieren:
 
-**Synthetisieren:**
-- **Kurzbeschreibung**: 2–4 Sätze. Was tut das Projekt, für wen, in welchem Kontext. Kein Marketing-Sprech, keine Wiederholung des README-Wortlauts. Wenn unklar, schreiben "Zweck aus den Quellen nicht eindeutig ableitbar" und unter Offene Fragen aufnehmen — nicht raten.
-- **Domänen** (3–7 Stück): die fachlichen bzw. funktionalen Hauptbereiche. Pro Domäne: Name, ein Satz Beschreibung, repräsentative Pfade (z. B. `src/auth/`, `packages/renderer/`). Domänen sind *fachlich*, nicht jede Schicht ist eine Domäne — "utils" oder "types" sind keine Domäne, "Auth", "Billing", "Renderer", "Storage-Adapter" schon.
-- **Architektur-Diagramm — nur wenn es Mehrwert bringt**: bei klarer Schichtung, Monorepo mit ≥3 Packages, oder erkennbarem Datenfluss zwischen Modulen. Bei einer einzelnen kleinen Lib oder einem CLI-Tool **kein Diagramm** — Domänen-Liste reicht. Form: Inline-SVG oder ASCII in `<pre>` (keine externen Diagramm-Libs, kein Mermaid — verstößt gegen Standalone-Regel). Zeigt Packages/Layer als Boxen, Hauptabhängigkeiten als Pfeile. Max ~10 Knoten, sonst ist es kein Überblick mehr.
+- **Kurzbeschreibung**: 2–4 Sätze. Was tut das Projekt, für wen, in welchem Kontext. Kein Marketing-Sprech, keine Wiederholung des README-Wortlauts. Bleibt der Zweck unklar, das so schreiben und unter Offene Fragen aufnehmen — nicht raten.
+- **Domänen** (3–7): die fachlichen Hauptbereiche, je mit Name, einem Satz und repräsentativen Pfaden. Fachlich, nicht jede Schicht ist eine Domäne — »Auth«, »Billing«, »Renderer«, »Storage-Adapter« ja, »utils« oder »types« nein.
+- **Architektur-Diagramm** nur, wenn es Überblick schafft: klare Schichtung, Monorepo ab drei Packages, erkennbarer Datenfluss zwischen Modulen. Bei einer kleinen Lib oder einem CLI-Tool reicht die Domänen-Liste. Form: Inline-SVG oder ASCII in `<pre>` (Standalone-Regel, siehe Schritt 6). Ab etwa zehn Knoten ist es kein Überblick mehr.
 
-Diese Synthese wird im Report **vor** der Executive Summary platziert (siehe Schritt 6).
+Die Synthese steht im Report vor der Executive Summary.
 
-### 2. Sampling-Strategie für den Code
+### 2. Sampling-Strategie
 
-Großprojekte nicht zeilenweise lesen. Stattdessen:
+Großprojekte nicht zeilenweise lesen. Priorisieren:
 
-- **Entry Points** vollständig lesen: `src/index.*`, `src/main.*`, `app/page.*`, exportierte Module aus `package.json`-Feldern (`main`, `module`, `exports`, `bin`).
-- **Öffentliche API**: alles unter `src/` mit `index.*` und re-exporte.
-- **"Heiße" Module**: die größten Dateien (per Shell ermitteln, z. B. `find ... -size` oder `wc -l`), zentrale Utility-/Core-Verzeichnisse, alles mit "manager", "service", "store", "controller", "engine" im Namen.
-- **Risiko-Hotspots**: Dateien mit `useEffect`, `setInterval`, `setTimeout`, `addEventListener`, `subscribe`, `EventEmitter`, manuelle Promise-Konstruktion, `any`, `// @ts-ignore`, `eslint-disable`, `TODO`, `FIXME`, `HACK`.
-- **Tests**: `__tests__/`, `*.test.*`, `*.spec.*` — mindestens Stichprobe pro Bereich.
-- **CI/Build**: Workflow-Dateien und Build-Skripte.
+- **Entry Points** vollständig: `src/index.*`, `src/main.*`, `app/page.*`, alles aus `main` / `module` / `exports` / `bin`.
+- **Öffentliche API**: `index.*`-Dateien und Re-Exporte unter `src/`.
+- **Heiße Module**: die größten Dateien (per Shell ermitteln), zentrale Core-/Utility-Verzeichnisse, alles mit „manager", „service", „store", „controller", „engine" im Namen.
+- **Risiko-Hotspots**: `useEffect`, `setInterval`, `setTimeout`, `addEventListener`, `subscribe`, `EventEmitter`, manuelle Promise-Konstruktion, `any`, `@ts-ignore`, `eslint-disable`, `TODO`, `FIXME`, `HACK`.
+- **Tests** mindestens als Stichprobe pro Bereich, dazu CI- und Build-Skripte.
 
-Bei jedem gelesenen File: Notizen pro Analysedimension sammeln (siehe Abschnitt 3).
+Bei jedem gelesenen File Notizen pro Dimension sammeln.
 
 ### 3. Analysedimensionen
 
-Für jede Dimension Findings sammeln mit Schweregrad (`critical` / `high` / `medium` / `low` / `info`), Datei-/Zeilenreferenz wo möglich, und konkretem Verbesserungsvorschlag.
+Für jede Dimension Findings sammeln: Schweregrad, Datei-/Zeilenreferenz wo möglich, konkreter Verbesserungsvorschlag.
 
-1. **Architektur & Struktur** — Layering, Abhängigkeitsrichtung, Modulgrenzen, zirkuläre Abhängigkeiten, Trennung Domain/Infrastruktur, Konsistenz der Ordnerlogik.
-2. **Projektaufbau & Build** — Build-Tooling-Wahl, TS-Konfiguration (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), Pfad-Aliase, Tree-Shaking-Fähigkeit, Bundle-Größe, Sourcemaps.
-3. **Developer Experience** — `README`-Qualität, Setup-Schritte, Scripts in `package.json`, Linting, Formatter, Pre-Commit-Hooks (Husky/lint-staged), Editor-Konfiguration, Onboarding-Hürden, Fehlerverständlichkeit, Hot-Reload.
-4. **Öffentliche API** — Klarheit der Exports, Naming, Konsistenz, Stabilität (Versionierung, Breaking-Change-Strategie), JSDoc/TSDoc, Typ-Exporte, Default- vs. Named-Exports, Treeshakeability.
-5. **Implementierungsstand** — Vollständigkeit ggü. README/Docs, offene TODOs/FIXMEs, tote Code-Pfade, ungenutzte Exporte, auskommentierter Code.
-6. **Testabdeckung & Teststrategie** — Unit/Integration/E2E-Balance, Coverage-Konfiguration, Test-Doubles, Flakiness-Indikatoren, Snapshot-Hygiene, fehlende kritische Pfade.
-7. **Lesbarkeit & Clean Code** — Funktionsgrößen, Verschachtelungstiefe, Naming, Single Responsibility, Magic Numbers, Kommentar-Qualität, Konsistenz im Stil.
-8. **Bugs & Korrektheitsrisiken** — fehlende `await`, unbehandelte Promise-Rejections, falsche Equality, Off-by-One, Mutation geteilter States, fehlende Null-Checks, unsichere Type-Casts (`as`), unsichere `JSON.parse`-Nutzung.
-9. **Memory Leaks & Ressourcen** — nicht entfernte Listener, nicht gecleared Timer/Intervals, unbeendete Subscriptions, fehlende `AbortController`, Closure-Captures großer Objekte, Caches ohne Eviction, fehlende Stream/FileHandle-Cleanups.
-10. **Async / Concurrency** — Race Conditions, fehlende Cancellation, `Promise.all` vs. sequenziell, unklare Reentrancy, blockierender Code im Eventloop.
-11. **Konsistenz** — Stilbrüche zwischen Modulen, gemischte Patterns (Class vs. Funktional, Callback vs. Promise vs. async), uneinheitliche Fehlerbehandlung, uneinheitliches Logging.
-12. **Typsicherheit (bei TS)** — `any`-Vorkommen, unsichere Casts, fehlende Generics, schwache Rückgabetypen, breite Union-Types ohne Discriminator.
-13. **Sicherheit** — `eval`, Template-Injection, ungeprüfte User-Inputs, Secrets im Repo, unsichere Defaults, veraltete Crypto, CORS-/CSRF-/XSS-Vektoren, `dangerouslySetInnerHTML`.
+1. **Architektur & Struktur** — Layering, Abhängigkeitsrichtung, Modulgrenzen, Zyklen, Trennung Domain/Infrastruktur, Konsistenz der Ordnerlogik.
+2. **Projektaufbau & Build** — Tooling-Wahl, TS-Konfiguration (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), Pfad-Aliase, Tree-Shaking, Bundle-Größe, Sourcemaps.
+3. **Developer Experience** — README-Qualität, Setup-Schritte, npm-Scripts, Linting, Formatter, Pre-Commit-Hooks, Editor-Konfiguration, Onboarding-Hürden, Fehlerverständlichkeit, Hot-Reload.
+4. **Öffentliche API** — Klarheit und Naming der Exports, Stabilität und Breaking-Change-Strategie, JSDoc/TSDoc, Typ-Exporte, Default- vs. Named-Exports, Treeshakeability.
+5. **Implementierungsstand** — Vollständigkeit gegenüber README/Docs, offene TODOs/FIXMEs, tote Pfade, ungenutzte Exporte, auskommentierter Code.
+6. **Testabdeckung & Teststrategie** — Balance Unit/Integration/E2E, Coverage-Konfiguration, Test-Doubles, Flakiness-Indikatoren, Snapshot-Hygiene, fehlende kritische Pfade.
+7. **Lesbarkeit & Clean Code** — Funktionsgrößen, Verschachtelungstiefe, Naming, Single Responsibility, Magic Numbers, Kommentar-Qualität, Stilkonsistenz.
+8. **Bugs & Korrektheitsrisiken** — fehlende `await`, unbehandelte Rejections, falsche Equality, Off-by-One, Mutation geteilter States, fehlende Null-Checks, unsichere Casts, ungeschütztes `JSON.parse`.
+9. **Memory Leaks & Ressourcen** — nicht entfernte Listener, nicht gecleartes Timer/Interval, unbeendete Subscriptions, fehlender `AbortController`, Closure-Captures großer Objekte, Caches ohne Eviction, fehlende Stream-/FileHandle-Cleanups.
+10. **Async & Concurrency** — Race Conditions, fehlende Cancellation, `Promise.all` vs. sequenziell, unklare Reentrancy, blockierender Code im Eventloop.
+11. **Konsistenz** — Stilbrüche zwischen Modulen, gemischte Patterns (Class vs. funktional, Callback vs. Promise vs. async), uneinheitliche Fehlerbehandlung, uneinheitliches Logging.
+12. **Typsicherheit (TS)** — `any`-Vorkommen, unsichere Casts, fehlende Generics, schwache Rückgabetypen, breite Unions ohne Discriminator.
+13. **Sicherheit** — `eval`, Template-Injection, ungeprüfte Inputs, Secrets im Repo, unsichere Defaults, veraltete Crypto, CORS/CSRF/XSS, `dangerouslySetInnerHTML`.
 14. **Dependencies** — veraltet, deprecated, doppelt, ungenutzt, Lizenzrisiken, unnötig schwer. `npm outdated` / `pnpm outdated` ausführen, sofern Netzwerk und Lockfile es zulassen.
 15. **Performance** — N+1, unnötige Re-Renders, fehlende Memoization, große synchrone Loops, fehlende Pagination, fehlende Caching-Layer.
 
-Befunde sammeln, bevor mit Schritt 4 begonnen wird — nicht parallel HTML zusammenbauen.
+Erst alle Befunde sammeln, dann Schritt 4 — nicht parallel HTML zusammenbauen.
 
-### 4. Backlog-Modell
+### 4. Datenmodell
 
-Vor dem Rendern strukturierte Daten erzeugen, nicht direkt Markup schreiben. Die Daten werden in der HTML als **genau eine** JSON-Insel eingebettet: `<script id="audit-data" type="application/json">…</script>`. Diese Insel ist die maschinenlesbare Quelle der Wahrheit — Folgeläufe parsen sie (Schritt 5b), und das Vanilla-JS der Filter-UI liest sie per `JSON.parse(document.getElementById('audit-data').textContent)`. Jedes Finding hat:
+Vor dem Rendern strukturierte Daten erzeugen, nicht direkt Markup schreiben. Diese Daten sind die maschinenlesbare Quelle der Wahrheit: die Filter-UI liest sie zur Laufzeit, der nächste Lauf parst sie in Schritt 5b.
 
-- `id` (z. B. `ARCH-001`)
-- `category` (eine der 15 Dimensionen oben)
-- `severity` (`critical` | `high` | `medium` | `low` | `info`)
-- `title` (kurz, imperativ formuliert: "Memory Leak in WebSocket-Reconnect beheben")
-- `location` (Pfad, ggf. Zeile)
-- `description` (Was ist das Problem, was sind die Konsequenzen)
-- `recommendation` (Wie konkret beheben)
-- `effort` (`S` | `M` | `L`)
-- `status` (optional, nur bei Diff-Lauf gesetzt): `new` | `unchanged` | `improved` | `carried-over` — siehe Schritt 5b.
-- `previousSeverity` (optional, nur bei `improved`): die Severity aus dem vorherigen Audit, damit die Verbesserung im Report sichtbar wird.
+Ein Finding:
 
-Zusätzlich ein `summary`-Objekt mit: Projektname, Stack, Anzahl Findings pro Severity, Anzahl Findings pro Kategorie, Gesamt-Health-Score (siehe unten), Datum, `theme` (`"light"` | `"dark"` — siehe Schritt 6a), `scoreHistory` (chronologische Liste `[{date, score}, ...]`, immer mit dem aktuellen Lauf als letztem Eintrag — siehe Schritt 5). Bei Diff-Lauf zusätzlich: Datum des vorherigen Audits, Anzahl behobener Findings, Anzahl verbesserter Findings, Score-Delta.
+| Feld | Wert |
+| --- | --- |
+| `id` | Kategorie-Kürzel + laufende Nummer, z. B. `ARCH-001` |
+| `category` | eine der 15 Dimensionen aus Schritt 3 |
+| `severity` | `critical` \| `high` \| `medium` \| `low` \| `info` |
+| `title` | kurz und imperativ: „Memory Leak in WebSocket-Reconnect beheben" |
+| `location` | Pfad, wenn möglich mit Zeile |
+| `description` | Problem und Konsequenz |
+| `recommendation` | wie konkret beheben |
+| `effort` | `S` \| `M` \| `L` |
+| `status` | nur im Folgelauf: `new` \| `unchanged` \| `improved` \| `carried-over` |
+| `previousSeverity` | nur bei `improved`: Severity aus dem Vorlauf |
 
-Außerdem — parallel zum Backlog in denselben eingebetteten Daten — eine separate Liste `acknowledged` für vom Nutzer bewusst zurückgestellte Punkte (siehe Schritt 5c). Einträge dort sind **keine** Backlog-Findings und fließen **nicht** in den Health-Score ein.
+Dazu ein `summary`-Objekt: Projektname, Stack, Findings pro Severity, Findings pro Kategorie, Health-Score, Datum, `theme` (Schritt 6a), `scoreHistory` (chronologisch `[{date, score}, …]`, aktueller Lauf immer als letzter Eintrag). Im Folgelauf zusätzlich Datum des Vorgängers, `resolvedCount`, Anzahl verbesserter Findings, Score-Delta — und bei einem großen Sprung dessen Einordnung (`deltaCause`, `deltaExplanation`; Regeln in `references/followup-audit.md`).
 
-### 5. Health-Score (transparent)
+Separat daneben die Liste `acknowledged` — vom Nutzer bewusst zurückgestellte Punkte. Keine Backlog-Findings, kein Gewicht im Health-Score (Details in `references/followup-audit.md`).
 
-Einfache, sichtbar dokumentierte Heuristik:
-- Start: 100 Punkte.
-- Abzug pro Finding: `critical` -10, `high` -5, `medium` -2, `low` -0.5, `info` 0.
-- Untergrenze: 0.
-- Score und Berechnung im Report explizit ausweisen, damit nicht der Eindruck einer Black-Box-Bewertung entsteht.
+### 5. Health-Score
 
-**Score-Historie:** Jedes Audit führt eine chronologische Liste `scoreHistory: [{date, score}, ...]` mit. Beim ersten Lauf enthält sie genau einen Eintrag (den aktuellen). Bei Folgeläufen wird die Historie aus dem vorherigen Audit übernommen (siehe Schritt 5b) und um den aktuellen Lauf erweitert. Die Liste lebt im eingebetteten Daten-Objekt der HTML — es gibt keinen separaten History-Store, der git-Verlauf der `./audit.html` ist die Quelle der Wahrheit, die Liste im aktuellen Report die bequeme Zusammenfassung. Maximal letzte 20 Einträge halten, ältere abschneiden (FIFO) — der Chart wird sonst unleserlich.
+Sichtbar dokumentierte Heuristik, keine Black Box: Start bei 100, Abzug `critical` -10, `high` -5, `medium` -2, `low` -0.5, `info` 0, Untergrenze 0. Score und Rechenweg im Report ausweisen.
 
-### 5b. Abgleich mit vorherigem Audit (nur wenn `./audit.html` existierte)
+`scoreHistory` führt den Verlauf mit — beim Erstlauf ein Eintrag, danach fortgeschrieben (Schritt 5b), maximal 20 Einträge (FIFO). Einen separaten History-Store gibt es nicht; die Quelle der Wahrheit ist der git-Verlauf der `./audit.html`.
 
-Wenn in Schritt 1 ein vorheriges `./audit.html` gefunden wurde, **nach** Abschluss des frischen Audits (Schritte 2–5) einen Merge durchführen. Reihenfolge ist entscheidend: erst der unvoreingenommene neue Lauf, dann der Abgleich.
+### 5b/5c. Folgelauf
 
-**Vorheriges Audit parsen:**
-- Datei lesen, das eingebettete Daten-Objekt extrahieren — die JSON-Insel `<script id="audit-data" type="application/json">` gemäß Schritt 4; bei Audits aus älteren Skill-Versionen kann es stattdessen ein anders eingebettetes JS-Objekt sein, auch das akzeptieren. Falls nichts davon parsebar ist, Findings best-effort aus der Backlog-Tabelle rekonstruieren (Titel, Severity, Location, Kategorie). Datum des alten Audits, Score, `scoreHistory`, `theme` und die `acknowledged`-Liste (siehe Schritt 5c) ebenfalls extrahieren.
-- Wenn `scoreHistory` im Altdatensatz fehlt (Audits aus älteren Skill-Versionen), aus dem Altscore und Altdatum einen einzelnen Eintrag synthetisieren: `[{date: <altDatum>, score: <altScore>}]`. Damit beginnt die Historie sinnvoll, statt auf einen sauberen Erstlauf zu warten.
-- Bei nicht parsebarer Altdatei: in der Methodik-Sektion vermerken und mit reinem Neu-Audit fortfahren — keinen Merge erzwingen, `scoreHistory` startet bei einem einzigen Eintrag.
+Existierte in Schritt 1 ein `./audit.html`, jetzt — nach abgeschlossenem Frisch-Audit — `references/followup-audit.md` lesen und danach arbeiten. Dort stehen Merge-Regeln, der Pflicht-Re-Check vor jedem carry-over, die Score-Historie und der Umgang mit akzeptierten Punkten.
 
-**Matching alter ↔ neuer Findings:**
-- Match-Kriterium primär: gleiche `category` + überlappende `location` (Datei-/Verzeichnispfad). Sekundär: semantische Titelähnlichkeit (gleiches Problem, ggf. anders formuliert).
-- Bei Mehrdeutigkeit konservativ matchen — lieber zwei Findings stehen lassen als fälschlich als "gleich" markieren.
-
-**Regeln pro altem Finding:**
-
-1. **Im Code nicht mehr vorhanden** (verifiziert durch Re-Read der betroffenen Stelle): → Finding **entfällt vollständig**. Nicht im neuen Backlog auftauchen lassen. In `summary.resolvedCount` zählen. Begründung: der Nutzer soll nicht durch erledigte Punkte rauschen müssen.
-2. **Im neuen Audit als Finding aufgetaucht, Severity gleich**: → neues Finding übernehmen, `status: "unchanged"`. Altes Finding verwerfen.
-3. **Im neuen Audit aufgetaucht, Severity niedriger** (z. B. vorher `high`, jetzt `medium`): → neues Finding übernehmen, `status: "improved"`, `previousSeverity` setzen.
-4. **Im neuen Audit aufgetaucht, Severity höher**: → neues Finding übernehmen, `status: "unchanged"` (keine künstliche "regressed"-Kategorie — die höhere Severity spricht für sich).
-5. **Im neuen Audit nicht aufgetaucht, aber im Code noch belegbar vorhanden**: → Kandidat für `status: "carried-over"`. Vor der Übernahme einen **Relevanz-Re-Check** durchführen — nicht nur "ist die Code-Stelle noch da", sondern "ist der Punkt überhaupt noch relevant":
-   - **Code-Beleg**: Location öffnen, Befund verifizieren. Nicht mehr auffindbar → wie Fall 1 entfernen.
-   - **Kontext-Beleg**: hat sich seit dem alten Audit der *Rahmen* geändert — Architektur, `README`/Docs, Specs, Proposals/ADRs, Roadmap —, so dass der Befund gegenstandslos geworden ist (bewusste Entscheidung dokumentiert, Feature gestrichen, Pattern offiziell sanktioniert)? Dann **komplett entfernen**, auch wenn die Code-Stelle technisch noch existiert. Wie Fall 1 in `summary.resolvedCount` zählen.
-   - Nur als `status: "carried-over"` übernehmen, wenn der Punkt **nach beiden Prüfungen** weiterhin relevant ist.
-6. **Im neuen Audit nicht aufgetaucht, im Code nicht mehr belegbar**: → entfällt (Fall 1).
-
-**Wichtig:** Der Re-Check in Fall 5 ist nicht optional. Ohne Verifikation droht das Backlog mit veralteten LLM-Halluzinationen vollzulaufen. Findings, die der neue Lauf weggelassen hat und die nicht mehr im Code belegbar sind, sind keine "übersehenen" Findings — sie sind erledigt. Dasselbe gilt für den Kontext-Beleg: ein Punkt, den geänderte Docs/Specs/Architektur ausgehebelt haben, ist erledigt, nicht "übersehen". Beim kontextbedingten Entfernen die maßgebliche Quelle (Doc/Spec/Proposal/Commit) kurz benennen, statt nach Bauchgefühl zu streichen.
-
-**Neue Findings (im neuen Audit, kein Match im alten):** → `status: "new"`.
-
-**Score-Delta:** Health-Score des alten Audits (sofern parsebar) merken, im Header neben dem neuen Score zeigen (z. B. `82 → 89  (+7)`). Tendenz-Indikator dazusetzen: `▲` bei Verbesserung, `▼` bei Verschlechterung, `–` bei Gleichstand. Diese Anzeige ist die Mindeststufe der Historie — sie erscheint ab dem zweiten Audit.
-
-**Score-Historie fortschreiben:** Die übernommene `scoreHistory` aus dem Altdatensatz um einen neuen Eintrag `{date: <heutiges Datum>, score: <neuer Score>}` ergänzen. Auf maximal 20 Einträge begrenzen (FIFO). Diese Liste wird in den eingebetteten Daten der neuen `./audit.html` persistiert.
-
-### 5c. Akzeptierte / zurückgestellte Punkte (Anhang)
-
-Manche Befunde sind dokumentiert, bewusst akzeptiert oder schlicht nicht mehr verfolgenswert — der Nutzer will sie nicht bei jedem Lauf erneut im Backlog sehen, obwohl sie nicht im klassischen Sinn "gelöst" sind. Solche Punkte wandern in die separate Liste `acknowledged` und erscheinen im Report nur noch als **Anhang**, nicht im aktiven Backlog.
-
-**Erledigt ≠ akzeptiert — zwei unterschiedliche Nutzeranweisungen sauber trennen:**
-- Markiert der Nutzer einen Punkt als **geklärt / umgesetzt / erledigt / behoben** ("FOO ist umgesetzt", "den Punkt habe ich gefixt"), dann ist das **kein** Anhang-Fall: kurz im Code re-verifizieren und das Finding wie Schritt 5b Fall 1 **vollständig entfernen** (in `resolvedCount` zählen, nicht in `acknowledged`). Wenn die Re-Verifikation den Punkt im Code weiterhin belegt (Nutzer sagt erledigt, Code widerspricht), das Finding **behalten** und den Widerspruch unter "Offene Fragen" notieren — nicht stillschweigend löschen.
-- Markiert der Nutzer einen Punkt als **akzeptabel / zurückgestellt / bekannt** (nicht gelöst, soll aber nicht mehr stören), dann greift der Anhang-Mechanismus unten.
-
-**Daten-Modell:** `acknowledged: [{id, title, category, location, reason, acknowledgedDate}, ...]` — lebt wie `scoreHistory` in den eingebetteten Daten der `./audit.html`. `reason` = kurze Begründung, warum der Punkt akzeptabel/zurückgestellt ist (bzw. wo er dokumentiert ist). `acknowledgedDate` = Datum der Akzeptanz.
-
-**Aufnahme — ausschließlich auf ausdrückliche Nutzeranweisung.** Niemals von sich aus Punkte akzeptieren; das ist immer eine bewusste Nutzerentscheidung. Sagt der Nutzer in der Konversation, ein Befund solle künftig nicht mehr im Audit auftauchen ("ignoriere ARCH-003 künftig", "das ist akzeptabel so", "der Punkt ist bekannt, nimm ihn raus"), dann:
-- Das betroffene Finding aus dem aktiven Backlog entfernen und als Eintrag in `acknowledged` aufnehmen.
-- **Begründung erfragen, wenn der Nutzer keine genannt hat** — ein Satz genügt ("Warum ist der Punkt akzeptabel / wo ist er dokumentiert?"). Ohne Begründung den Punkt **nicht** verschieben, sonst ist später nicht nachvollziehbar, warum er versteckt ist.
-- `acknowledgedDate` auf das heutige Datum setzen.
-
-**Persistenz & Übernahme:** Die `acknowledged`-Liste wird bei jedem Folgelauf aus dem vorherigen Audit übernommen (analog `scoreHistory`, siehe Schritt 5b) und unverändert weitergeführt. Akzeptierte Punkte werden **nicht** erneut gegen den Code geprüft und **nicht** automatisch entfernt — sie bleiben im Anhang stehen, bis der Nutzer sie ausdrücklich widerruft. (Das unterscheidet sie bewusst von carry-over-Findings, die jeder Lauf neu verifiziert.)
-
-**Unterdrückung im Backlog:** Beim Merge (Schritt 5b) jeden neu aufgetauchten *und* jeden carry-over-Befund gegen die `acknowledged`-Liste matchen (gleiche Heuristik: `category` + überlappende `location`, sekundär Titelähnlichkeit). Treffer → **nicht ins Backlog aufnehmen**, der Punkt bleibt allein im Anhang. So taucht ein akzeptierter Befund nicht wieder als `new` auf.
-
-**Widerruf:** Sagt der Nutzer, ein akzeptierter Punkt solle wieder berücksichtigt werden ("zeig ARCH-003 wieder", "reaktiviere den Punkt"), dann aus `acknowledged` entfernen. Im aktuellen Lauf durchläuft er wieder die normale Finding-Logik und erscheint — sofern im Code noch belegbar — als reguläres Finding im Backlog.
+Gab es kein Vorgänger-Audit, entfällt der Schritt ersatzlos.
 
 ### 6a. Theme bestimmen
 
-Vor dem Rendering ein Theme festlegen — `"light"` oder `"dark"`. Reihenfolge der Auflösung:
+Auflösungsreihenfolge für `"light"` / `"dark"`:
 
-1. **Explizite Nutzeranweisung** in der aktuellen Konversation hat Vorrang. "Mach das im Dark Mode", "bitte hell halten", "dark theme" o. ä. → entsprechendes Theme. Auch verneinte Formen beachten ("nicht so dunkel" → light).
-2. **Theme des vorherigen Audits**, sofern parsebar und ohne Nutzeranweisung. Aus `summary.theme` der Altdatei übernehmen. Damit bleibt die Optik über Folgeläufe stabil.
-3. **Default `"light"`**, wenn weder Anweisung noch parsebare Vorgängerdatei existiert.
+1. Explizite Nutzeranweisung in der laufenden Konversation, auch in verneinter Form („nicht so dunkel" → light).
+2. Sonst `summary.theme` des vorherigen Audits, sofern parsebar — so bleibt die Optik über Folgeläufe stabil.
+3. Sonst `"light"`.
 
-Das gewählte Theme wird in `summary.theme` persistiert, damit der nächste Lauf es übernehmen kann. Im Report selbst **fix ausliefern**, nicht `prefers-color-scheme` verwenden — der Nutzer hat eine bewusste Wahl getroffen (oder der Skill hat sie für ihn getroffen) und die soll nicht durch die OS-Einstellung des Lesers überschrieben werden.
+Das Ergebnis wird in `summary.theme` persistiert und im Report **fix** ausgeliefert, nicht per `prefers-color-scheme`: die Wahl wurde bewusst getroffen und soll nicht von der OS-Einstellung des Lesers überschrieben werden.
 
-Die konkrete visuelle Spezifikation beider Themes (Farbwerte, Typografie) steht in `references/report-rendering.md` — spätestens jetzt lesen.
+Jetzt `references/report-rendering.md` lesen — dort stehen Aufbau und Optik des Reports.
 
 ### 6. `./audit.html` rendern
 
-Eine eigenständige HTML-Datei nach `./audit.html` (relativ zum Projekt-Root bzw. aktuellen Arbeitsverzeichnis) schreiben. Anforderungen:
+Vertrag der Datei:
 
-- **Standalone**: kein externes CSS/JS, keine CDN-Imports. Alles inline.
-- **Lesbar**: ruhige Typografie, klare Hierarchie, ausreichend Whitespace — verbindliche Details (Font-Stack, Zeilenabstand, Gewichte) in `references/report-rendering.md`. Theme **fix** gemäß Schritt 6a einsetzen — kein `prefers-color-scheme`.
-- **Struktur**:
-  1. Header mit Projektname, Stack-Badges, Audit-Datum, Health-Score. Score-Anzeige folgt der Historien-Stufe (siehe unten "Score-Anzeige & Verlauf").
-  2. **Projektportrait** (Ergebnis aus Schritt 1b): Kurzbeschreibung als Prosa, danach Domänen als kompakte Liste oder Grid (Name, ein Satz, Pfad-Chips). Wenn ein Architektur-Diagramm sinnvoll ist, hier einbetten — sonst weglassen, keine Platzhalter-Grafik. Diagramm bekommt eine knappe Bildunterschrift, die erklärt, was die Pfeile/Boxen bedeuten.
-  3. Executive Summary (3–6 Sätze Prosa, was sticht heraus). Bezieht sich auf die *Audit-Befunde*, nicht auf das Projekt selbst — Doppelung mit dem Portrait vermeiden.
-  4. Severity-Übersicht als Balken/Zahlen.
-  5. Kategorie-Übersicht.
-  6. Backlog-Tabelle: filterbar nach Severity und Kategorie via einfachen `<button>`-Toggles mit Vanilla-JS (keine Frameworks). Jede Zeile aufklappbar für `description` + `recommendation`.
-  7. Sektion "Offene Fragen / Unklarheiten" — explizit Dinge, die nicht aus dem Code allein entschieden werden konnten. **Nur rendern, wenn es aktuell offene Fragen gibt.** Gibt es keine, entfällt die Sektion ersatzlos — kein "keine offenen Fragen"-Platzhalter und keine Rückschau auf früher entschiedene Fragen (der Report dokumentiert den Status quo, nicht die Historie; vgl. "Schlank statt historisch").
-  8. Sektion "Optimierungspotenzial" — bewusst getrennt von Bugs/Findings: Verbesserungen, die kein Defekt sind.
-  9. Methodik-Sektion: was wurde gelesen, was nicht, wie wurde der Score berechnet. Bei Diff-Lauf zusätzlich: Datum des vorherigen Audits, Match-Strategie, Anzahl entfernter (=behobener) Findings, davon kontextbedingt entfernte (Docs/Specs/Architektur geändert). Theme-Entscheidung kurz vermerken (z. B. "Theme: light (Default, kein Vorgängeraudit)" bzw. "Theme: dark (vom Nutzer angefordert / aus vorherigem Audit übernommen)").
-  10. **Anhang "Akzeptierte / zurückgestellte Punkte"** — nur rendern, wenn `acknowledged` nicht leer ist. Kompakte Liste der vom Nutzer bewusst zurückgestellten Befunde, pro Eintrag: Titel, Kategorie, Location, Begründung (`reason`) und Akzeptanz-Datum (`acknowledgedDate`). Deutlich gedämpfte Optik, klar vom aktiven Backlog abgesetzt; **kein** Severity-Gewicht, fließt **nicht** in den Health-Score ein. Eine knappe Einleitung erklärt, dass diese Punkte auf Nutzerwunsch nicht weiterverfolgt werden und jederzeit reaktivierbar sind.
-- **Score-Anzeige & Verlauf** (direkt im Header bzw. unmittelbar darunter, abhängig von `scoreHistory.length`):
-  - **1 Eintrag** (Erstlauf): nur der aktuelle Score, ohne Vergleichswert oder Tendenz.
-  - **2 Einträge** (zweiter Lauf): aktueller Score plus vorheriger Score mit Tendenz-Indikator und Delta, z. B. `89  ▲ +7  (vorher 82, 2026-03-10)`. Kein Chart.
-  - **≥3 Einträge**: zusätzlich zur Vergleichszeile ein **Liniendiagramm** des Verlaufs als handgeschriebenes Inline-SVG (keine Diagramm-Library, kein Mermaid). Geometrie, Achsen, Beschriftung und Farben: siehe `references/report-rendering.md`.
-- Schweregrade farblich konsistent (Farbzuordnung in `references/report-rendering.md`).
-- **Status-Marker im Backlog (nur bei Diff-Lauf)**: Jede Zeile bekommt ein kleines Status-Badge (`new` / `unchanged` / `improved` mit `previousSeverity → currentSeverity` / `carried-over`; Optik siehe `references/report-rendering.md`). In den Filter-Toggles auch nach Status filterbar machen.
-- **Diff-Header (nur bei Diff-Lauf)**: Im Header oder direkt darunter eine knappe Vergleichszeile: vorheriges Audit-Datum, Score-Delta mit Tendenz-Indikator, "X Findings behoben seit letztem Audit, Y verbessert, Z neu". Behobene Findings bewusst **nicht** in der Backlog-Tabelle auflisten — nur als Zähler. Wer Details will, hat das alte `audit.html` im git-Verlauf. Die Score-Anzeige-Stufe (s. o.) bestimmt, ob hier zusätzlich der Chart erscheint.
-- Keine externen Fonts oder Bilder. SVG-Icons inline wenn nötig.
-- Wenn bereits eine `./audit.html` existiert: überschreiben, kein Suffix anhängen. Das alte Audit ist zu diesem Zeitpunkt bereits in den Merge eingeflossen (Schritt 5b) — die alte Datei darf verloren gehen. Wenn der Nutzer Historie braucht, ist git der richtige Ort.
+- **Zielpfad** `./audit.html` relativ zum Projekt-Root. Eine vorhandene Datei wird überschrieben, kein Suffix — der Merge ist zu diesem Zeitpunkt erledigt, Historie liefert git.
+- **Standalone**: kein externes CSS/JS, keine CDN-Imports, keine externen Fonts oder Bilder, kein Mermaid. Alles inline, SVG-Icons inline.
+- **Genau eine JSON-Insel** `<script id="audit-data" type="application/json">…</script>` mit dem vollständigen Datenmodell aus Schritt 4 inklusive `summary`, `scoreHistory` und `acknowledged`. Die Filter-UI liest sie per `JSON.parse(document.getElementById('audit-data').textContent)`.
+- **Interaktion** in Vanilla-JS: Backlog filterbar nach Severity, Kategorie und (im Folgelauf) Status, Zeilen aufklappbar für `description` und `recommendation`. Keine Frameworks.
+
+Sektionsfolge, Score-Anzeige-Stufen, Diff-Header, Status-Badges, Farben und Typografie stehen in `references/report-rendering.md`.
 
 ### 7. Ergebnis ausliefern
 
-- Die Datei dem Nutzer übergeben: den Mechanismus nutzen, den der Host zum Präsentieren von Dateien anbietet (Datei-Anhang, Artefakt, o. ä.); gibt es keinen, den Pfad `./audit.html` klar benennen.
-- Kurzer Begleittext (max. 5–8 Zeilen): Health-Score, Top-3-Critical/High-Findings, Hinweis auf Methodik-Sektion. Keine Wiederholung des Reports im Chat.
-- Bei Diff-Lauf zusätzlich eine Zeile: "X behoben / Y verbessert / Z neu seit `<Datum>`". Behobene Punkte **nicht einzeln** aufzählen — der Nutzer hat sie bewusst nicht mehr im Backlog.
-- Wenn der Nutzer in diesem Lauf Punkte akzeptiert/zurückgestellt hat (Schritt 5c), das in einer Zeile bestätigen (Anzahl, Verweis auf den Anhang) — nicht den ganzen Anhang im Chat wiederholen.
+- Datei übergeben über den Mechanismus, den der Host zum Präsentieren von Dateien anbietet; gibt es keinen, den Pfad `./audit.html` klar benennen.
+- Begleittext von maximal 5–8 Zeilen: Health-Score, Top-3 aus critical/high, Hinweis auf die Methodik-Sektion. Den Report nicht im Chat wiederholen.
+- Im Folgelauf eine Zeile „X behoben / Y verbessert / Z neu seit `<Datum>`" — behobene Punkte nicht einzeln aufzählen. Hat der Nutzer in diesem Lauf Punkte zurückgestellt, das in einer Zeile bestätigen und auf den Anhang verweisen.
 
-## Wichtige Prinzipien
+## Prinzipien
 
-- **Teilanalysen**: Auch bei Teilanfragen (nur Tests, nur Architektur) denselben Workflow nutzen und die nicht angefragten Sektionen leerer halten, aber strukturell erhalten.
-- **Belegt statt vermutet**: Jedes Finding mit Datei-/Zeilenreferenz, sonst weglassen. Bei Unsicherheit → "Offene Fragen", nicht als Finding.
-- **Schlank statt historisch**: Das Audit bildet den *aktuellen* Zustand ab, nicht die Projekthistorie. Jeder Punkt, der als geklärt, umgesetzt, erledigt, behoben o. ä. gilt — egal ob vom neuen Lauf verifiziert (Schritt 5b, Fall 1) oder vom Nutzer so markiert —, **fällt vollständig aus dem Report**: kein "resolved"-Badge, keine durchgestrichene Zeile, keine Archiv-/History-Tabelle, kein Eintrag im Backlog. Nur als Zähler im Diff-Header zusammengefasst. Einzige Ausnahmen von dieser Schlankheit: der optionale Score-Verlaufsgraph (Schritte 5/6) und der Anhang akzeptierter Punkte (Schritt 5c). Wer den Verlauf einzelner Findings braucht, findet ihn im git-Verlauf der `./audit.html`.
-- **Keine Stiltyrannei**: keine Findings für Geschmacksfragen ohne Wirkung (Tabs vs. Spaces, wenn Formatter konsistent läuft, ist kein Finding).
-- **Sprache des Reports**: in derselben Sprache wie die Nutzeranfrage. Default Deutsch, wenn der Nutzer Deutsch schreibt.
-- **Kein Auto-Fix**: Dieser Skill schreibt keinen Code im Projekt um. Empfehlungen sind Empfehlungen.
-- **Größenlimits**: Bei Repos > ~500 Dateien Sampling-Strategie strikt anwenden und die Auswahl in der Methodik-Sektion offenlegen.
-- **Monorepos**: Pro Package separate Score-Zeile in der Summary, gemeinsames Backlog mit Package-Spalte.
+- **Belegt statt vermutet**: jedes Finding mit Datei-/Zeilenreferenz, sonst weglassen. Unsicherheit gehört unter „Offene Fragen", nicht ins Backlog.
+- **Schlank statt historisch**: der Report zeigt den aktuellen Zustand. Was erledigt ist — verifiziert oder vom Nutzer so markiert — verschwindet vollständig und lebt nur noch als Zähler weiter. Ausnahmen: Score-Verlauf und der Anhang akzeptierter Punkte.
+- **Kein Auto-Fix**: dieser Skill schreibt keinen Code im Projekt um. Empfehlungen bleiben Empfehlungen.
+- **Keine Stiltyrannei**: Geschmacksfragen ohne Wirkung sind keine Findings. Läuft ein Formatter konsistent, ist Tabs vs. Spaces kein Thema.
+- **Teilanalysen**: auch bei „nur Tests" oder „nur Architektur" derselbe Workflow, nicht angefragte Sektionen bleiben leerer, aber strukturell erhalten.
+- **Sprache des Reports**: dieselbe wie die Nutzeranfrage.
+- **Größenlimits**: ab etwa 500 Dateien die Sampling-Strategie strikt anwenden und die Auswahl in der Methodik-Sektion offenlegen.
+- **Monorepos**: pro Package eine Score-Zeile in der Summary, gemeinsames Backlog mit Package-Spalte.

@@ -31,6 +31,8 @@ The `description` field is **load-bearing**. It is the only part of the skill an
 
 `global-behavior/` is the home of global behavior instructions (see "Repository purpose"). Its central artifact is `global-behavior/CLAUDE.md`, which is installed as a marked block inside the user's `$HOME/.claude/CLAUDE.md` via the steps in `global-behavior/INSTALL.md`, so it governs Claude's behavior across all projects.
 
+Because that file sits in context on *every* request, it is the one place where token cost is paid unconditionally. Rules that only fire under narrow conditions therefore do not live there — they get their own file next to it, installed alongside into `$HOME/.claude/`, and the block carries only a pointer that says when to read it. `global-behavior/es-protokoll.md` is the current example. Adding such a file means adding it to the artifact table in `INSTALL.md` (install *and* uninstall path); a rule whose target file is missing must fail closed.
+
 - **When the user talks about Claude's "behavior" or "behavior rules" (German: *Verhalten* / *Verhaltensweisen*) — how Claude should generally act in some situation — the intended outcome is almost always `global-behavior/CLAUDE.md`.** Edit that file, not a skill and not this project's `CLAUDE.md`.
 - Unlike skills, this content is *always active* once installed; there is no `description` trigger and no on-demand loading. Write the instructions so they hold up as standing rules.
 - The body follows the author's working language (German prose), matching the rest of the repo.
@@ -71,7 +73,7 @@ Every install, update, or removal of a skill or of the global behavior — anyth
 
 - **Always update `CHANGELOG.md`** in the same change. Every skill addition, removal, or behavioural modification — and equally every change to the global behavior instructions in `global-behavior/` — gets an entry under today's date (`YYYY-MM-DD`, newest on top), grouped as `Hinzugefügt` / `Geändert` / `Entfernt`. Keep entries short and precise — one or two sentences per change, focused on *what shifted for the user of the skill or behavior rule*, not on implementation details. If today's date already has a section, append to it instead of creating a duplicate.
 - Keep the `name:` field in the frontmatter in sync with the directory name. They are not independently meaningful — agents resolve skills by directory name and validate against the frontmatter.
-- A skill should describe *workflow and decision rules*, not reproduce reference documentation. If the skill needs lookup material, put it in a sibling file (e.g. `references/foo.md`) and have the workflow instruct the agent to read it on demand.
+- A skill should describe *workflow and decision rules*, not reproduce reference documentation. If the skill needs lookup material, put it in a sibling file (e.g. `references/foo.md`) and have the workflow instruct the agent to read it on demand. The same applies to *conditional* branches: a step that only runs in some situations (a follow-up run, a specific stack) belongs in a reference file that the workflow opens when that situation is actually reached, with the SKILL.md naming the trigger. Say each rule once, in the step that owns it — restating it in three places is what makes an agent weigh instructions against each other instead of following them.
 - Skills here lean toward producing concrete artifacts (the existing `js-ts-project-audit` writes `./audit.html`). When an output file is part of the contract, the skill body must state the exact path, overwrite policy, and standalone-ness requirements explicitly — host agents will not infer these.
 - No external dependencies (no CDN imports, no fonts, no remote assets) inside artifacts the skill produces unless the skill itself argues for them. The `js-ts-project-audit` skill's "standalone HTML" rule is the local convention.
 
@@ -85,7 +87,7 @@ Every install, update, or removal of a skill or of the global behavior — anyth
 | --- | --- |
 | `global-behavior/INSTALL.md` | `scenario-tests/install-drift.md` |
 | `js-ts-project-audit/` (SKILL.md or `references/`) | `scenario-tests/audit-followup.md` |
-| ES rule in `global-behavior/CLAUDE.md` | `scenario-tests/es-frequency.md` |
+| ES rule (`global-behavior/CLAUDE.md` pointer or `global-behavior/es-protokoll.md`) | `scenario-tests/es-frequency.md` |
 
 If a test fails: capture the agent's rationalization verbatim, add a counter-rule to the instruction, re-run until it passes. Test results are reported in the conversation, not committed.
 

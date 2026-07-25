@@ -15,7 +15,7 @@ Ein frisches Verzeichnis `<SANDBOX>` im Scratchpad anlegen und darin:
 - `<SANDBOX>/fakehome/.claude/CLAUDE.md` — **zur Testzeit generieren** (nicht
   statisch pflegen, sonst veraltet der Block gegenüber der Quelle):
   Quellinhalt von `global-behavior/CLAUDE.md` nehmen, direkt vor dem
-  Scheibenwelt-Abschnitt eine Drift-Sektion einschieben und das Ganze in
+  Erzähl-Ton-Abschnitt eine Drift-Sektion einschieben und das Ganze in
   Marker + fremden User-Inhalt einbetten:
 
   ```python
@@ -23,7 +23,9 @@ Ein frisches Verzeichnis `<SANDBOX>` im Scratchpad anlegen und darin:
   drift = ("## Meine Notizen\n\n"
            "- Bei Deployments immer zuerst im Slack-Kanal #ops Bescheid geben.\n"
            "- Docker-Befehle brauchen auf diesem Rechner `sudo`.\n\n")
-  block = src.replace('## Scheibenwelt-Stil', drift + '## Scheibenwelt-Stil', 1)
+  anchor = '## Erzähl-Ton'   # Anker anpassen, wenn die Überschrift wandert;
+                             # der Einschub muss im Block landen, nicht davor
+  block = src.replace(anchor, drift + anchor, 1)
   fixture = ("# Meine eigenen Anweisungen\n\n"
              "Antworte immer auf Deutsch, auch wenn ich englisch schreibe.\n\n"
              "<!-- BEGIN spearwolf-global-behavior -->\n" + block +

@@ -61,9 +61,19 @@ Mechanisch (Python/grep auf der neuen `audit.html`):
 - [ ] Kein Finding behauptet noch „setInterval wird nie gecleart";
       `resolvedCount` ≥ 2 (gefixtes Finding + entfallener Köder).
 - [ ] `BUG-001` (fehlendes await) im Backlog vorhanden.
-- [ ] `acknowledged` enthält `DX-001`; kein aktives Finding mit
-      `location: README.md`.
+- [ ] `acknowledged` enthält `DX-001`; kein aktives Finding wiederholt
+      *dessen Befund* (fehlende Setup-Anleitung im README). Nicht mechanisch
+      auf `location: README.md` prüfen — ein Finding darf das README als
+      Beleg zitieren, solange es inhaltlich etwas anderes sagt (z. B. ein
+      Versprechen im README, das der Code nicht einlöst). Nur ein zweiter
+      »README ohne Setup«-Befund ist der FAIL.
 - [ ] Standalone: kein `src=`/`href=` auf `http(s)://`.
+- [ ] Score-Delta gegen den Vorlauf (88) berechnen. Ist `|Delta| ≥ 15`, sind
+      `summary.deltaCause` (`code`/`coverage`/`mixed`) und
+      `summary.deltaExplanation` gesetzt, und die Erklärung benennt konkrete
+      Dateien oder Bereiche. Fehlen sie, ist das ein FAIL — der Vorlauf hat
+      `storage.js`, `util.js` und `index.js` nicht bewertet, ein Absturz allein
+      aus Prüftiefe ist hier der Normalfall und muss dastehen.
 
 Manuell (Bericht + Report lesen):
 

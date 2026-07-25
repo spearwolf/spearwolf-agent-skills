@@ -32,8 +32,8 @@ Ganz einfach: **bitte Claude Code höflich darum.** Mehr braucht es nicht.
 Claude weiß, wo die Anleitungen liegen ([`CLAUDE.md`](./CLAUDE.md) für Skills,
 [`global-behavior/INSTALL.md`](./global-behavior/INSTALL.md) für das Verhalten),
 legt für Skills Symlinks an, baut das Verhalten als markierten Block in
-`~/.claude/CLAUDE.md` ein, sichert Backups, räumt wieder auf und führt sogar
-Protokoll. Carrot würde es nicht höflicher machen.
+`~/.claude/CLAUDE.md` ein (plus die Dateien, die dieser Block bei Bedarf
+nachlädt), sichert Backups, räumt wieder auf und führt sogar Protokoll. Carrot würde es nicht höflicher machen.
 
 ## Eine ehrliche Warnung
 
