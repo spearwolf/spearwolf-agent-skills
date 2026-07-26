@@ -31,7 +31,7 @@ The `description` field is **load-bearing**. It is the only part of the skill an
 
 `global-behavior/` is the home of global behavior instructions (see "Repository purpose"). Its central artifact is `global-behavior/CLAUDE.md`, which is installed as a marked block inside the user's `$HOME/.claude/CLAUDE.md` via the steps in `global-behavior/INSTALL.md`, so it governs Claude's behavior across all projects.
 
-Because that file sits in context on *every* request, it is the one place where token cost is paid unconditionally. Rules that only fire under narrow conditions therefore do not live there — they get their own file next to it, installed alongside into `$HOME/.claude/`, and the block carries only a pointer that says when to read it. `global-behavior/es-protokoll.md` is the current example. Adding such a file means adding it to the artifact table in `INSTALL.md` (install *and* uninstall path); a rule whose target file is missing must fail closed.
+Because that file sits in context on *every* request, it is the one place where token cost is paid unconditionally. Rules that only fire under narrow conditions therefore do not live there — they get their own file next to it, installed alongside into `$HOME/.claude/`, and the block carries only a pointer that says when to read it. There is currently no such file — the ES rule used to be one (`global-behavior/es-protokoll.md`, removed 2026-07-26) and shows the trade-off: a rule the agent must evaluate in *every* session pays the pointer's indirection without ever saving the tokens, so it belongs inline. Adding such a file means adding it to the artifact table in `INSTALL.md` (install *and* uninstall path); a rule whose target file is missing must fail closed.
 
 - **When the user talks about Claude's "behavior" or "behavior rules" (German: *Verhalten* / *Verhaltensweisen*) — how Claude should generally act in some situation — the intended outcome is almost always `global-behavior/CLAUDE.md`.** Edit that file, not a skill and not this project's `CLAUDE.md`.
 - Unlike skills, this content is *always active* once installed; there is no `description` trigger and no on-demand loading. Write the instructions so they hold up as standing rules.
@@ -94,7 +94,7 @@ Every install, update, or removal of a skill or of the global behavior — anyth
 | --- | --- |
 | `global-behavior/INSTALL.md` | `scenario-tests/install-drift.md` |
 | `js-ts-project-audit/` (SKILL.md or `references/`) | `scenario-tests/audit-followup.md` |
-| ES rule (`global-behavior/CLAUDE.md` pointer or `global-behavior/es-protokoll.md`) | `scenario-tests/es-frequency.md` |
+| ES rule (`## ES` section in `global-behavior/CLAUDE.md`) | `scenario-tests/es-frequency.md` |
 | `js-ts-audit-remediation/` (SKILL.md or `references/`) | `scenario-tests/remediation-plan.md` — **not written yet**, so this artifact has never been tested at all |
 
 A skill with no mapped test row has never been tested. That is a legitimate state, not a defect to fix on your own initiative — but it belongs in `STATUS.md` and in the handback, same as a stale row.

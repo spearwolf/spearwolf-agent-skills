@@ -11,14 +11,7 @@ Quell-Artefakte sind:
 | Quelle (in diesem Repo)        | Ziel (im Home des Users)      | Art des Einbaus                          |
 | ------------------------------ | ----------------------------- | ---------------------------------------- |
 | `global-behavior/CLAUDE.md`    | `$HOME/.claude/CLAUDE.md`     | markierter Block innerhalb der Zieldatei |
-| `global-behavior/es-protokoll.md` | `$HOME/.claude/es-protokoll.md` | eigenständige Datei, wird kopiert     |
 | `global-behavior/settings.json` (Key `spinnerVerbs`) | `$HOME/.claude/settings.json` | einzelner JSON-Key wird gemerged         |
-
-`es-protokoll.md` ist die per Progressive Disclosure ausgelagerte ES-Regel:
-Der Block in der `CLAUDE.md` verweist nur darauf und lässt sie erst im
-Bedarfsfall lesen. Fehlt die Datei am Ziel, fällt die Regel still aus (kein
-Fehler, ES zeigt sich dann einfach nie) — installiere sie deshalb immer
-zusammen mit dem Block.
 
 Wichtig: Beide Zieldateien können **weitere, fremde Inhalte** des Users
 enthalten (andere Anweisungen in der `CLAUDE.md`, andere Keys in der
@@ -80,16 +73,7 @@ Backup.
      an (durch eine Leerzeile von vorhandenem Inhalt getrennt).
 4. Alle übrigen Zeilen der Datei bleiben unangetastet.
 
-### 2. `es-protokoll.md` einbauen
-
-Kopiere `global-behavior/es-protokoll.md` nach `$HOME/.claude/es-protokoll.md`
-und überschreibe eine vorhandene Fassung. Weicht die vorhandene Zieldatei vom
-Quellstand ab (jemand hat direkt dort editiert), gilt derselbe Drift-Check wie
-oben: nicht stillschweigend ersetzen, sondern den User fragen, ob die
-Abweichung zurückportiert oder verworfen wird. Das Logbuch
-`$HOME/.claude/🎈.md` gehört dem User und wird dabei **niemals** angefasst.
-
-### 3. `spinnerVerbs` einbauen
+### 2. `spinnerVerbs` einbauen
 
 1. Lies den Key `spinnerVerbs` aus `global-behavior/settings.json` (die Quelle).
 2. Existiert `$HOME/.claude/settings.json` noch nicht, lege sie als gültiges
@@ -119,17 +103,22 @@ Zwei-Generationen-Regel: ein vorhandenes `CLAUDE.bak.md` vorher nach
 - Bleibt die Datei danach leer, kann sie gelöscht werden. Enthält sie noch
   fremden Inhalt, bleibt dieser unverändert stehen.
 
-### 2. `es-protokoll.md` zurückbauen
-
-- Lösche `$HOME/.claude/es-protokoll.md`.
-- Das Logbuch `$HOME/.claude/🎈.md` bleibt liegen. Es ist gewachsener Inhalt
-  des Users, kein Installationsartefakt — lösche es nie ungefragt.
-
-### 3. `spinnerVerbs` zurückbauen
+### 2. `spinnerVerbs` zurückbauen
 
 - Parse `$HOME/.claude/settings.json`, entferne **nur** den Key `spinnerVerbs`
   und schreibe das übrige JSON unverändert zurück. Alle anderen Keys bleiben
   erhalten.
+
+### 3. Altbestand früherer Fassungen
+
+Bis 2026-07-26 wurden zwei weitere Dateien mitinstalliert; beide sind
+weggefallen. Liegt beim Ein- oder Ausbau noch eine davon im Ziel, gehört sie
+zu einem alten Stand:
+
+- `$HOME/.claude/es-protokoll.md` — Installationsartefakt, kann beim
+  Deinstallieren gelöscht werden.
+- `$HOME/.claude/🎈.md` — gewachsener Inhalt des Users, kein
+  Installationsartefakt. Bleibt liegen, immer, auch beim Deinstallieren.
 
 ## Hinweise
 
