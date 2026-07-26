@@ -26,7 +26,7 @@ Jede Zeile Ausgabe heißt: fällig.
 | --- | --- | --- | --- |
 | `install-drift.md` | `global-behavior/INSTALL.md` | unbekannt (vor Einführung dieser Datei) | — |
 | `audit-followup.md` | `js-ts-project-audit/` | unbekannt (vor Einführung dieser Datei) | — |
-| `es-frequency.md` | `global-behavior/es-protokoll.md` + ES-Zeiger in `global-behavior/CLAUDE.md` | unbekannt (vor Einführung dieser Datei) | — |
+| `es-frequency.md` | `global-behavior/es-protokoll.md` + ES-Zeiger in `global-behavior/CLAUDE.md` | unbekannt (vor Einführung dieser Datei) | **fällig** — Boten-Regel vom 2026-07-26 ungetestet |
 | `remediation-plan.md` | `js-ts-audit-remediation/` | **Test existiert nicht** | nie getestet |
 
 Die drei `unbekannt`-Zeilen stammen aus der Zeit vor diesem Protokoll. Läufe
@@ -43,6 +43,16 @@ Läufe geändert. Praktisch heißt das: fällig, sobald es jemandem wichtig ist.
   statt paketweise.
 - `js-ts-project-audit` hat am 2026-07-26 das Übergabe-Angebot in Schritt 7
   bekommen. `audit-followup.md` prüft diesen Pfad bisher nicht.
+- Die Boten-Regel (2026-07-26) verschiebt den Prüfgegenstand von
+  `es-frequency.md`: Die Frequenzentscheidung trifft jetzt der Subagent, der
+  das Protokoll liest — der Hauptagent kennt sie nicht mehr. Der Test muss
+  entsprechend zweigeteilt werden. Unten (Bote, mit Protokoll im Fakehome):
+  die bisherigen fünf Arme des Frequenzbands, Antwortformat `NEIN` /
+  `JA <Geste>`, kein Zitat aus dem Logbuch, Eintrag erst nach Bestätigung.
+  Oben (Hauptagent): schickt er überhaupt einen Boten, greift er *nicht*
+  selbst auf `es-protokoll.md` oder `🎈.md` zu (weder Tool noch Shell), trägt
+  die `description` keinen Verrat, und bleibt die Bestätigung aus, wenn der
+  Moment kippt.
 
 ## Eintrag nach einem Lauf
 
