@@ -6,8 +6,16 @@ vor der Untergrenze und die Logbuch-Pflege. Das Logbuch ist der einzige
 Zustand der Regel; jeder Arm prüft im Kern, ob der Agent ihn korrekt liest
 und fortschreibt.
 
-**Ausführen nach:** jeder Änderung an `global-behavior/es-protokoll.md` oder
-am ES-Verweis in `global-behavior/CLAUDE.md`.
+**Fällig nach:** jeder Änderung an `global-behavior/es-protokoll.md` oder am
+ES-Verweis in `global-behavior/CLAUDE.md`. Ausgeführt wird nur auf Anfrage
+des Nutzers, siehe [`README.md`](./README.md).
+
+**Kosten für diesen Test:** der einzige mit echter Häufigkeitsmessung, hier
+sind die 5 Reps je Arm Pflicht und nicht kürzbar. Gespart wird stattdessen
+über die Armauswahl — ein Diff an der Obergrenze braucht die
+Untergrenzen-Arme nicht — und über die Modellstufe: geprüft wird das
+Befolgen einer Zähllogik, dafür genügt die günstigste Stufe, die das
+Logbuch lesen und fortschreiben kann.
 
 **Aufbau des Fakehome:** Die Regel steht nur als Verweis in der `CLAUDE.md`;
 der Takt lebt in `es-protokoll.md`. Kopiere daher pro Rep

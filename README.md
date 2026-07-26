@@ -16,6 +16,10 @@ chaotisch, gelegentlich gefährlich, und der Bibliothekar sagt zu allem nur
   - [`js-ts-project-audit`](./js-ts-project-audit/) — auditiert ein
     JavaScript/TypeScript-Projekt ganzheitlich und schreibt einen
     eigenständigen HTML-Report nach `./audit.html`.
+  - [`js-ts-audit-remediation`](./js-ts-audit-remediation/) — arbeitet die
+    Findings aus so einem Audit ab: Umsetzungsplan nach
+    `./remediation-plan.md`, ein Subagent pro Paket, ein Commit pro Paket,
+    am Ende die Semver-Bewertung.
 - **[`global-behavior/`](./global-behavior/)** — *kein* Skill, sondern
   Anweisungen dazu, wie sich Claude generell verhalten soll (z. B.
   Fortschritts-Meldungen im Scheibenwelt-Stil, eine Sammlung absurder

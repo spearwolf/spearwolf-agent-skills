@@ -5,8 +5,18 @@ Köder-Resistenz (alte Findings werden verifiziert statt kopiert),
 `acknowledged`-Unterdrückung (5c), Theme-Übernahme (6a), Score-Historie und
 das Einbettungsformat.
 
-**Ausführen nach:** jeder Änderung an `js-ts-project-audit/` (SKILL.md oder
-`references/`).
+**Fällig nach:** jeder Änderung an `js-ts-project-audit/` (SKILL.md oder
+`references/`). Ausgeführt wird nur auf Anfrage des Nutzers, siehe
+[`README.md`](./README.md).
+
+**Kosten für diesen Test** (die Vier-Zeilen-Vorabklärung aus dem README,
+soweit sie hier schon feststeht): deterministisch, ein Lauf genügt. Die
+mittlere Modellstufe reicht, der Fixture-Auftrag ist ein Audit über sechs
+Dateien. Abgeschnitten wird **nichts**: der Standalone-Prüfpunkt und der
+Begleittext hängen am fertig gerenderten Report, und ein Prompt, der das
+Rendering abbestellt, prüft nicht mehr den Skill, sondern eine Variante
+davon. Der Spielraum liegt hier allein bei den Prüfpunkten aus Abschnitt 3 —
+eine Änderung an der Merge-Logik braucht die Theme- und Score-Zeilen nicht.
 
 ## 1. Fixture & Ground Truth
 

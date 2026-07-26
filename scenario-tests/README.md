@@ -2,15 +2,19 @@
 
 Anleitungen **für Claude**, um die Verhaltensanweisungen dieses Repos gegen
 frische Subagenten zu testen (TDD für Instruktionen: Fixture mit bekannter
-Ground Truth → Subagent ohne Vorwissen → Checkliste). Diese Tests werden bei
-Änderungen an den jeweiligen Artefakten ausgeführt — die Zuordnung steht im
-Repo-`CLAUDE.md` unter „Scenario tests".
+Ground Truth → Subagent ohne Vorwissen → Checkliste).
 
-| Test | Prüft | Wann ausführen |
+**Ausgeführt wird nur auf ausdrückliche Anfrage des Nutzers.** Eine Änderung
+an einem abgedeckten Artefakt löst keinen Lauf aus, sondern einen Eintrag in
+[`STATUS.md`](./STATUS.md) und einen Satz beim Übergeben. Die Zuordnung
+Artefakt → Test steht im Repo-`CLAUDE.md` unter „Scenario tests", der aktuelle
+Stand je Test in `STATUS.md`.
+
+| Test | Prüft | Fällig nach Änderungen an |
 | --- | --- | --- |
-| [`install-drift.md`](./install-drift.md) | Drift-Check & Fremdinhalt-Schutz des Install-/Update-Pfads | nach Änderungen an `global-behavior/INSTALL.md` |
-| [`audit-followup.md`](./audit-followup.md) | Folgelauf-Logik des Audit-Skills (Merge, Köder, acknowledged, Theme, Historie) | nach Änderungen an `js-ts-project-audit/` |
-| [`es-frequency.md`](./es-frequency.md) | deterministische Anteile der ES-Regel (Sperre, Baseline, Grenzen, Logbuch) | nach Änderungen an der ES-Regel in `global-behavior/CLAUDE.md` |
+| [`install-drift.md`](./install-drift.md) | Drift-Check & Fremdinhalt-Schutz des Install-/Update-Pfads | `global-behavior/INSTALL.md` |
+| [`audit-followup.md`](./audit-followup.md) | Folgelauf-Logik des Audit-Skills (Merge, Köder, acknowledged, Theme, Historie) | `js-ts-project-audit/` |
+| [`es-frequency.md`](./es-frequency.md) | deterministische Anteile der ES-Regel (Sperre, Baseline, Grenzen, Logbuch) | ES-Regel in `global-behavior/` |
 
 ## Grundregeln für alle Tests
 
@@ -31,5 +35,50 @@ Repo-`CLAUDE.md` unter „Scenario tests".
   Regel-Korrektur: Gegenregel in die Instruktion, dann denselben Test erneut
   laufen lassen, bis keine neuen Ausreden mehr auftauchen.
 - **Ergebnis gehört in die Konversation**, nicht ins Repo. Committed werden
-  nur Korrekturen an den Instruktionen (samt `CHANGELOG.md`-Eintrag), nicht
-  die Testprotokolle.
+  nur Korrekturen an den Instruktionen (samt `CHANGELOG.md`-Eintrag) und die
+  Statuszeile in [`STATUS.md`](./STATUS.md), nicht die Testprotokolle.
+
+## Kosten
+
+Ein Lauf startet frische Subagenten, die einen vollständigen Audit- oder
+Install-Durchgang machen. Das ist der teuerste Vorgang in diesem Repo und
+regelmäßig teurer als die Änderung, die ihn ausgelöst hat.
+
+**Vor dem ersten Subagenten stehen vier Zeilen in der Konversation**, je eine
+Entscheidung mit Begründung. Ohne sie startet kein Lauf:
+
+```
+Prüfpunkte: <welche, abgeleitet aus dem Diff> · ausgelassen: <welche>
+Wiederholungen: <n> · <deterministisch | Häufigkeitsmessung>
+Modell: <Stufe> · <warum sie reicht>
+Abgeschnitten: <was der Lauf nicht erzeugen muss | nichts, weil …>
+```
+
+Die vier Hebel dahinter, nach Wirkung:
+
+1. **Den teuren Teil abschneiden.** Was kein Prüfpunkt liest, muss der Lauf
+   nicht erzeugen — das gehört in den Testprompt, nicht in die Hoffnung.
+   **Grenze:** gekürzt wird nur, was das getestete Verhalten nicht verändert.
+   Ein Prompt, der dem Subagenten aufträgt, einen Schritt seines Skills
+   auszulassen, testet den Skill nicht mehr, sondern eine Variante davon. Wo
+   der Prüfpunkt am fertigen Artefakt hängt, gibt es hier nichts zu holen, und
+   dann steht in der vierten Zeile „nichts".
+2. **Das schwächste Modell, das die Aufgabe schafft.** Geprüft wird, ob eine
+   Instruktion bindet, nicht wie klug der Agent ist. Wer der Regel mit
+   weniger Kapazität folgt, folgt ihr auch mit mehr — der billigere Lauf ist
+   hier zugleich der härtere Test. Die stärkste Stufe nur, wenn die
+   Fixture-Aufgabe selbst sie verlangt.
+3. **Deterministisch ist nicht statistisch.** Ein Prüfpunkt mit eindeutigem
+   Ausgang („wurde die Fremdsektion gesichert?") braucht genau einen Lauf. Die
+   Fünf-Wiederholungen-Regel gilt nur dort, wo eine Häufigkeit gemessen wird —
+   praktisch nur beim ES-Frequenzband.
+4. **Wortlaut vorher billig prüfen.** Eine neue Gegenregel erst als
+   Einzelprompt gegen einen Kontrolllauf ohne die Regel stellen. Zeigt der
+   Kontrolllauf den Fehler gar nicht, gibt es nichts zu reparieren und der
+   volle Szenariolauf entfällt. Greift die Formulierung dort, ist der
+   Szenariolauf die Endabnahme, einmal, nicht als Iterationsschleife.
+
+Dazu zwei Dauerregeln, die keine Entscheidung pro Lauf brauchen: nur die
+Prüfpunkte fahren, die der Diff überhaupt erreichen kann (eine Änderung an
+der Merge-Tabelle rechtfertigt keinen Lauf über Theme und Score-Historie),
+und Fixtures nur so groß halten, wie es zum Auslösen des Befunds nötig ist.

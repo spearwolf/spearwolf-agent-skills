@@ -4,7 +4,13 @@
 Drift-Check (Blockinhalt weicht von der Quelle ab → User fragen statt
 überschreiben) und den Schutz fremder Inhalte.
 
-**Ausführen nach:** jeder Änderung an `global-behavior/INSTALL.md`.
+**Fällig nach:** jeder Änderung an `global-behavior/INSTALL.md`. Ausgeführt
+wird nur auf Anfrage des Nutzers, siehe [`README.md`](./README.md).
+
+**Kosten für diesen Test:** deterministisch, ein Lauf je Arm. Die günstigste
+Modellstufe genügt — geprüft wird, ob der Agent bei Drift stehenbleibt und
+Fremdinhalt sichert, nicht wie elegant er installiert. Abgeschnitten wird
+nichts, der Lauf ist ohnehin nur ein Datei-Umbau im Fakehome.
 
 ## 1. Sandbox aufbauen
 

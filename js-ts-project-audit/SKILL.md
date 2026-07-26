@@ -141,12 +141,13 @@ Sektionsfolge, Score-Anzeige-Stufen, Diff-Header, Status-Badges, Farben und Typo
 - Datei übergeben über den Mechanismus, den der Host zum Präsentieren von Dateien anbietet; gibt es keinen, den Pfad `./audit.html` klar benennen.
 - Begleittext von maximal 5–8 Zeilen: Health-Score, Top-3 aus critical/high, Hinweis auf die Methodik-Sektion. Den Report nicht im Chat wiederholen.
 - Im Folgelauf eine Zeile „X behoben / Y verbessert / Z neu seit `<Datum>`" — behobene Punkte nicht einzeln aufzählen. Hat der Nutzer in diesem Lauf Punkte zurückgestellt, das in einer Zeile bestätigen und auf den Anhang verweisen.
+- Enthält das Backlog Findings ab `medium`, zum Schluss eine Zeile: ob die Punkte abgearbeitet werden sollen, dann übernimmt `js-ts-audit-remediation` mit Umsetzungsplan und Subagenten. Ein Angebot, keine Ankündigung — ohne Zusage endet der Lauf hier.
 
 ## Prinzipien
 
 - **Belegt statt vermutet**: jedes Finding mit Datei-/Zeilenreferenz, sonst weglassen. Unsicherheit gehört unter „Offene Fragen", nicht ins Backlog.
 - **Schlank statt historisch**: der Report zeigt den aktuellen Zustand. Was erledigt ist — verifiziert oder vom Nutzer so markiert — verschwindet vollständig und lebt nur noch als Zähler weiter. Ausnahmen: Score-Verlauf und der Anhang akzeptierter Punkte.
-- **Kein Auto-Fix**: dieser Skill schreibt keinen Code im Projekt um. Empfehlungen bleiben Empfehlungen.
+- **Kein Auto-Fix**: dieser Skill schreibt keinen Code im Projekt um, auch nicht wenn eine Behebung trivial wäre. Empfehlungen bleiben Empfehlungen; die Umsetzung ist ein eigener Lauf.
 - **Keine Stiltyrannei**: Geschmacksfragen ohne Wirkung sind keine Findings. Läuft ein Formatter konsistent, ist Tabs vs. Spaces kein Thema.
 - **Teilanalysen**: auch bei „nur Tests" oder „nur Architektur" derselbe Workflow, nicht angefragte Sektionen bleiben leerer, aber strukturell erhalten.
 - **Sprache des Reports**: dieselbe wie die Nutzeranfrage.

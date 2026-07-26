@@ -79,17 +79,27 @@ Every install, update, or removal of a skill or of the global behavior — anyth
 
 ## Scenario tests (`scenario-tests/`)
 
-`scenario-tests/` is **not** a skill. It holds agent-executed test scenarios that verify the behavior instructions in this repo actually bind when a fresh agent runs them (fixtures with known ground truth → fresh subagent → pass/fail checklist). General rules live in `scenario-tests/README.md`.
+`scenario-tests/` is **not** a skill. It holds agent-executed test scenarios that verify the behavior instructions in this repo actually bind when a fresh agent runs them (fixtures with known ground truth → fresh subagent → pass/fail checklist). General rules and the cost discipline live in `scenario-tests/README.md`.
 
-**After modifying one of these artifacts, run the mapped scenario test before finishing the change:**
+**Run a scenario test only when the user asks for it, in so many words.** A single run spawns fresh subagents that perform a whole audit or install cycle; it routinely costs more tokens than the change that triggered it. Not as a self-imposed quality gate, not as a background check, not "quickly, just to be sure", and not because a change feels risky. Volunteering to run one is fine; starting one unasked is not.
 
-| Changed artifact | Run this test |
+**Instead, when you change a covered artifact:**
+
+1. Update the row in `scenario-tests/STATUS.md` — the mapped test is now stale.
+2. Name it when handing the change back: which test went stale, and that the artifact is untested until the user asks. One line, stated once, no lobbying.
+
+**When the user does ask, run only what the change can reach.** The mapped test for the artifact they touched, not the suite; and inside that test, the checkpoints the diff can plausibly affect. Name the arms you skipped so the skip is visible instead of silent.
+
+| Covered artifact | Mapped test |
 | --- | --- |
 | `global-behavior/INSTALL.md` | `scenario-tests/install-drift.md` |
 | `js-ts-project-audit/` (SKILL.md or `references/`) | `scenario-tests/audit-followup.md` |
 | ES rule (`global-behavior/CLAUDE.md` pointer or `global-behavior/es-protokoll.md`) | `scenario-tests/es-frequency.md` |
+| `js-ts-audit-remediation/` (SKILL.md or `references/`) | `scenario-tests/remediation-plan.md` — **not written yet**, so this artifact has never been tested at all |
 
-If a test fails: capture the agent's rationalization verbatim, add a counter-rule to the instruction, re-run until it passes. Test results are reported in the conversation, not committed.
+A skill with no mapped test row has never been tested. That is a legitimate state, not a defect to fix on your own initiative — but it belongs in `STATUS.md` and in the handback, same as a stale row.
+
+If a test fails: capture the agent's rationalization verbatim, add a counter-rule to the instruction, re-run until it passes. Test results are reported in the conversation, not committed — the only committed trace is the row in `STATUS.md`.
 
 ## Before finishing any change (checklist)
 
@@ -98,7 +108,7 @@ Run through this before committing or handing a change back to the user:
 - [ ] `CHANGELOG.md` has an entry under today's date for every skill or global-behavior change (append to today's section if it already exists).
 - [ ] Every touched skill's frontmatter `name:` still matches its directory name.
 - [ ] If the user-wide config was changed (install/update/removal), the action is logged in `.install-history.md`.
-- [ ] If a mapped artifact changed (see "Scenario tests"), the corresponding scenario test was run and passed.
+- [ ] If a covered artifact changed (see "Scenario tests"), its row in `scenario-tests/STATUS.md` is marked stale and the handback names the test. Whether it actually runs is the user's call, not yours.
 
 ## What this repo is *not*
 

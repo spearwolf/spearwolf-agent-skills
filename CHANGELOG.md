@@ -2,6 +2,22 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-07-26
+
+### Hinzugefügt
+- **Neuer Skill `js-ts-audit-remediation`.** Arbeitet die Findings eines vorhandenen `./audit.html` tatsächlich ab, statt sie nur zu berichten: offene Entscheidungen werden vorab gebündelt geklärt, danach entsteht ein Umsetzungsplan in `./remediation-plan.md`, der zugleich Auftragsmappe und Fortschritts-Ledger ist. Umgesetzt wird paketweise, ein Subagent und ein Commit pro Paket, jeweils mit eigenem Review-Subagenten und einem Verify-Lauf, den der Orchestrator selbst fährt. Commits landen ohne GPG-Signatur auf dem aktuellen Branch, dessen Nennung Teil der Plan-Freigabe ist. Am Ende wird der Lauf als Ganzes nach Semver bewertet und ein Folgeaudit angeboten. Modellwahl je Paket in drei Stufen, immer explizit gesetzt.
+- `js-ts-audit-remediation/references/execution.md` — die fünf Züge pro Paket (Brief, Report, Review, Fehlerkette, Verify/Commit/Plan) samt Wiederaufnahme nach Kontextverlust. Wird erst gelesen, wenn der Plan freigegeben ist.
+- `js-ts-audit-remediation/references/semver-and-closeout.md` — Bewertungstabelle für breaking/minor/patch inklusive der gern übersehenen TypeScript-Regel (verschärfte Typen brechen), `0.x`-Sonderfall, Monorepo, CHANGELOG des Zielprojekts, Abschluss-Commit. Wird erst nach dem letzten Paket gelesen.
+
+### Geändert
+- `js-ts-project-audit`: Schritt 7 bietet am Ende an, die Findings abzuarbeiten, sofern welche ab `medium` im Backlog stehen — ein Angebot, das ohne Zusage folgenlos bleibt. Das Prinzip „Kein Auto-Fix" ist entsprechend präzisiert: der Audit-Lauf fixt nichts, auch nichts Triviales; die Umsetzung ist ein eigener Lauf.
+- Repo-`CLAUDE.md` und `README.md` kennen den neuen Skill. Die Szenario-Test-Tabelle hat eine Zeile für `scenario-tests/remediation-plan.md` — der Test ist noch nicht geschrieben und die Zeile sagt das ausdrücklich, damit sie nicht als erfüllt durchgeht.
+- **Szenario-Tests laufen nur noch auf ausdrückliche Anfrage.** Bisher war ein Lauf nach jeder Änderung am abgedeckten Artefakt Pflicht; ein Lauf kostet aber regelmäßig mehr Tokens als die Änderung, die ihn auslöst. Geblieben ist die Buchführung: eine Änderung markiert den zugehörigen Test in der neuen Datei `scenario-tests/STATUS.md` als fällig, und die Übergabe an den Nutzer nennt ihn in einem Satz. Wird getestet, dann gezielt — nur der Test zum geänderten Artefakt und darin nur die Prüfpunkte, die der Diff erreichen kann, mit benannten Auslassungen.
+- `scenario-tests/STATUS.md` (neu): eine Zeile je Test mit dem geprüften Commit-Stand, dazu die Zeile, die Fälligkeit beantwortet, statt sie zu erinnern (`git log <sha>..HEAD -- <pfad>`). Führt außerdem, welche Skills überhaupt noch nie getestet wurden.
+- `scenario-tests/README.md`: Der Kosten-Abschnitt ist bindend statt beratend — vor dem ersten Subagenten stehen vier Zeilen in der Konversation (Prüfpunkte samt Auslassungen, Wiederholungen, Modellstufe, Abgeschnittenes), je mit Begründung. Die Hebel sind nach Wirkung sortiert, und der erste hat eine Grenze bekommen: gekürzt wird nur, was das getestete Verhalten nicht verändert. Ein Prompt, der dem Subagenten aufträgt, einen Schritt seines Skills zu überspringen, testet den Skill nicht mehr. Jeder der drei Tests trägt jetzt seine eigene Kostenzeile: `install-drift` und `audit-followup` sind deterministisch (ein Lauf), `es-frequency` behält seine 5 Reps je Arm, und bei `audit-followup` ist ausdrücklich nichts abschneidbar, weil Standalone-Prüfung und Begleittext am gerenderten Report hängen.
+- `scenario-tests/*.md`: „Ausführen nach" heißt jetzt „Fällig nach", mit Verweis auf die Anfrage-Regel — die alte Formulierung las sich als Ausführungsbefehl.
+- `scenario-tests/README.md`: neuer Abschnitt „Kosten" mit den Stellschrauben für schmale Läufe — nur erreichbare Prüfpunkte, ein Lauf statt fünf bei deterministischen Punkten, das schwächste ausreichende Modell (bei Instruktionstests zugleich der härtere Test), teure Artefakte wie das gerenderte HTML im Testprompt abbestellen, Fixtures klein halten, und neue Gegenregeln erst als Einzelprompt gegen einen Kontrolllauf prüfen, bevor ein Szenariolauf startet.
+
 ## 2026-07-25
 
 Sammeländerung nach dem Anthropic-Artikel „The new rules of context engineering for Claude 5 generation models" (24.07.2026). Leitlinien: Progressive Disclosure statt Alles-Vorab, Urteilsvermögen statt Regelwerk, jede Regel genau einmal sagen.
