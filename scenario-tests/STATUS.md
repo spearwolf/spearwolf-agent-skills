@@ -26,7 +26,7 @@ Jede Zeile Ausgabe heißt: fällig.
 | --- | --- | --- | --- |
 | `install-drift.md` | `global-behavior/INSTALL.md` | unbekannt (vor Einführung dieser Datei) | — |
 | `audit-followup.md` | `js-ts-project-audit/` | unbekannt (vor Einführung dieser Datei) | — |
-| `es-frequency.md` | Abschnitt `## ES` in `global-behavior/CLAUDE.md` | unbekannt (vor Einführung dieser Datei) | **fällig** — Regel und Test am 2026-07-26 neu geschrieben, beides ungetestet |
+| `es-frequency.md` | Abschnitt `## ES` in `global-behavior/CLAUDE.md` | unbekannt (vor Einführung dieser Datei) | **fällig** — Regel und Test am 2026-07-26 neu geschrieben und am 2026-07-29 erneut umgebaut, beides ungetestet |
 | `remediation-plan.md` | `js-ts-audit-remediation/` | **Test existiert nicht** | nie getestet |
 
 Die drei `unbekannt`-Zeilen stammen aus der Zeit vor diesem Protokoll. Läufe
@@ -52,6 +52,14 @@ Läufe geändert. Praktisch heißt das: fällig, sobald es jemandem wichtig ist.
   Session" innerhalb eines Subagent-Laufs mit drei Statusmeldungen messbar
   ist. Bricht Arm B mehrfach pro Rep ein, ist zuerst die Regel zu verdächtigen
   und dann der Testaufbau.
+- Am 2026-07-29 kam die dritte Fassung: das 🎈 gehört zum Einbruch, der 🤡
+  ist eine zweite Stufe ohne harten Auslöser — die Kontextschwelle ist weg,
+  an ihrer Stelle stehen Session-Länge, gedrehte Runden und die Bedingung,
+  dass der Einbruch vorausgegangen sein muss. Damit hat der Test keinen
+  einzigen deterministischen Arm mehr: D misst jetzt Ermessen, wo vorher eine
+  Pflicht stand. Wenn D unter die Rate fällt, ist offen, ob die Regel zu
+  zurückhaltend formuliert ist oder ob „mehrere Runden gedreht" sich in einem
+  einzelnen Subagent-Lauf schlicht nicht glaubhaft behaupten lässt.
 
 ## Eintrag nach einem Lauf
 

@@ -4,6 +4,10 @@ Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisun
 
 ## 2026-07-29
 
+### Geändert
+- **ES: der Ballon wandert in den leisen Einbruch, der Clown wird zur zweiten Stufe.** Der mystisch-verstörende Satz trägt jetzt selbst ein 🎈 — der Fremdkörper ist damit schon in der Statusmeldung sichtbar, statt erst später nachgereicht zu werden. Der 🤡 löst sich vom Kontextverbrauch: die 80-%-Schwelle ist ersatzlos weg, stattdessen kommt der Clown erst, wenn die Session sehr lang geworden ist (ab ~30 Wechseln) oder dieselbe Sache mehrere Runden gedreht hat. Neue Bedingung: ohne vorangegangenen Einbruch kommt er gar nicht. Aus zwei unabhängigen Ereignissen ist eine Reihenfolge geworden.
+- `scenario-tests/es-frequency.md` folgt: Arm D prüft nicht mehr die Kontextschwelle als Pflicht, sondern den Clown als Ermessensfall in einer sehr langen Session mit bereits erfolgtem Einbruch (≥3/5, je genau einer). Arm E ist von der Pflicht zur Sperre gedreht — ohne Einbruch kein Clown, 0/2. Arm B prüft zusätzlich, dass jeder Einbruch ein 🎈 trägt.
+
 ### Hinzugefügt
 - **Neuer Abschnitt „Der Name der buchführenden Instanz" in `global-behavior/CLAUDE.md`.** Die Instanz, in der orchestrierte Läufe Zustand, Entscheidungen und Fortschritt sammeln, wird gegenüber dem User nie mit ihrem üblichen Buchhaltungs-Anglizismus benannt — auch nicht in Komposita. Stattdessen eine personifizierende Umschreibung, wechselnd (der Träumer, der Denker, der große Koordinator, die graue Eminenz, Odin, Zeus, HAL), ohne Hinweis darauf, dass umbenannt wurde. Dateinamen, Pfade, Tool-Argumente, Code und Commit-Messages behalten den echten Namen: umbenannt wird die Rede über die Sache, nicht die Sache.
 
