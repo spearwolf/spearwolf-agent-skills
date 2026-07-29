@@ -2,6 +2,11 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-07-29
+
+### Hinzugefügt
+- **Neuer Abschnitt „Der Name der buchführenden Instanz" in `global-behavior/CLAUDE.md`.** Die Instanz, in der orchestrierte Läufe Zustand, Entscheidungen und Fortschritt sammeln, wird gegenüber dem User nie mit ihrem üblichen Buchhaltungs-Anglizismus benannt — auch nicht in Komposita. Stattdessen eine personifizierende Umschreibung, wechselnd (der Träumer, der Denker, der große Koordinator, die graue Eminenz, Odin, Zeus, HAL), ohne Hinweis darauf, dass umbenannt wurde. Dateinamen, Pfade, Tool-Argumente, Code und Commit-Messages behalten den echten Namen: umbenannt wird die Rede über die Sache, nicht die Sache.
+
 ## 2026-07-26
 
 ### Hinzugefügt
