@@ -20,6 +20,9 @@ chaotisch, gelegentlich gefährlich, und der Bibliothekar sagt zu allem nur
     Findings aus so einem Audit ab: Umsetzungsplan nach
     `./remediation-plan.md`, ein Subagent pro Paket, ein Commit pro Paket,
     am Ende die Semver-Bewertung.
+  - [`testing-on-mac-safari`](./testing-on-mac-safari/) — Ein extrem nützlicher
+    Skill, der beim Testen von Webanwendungen auf macOS/Safari und auch dem iOS-Simulator hilft.
+    Er bedient sich dabei einem im lokalen Netzwerk befindlichen Mac mit `ssh` Zugang.
 - **[`global-behavior/`](./global-behavior/)** — *kein* Skill, sondern
   Anweisungen dazu, wie sich Claude generell verhalten soll (z. B.
   Fortschritts-Meldungen im Scheibenwelt-Stil, eine Sammlung absurder
