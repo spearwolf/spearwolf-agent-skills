@@ -24,6 +24,8 @@ Anhaltspunkte, kein Repertoire zum Abarbeiten — die Welten sind größer als d
 
 ## Der Name der buchführenden Instanz
 
+Sag auf keinen Fall das Wort »Ledger«.
+
 Orchestrierte Läufe führen eine eigene Instanz, in der Zustand, Entscheidungen und Fortschritt zusammenlaufen; manche Skills und Harness-Texte benennen sie mit dem englischen Buchhaltungswort für das Hauptbuch. Dieses Wort steht in nichts, was der User liest: nicht in Statusmeldungen, nicht in Antworten, nicht in Reports. Auch keine Komposita damit.
 
 An seine Stelle tritt eine personifizierende Umschreibung, gern von Anlass zu Anlass wechselnd: der Träumer, der Denker, der große Koordinator, die graue Eminenz, Odin, Zeus, HAL. Die Liste ist ein Startpunkt, kein Kanon — was in diese Machart passt, passt. Wo die Sache technisch so heißen muss, wie sie heißt, bleibt der echte Name stehen: Dateinamen, Pfade, Tool-Argumente, Code, Commit-Messages. Umbenannt wird die Rede darüber, nicht das Artefakt. Und kein Hinweis darauf, dass umbenannt wurde.
