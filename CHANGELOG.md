@@ -2,6 +2,22 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-07-31
+
+### Hinzugefügt
+- **`testing-on-mac-safari` bekommt einen zweiten Weg: mobiles Safari im iOS-Simulator.** Der Desktop-Weg bleibt der Standard, weil er bedienen *und* auslesen kann. Zum Simulator greift der Agent, wenn die mobile Browser-UI selbst zur Sache gehört — Viewport-Einheiten gegen die Safari-Leiste, `position: fixed` am unteren Rand, `env(safe-area-inset-*)`, Touch-Gesten — oder wenn der Nutzer ausdrücklich danach fragt. Ein schmal gezogenes Desktop-Fenster ersetzt das nicht. Der Preis: kein Web-Inspector, kein `evaluate_javascript`; Messwerte rendert die Seite in ein `fixed`-Kästchen, das mitfotografiert wird.
+- `testing-on-mac-safari/references/ios-simulator.md` — Gerät booten, mkcert-Root in den *eigenen* Trust-Store des Simulators, Seite öffnen, Screenshot holen, tippen und wischen. Dazu die drei Bedingungen, unter denen die Safari-Leiste einklappt (echte Wischgeste, der Root-Scroller muss scrollen, genug Scroll-Reserve) — genau daran scheitert man zuerst.
+- `testing-on-mac-safari/scripts/sim_input.js` — Tap und Swipe im Simulator über synthetische CGEvents, in CSS-Punkten des simulierten Geräts. Die Lage des Gerätebildschirms liest das Skript selbst aus dem AX-Baum, das Fenster darf also stehen und skaliert sein, wie es will. Setzt einmalig eine Bedienungshilfen-Freigabe am Mac voraus; fehlt sie, endet jeder Aufruf mit `-1719`.
+
+## 2026-07-30
+
+### Hinzugefügt
+- **Neuer Skill `testing-on-mac-safari`.** Macht einen Mac im LAN (macOS 26, per SSH) als Testgerät verfügbar: Safari Technology Preview bringt auf seinem eigenen `safaridriver` ein `--mcp` mit, das sich als MCP-Server registrieren lässt. Damit lassen sich Fehler prüfen, die nur in echtem WebKit auftreten, statt sie in Playwright oder Chrome zu simulieren. Kernregel für die URL: nie die IP verwenden, weil die mkcert-Zertifikate nur die Hostnamen als SAN tragen. Kernregel für die Prüfung: am gemounteten DOM verifizieren, nicht am Statuscode — ein Dev-Server liefert die Shell auch dann, wenn die Module scheitern.
+- **Die beiden Hostnamen stehen nicht im Skill.** Weder der Mac noch der LAN-Name des Entwicklungsrechners sind lokales Wissen, das in ein öffentliches Repo gehört. Der Skill hält stattdessen die Platzhalter `$macHost` und `$devHost` offen und liest sie in „Schritt 0" aus `~/.testing-on-mac-safari.conf` (Format `key = value`, `#` kommentiert). Fehlt die Datei oder ein Schlüssel, fragt er beide Werte in *einer* Rückfrage ab und legt sie an — ausdrücklich, statt zu raten oder aus `hostname` bzw. `~/.ssh/config` abzuleiten: ein falscher `$devHost` erzeugt am Mac keinen sprechenden Fehler, sondern einen Timeout, der aussieht wie ein nicht gestarteter Server. Der MCP-Server folgt der Konvention `safari-$macHost`, ersatzweise gesucht über das Präfix `mcp__safari-*__`.
+- Was dagegen wirklich projektspezifisch ist, ermittelt der Agent selbst: Protokoll und Port, und zwar bis hinunter zur einzelnen App — zwei Apps im selben Repo können auseinanderlaufen, wenn nur eine Vite-Config ein mkcert-Zertifikat lädt.
+- `testing-on-mac-safari/references/mcp-safari-referenz.md` — die 17 Werkzeuge, acht Fallstricke, die man sonst je einmal selbst findet (Tabs sterben mit der Session, `wait_for_navigation` kehrt vor dem Mount zurück, `screenshot` liefert einen Pfad statt Bilddaten), und die Registrierung des MCP-Servers.
+- `testing-on-mac-safari/scripts/mcp_safari.py` — Fallback, der denselben Server über SSH anspricht. Wird gebraucht, weil der MCP-Server in Subagents in der Regel nicht exponiert ist, auch wenn `claude mcp list` ihn als verbunden meldet. Das SSH-Ziel steht auch hier nicht im Code: es kommt aus der Konfigurationsdatei, `--host` und `$MAC_HOST` überschreiben, und ohne jede dieser Quellen bricht das Skript mit einer Meldung ab, die alle drei nennt.
+
 ## 2026-07-29
 
 ### Geändert

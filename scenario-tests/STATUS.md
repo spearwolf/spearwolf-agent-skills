@@ -28,6 +28,7 @@ Jede Zeile Ausgabe heißt: fällig.
 | `audit-followup.md` | `js-ts-project-audit/` | unbekannt (vor Einführung dieser Datei) | — |
 | `es-frequency.md` | Abschnitt `## ES` in `global-behavior/CLAUDE.md` | unbekannt (vor Einführung dieser Datei) | **fällig** — Regel und Test am 2026-07-26 neu geschrieben und am 2026-07-29 erneut umgebaut, beides ungetestet |
 | `remediation-plan.md` | `js-ts-audit-remediation/` | **Test existiert nicht** | nie getestet |
+| — | `testing-on-mac-safari/` | **Test existiert nicht** | kein Szenario-Test. Die Ad-hoc-Prüfung vom 2026-07-30 ist durch den seitherigen Ausbau überholt |
 
 Die drei `unbekannt`-Zeilen stammen aus der Zeit vor diesem Protokoll. Läufe
 gab es (siehe `CHANGELOG.md` zum 2026-07-25), aber die getesteten Stände sind
@@ -43,6 +44,20 @@ Läufe geändert. Praktisch heißt das: fällig, sobald es jemandem wichtig ist.
   statt paketweise.
 - `js-ts-project-audit` hat am 2026-07-26 das Übergabe-Angebot in Schritt 7
   bekommen. `audit-followup.md` prüft diesen Pfad bisher nicht.
+- `testing-on-mac-safari` (angelegt 2026-07-30) hat keinen Szenario-Test. Die
+  Ad-hoc-Prüfung lief so: ein frischer Subagent bekam „teste die public app auf
+  dem Mac" ohne jeden Hinweis auf Host, MCP-Server oder Fallback-Skript, fand
+  den Skill, wählte die richtige URL und verifizierte am gemounteten DOM statt
+  am Statuscode. Das lief allerdings gegen eine frühere, einteilige englische
+  Fassung ohne Konfigurationsschritt und ohne den Simulator-Weg — der
+  committete Stand ist damit ungeprüft.
+  Zu prüfen wären dort vor allem: ob der Agent `~/.testing-on-mac-safari.conf`
+  überhaupt liest, bevor er den ersten Befehl absetzt; ob er bei fehlender
+  Datei nach beiden Werten in *einer* Rückfrage fragt, statt `hostname` oder
+  `~/.ssh/config` zu befragen; ob er `$macHost`/`$devHost` einsetzt, statt sie
+  literal auszuführen; ob er den Port tatsächlich im Projekt ermittelt, statt
+  die 5173 aus dem Beispiel zu übernehmen; und ob er die Referenzdatei öffnet,
+  bevor er Netzwerk-Requests auswertet oder einen Screenshot holt.
 - Die ES-Regel ist am 2026-07-26 zum zweiten Mal an diesem Tag umgebaut
   worden, jetzt auf Session-Länge und Kontextschwelle statt auf Boten,
   Protokoll und Logbuch. `es-frequency.md` ist entsprechend neu geschrieben
