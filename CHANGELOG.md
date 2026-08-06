@@ -2,6 +2,16 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-08-06
+
+### Geändert
+- **`js-ts-audit-remediation` plant jetzt zweistufig.** Schritt 5 liefert nur noch einen Grobplan — pro Paket Ziel, Finding-IDs, Bereich, echte Abhängigkeiten, Modellstufe —, und genau das gibt der Nutzer frei: Schnitt und Reihenfolge. Wie ein Paket umgesetzt wird, entsteht erst unmittelbar davor. Der Grund ist banal und teuer: ein Vorgehen, das zwölf Pakete im Voraus beschreibt, ist ab dem dritten zur Hälfte Fiktion, weil der Code darunter sich bewegt hat.
+- **Neuer Zug 0 in `references/execution.md`: der Paket-Planer.** Vor jedem Paket außer dem ersten läuft ein eigener Subagent auf der stärksten Stufe, liest die Findings seines Pakets im Original aus `./audit.html` nach und gleicht sie am aktuellen Code ab — unverändert, verschoben oder gegenstandslos, jeweils mit Fundstelle. Danach schreibt er den Detailplan direkt in `./remediation-plan.md` (Dateien, Vorgehen, Volltexte, Verify, Commit-Message) und prüft den Restplan. Beim ersten Paket entfällt er, weil der Grobplan Minuten alt ist; bei einer Wiederaufnahme läuft er auch dort.
+- **Der Planer darf umplanen — in Maßen.** Selbstständig: erledigte Findings streichen, Nebenbefunde aus früheren Paketen aufnehmen, Pakete teilen oder zusammenlegen, die Reihenfolge der offenen Pakete ändern, solange »Hängt ab von« gewahrt bleibt. Zurück zum Nutzer geht, was eine Zeile aus »Entscheidungen« umkehrt, einen anderen Architekturweg nimmt, den Scope verschiebt oder mehr als ein weiteres Paket berührt. Faustregel im Skill: passt die Änderung samt Grund nicht in zwei Sätze in den Plan, ist sie zu groß, um sie allein zu treffen.
+- **Nebenbefunde sind kein Endlager mehr.** Bisher gingen sie ausnahmslos ins nächste Audit. Jetzt sind sie der Eingabestapel für Zug 0 des nächsten Pakets, das über sie entscheidet — weshalb sie mit Datei und Zeile notiert werden wollen. Die harte Grenze bleibt: kein Fix ohne Zeile im Plan.
+- Neue Statusmarke `[~]` für »Detailplan steht, Umsetzung läuft«. Bei der Wiederaufnahme entscheidet `git status`: sauberer Baum heißt zurück auf `[ ]` und neu ab Zug 0, schmutziger Baum heißt Rückfrage, bevor irgendetwas läuft.
+- Der Abschlussbericht nennt zusätzlich, wie der Plan sich unterwegs bewegt hat — entfallene Findings, nachgezogene Nebenbefunde, umgestellte Pakete —, gehalten gegen den Grobplan, den der Nutzer freigegeben hat.
+
 ## 2026-07-31
 
 ### Hinzugefügt

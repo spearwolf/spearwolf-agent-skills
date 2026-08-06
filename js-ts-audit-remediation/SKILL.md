@@ -5,33 +5,36 @@ description: Use when the user wants the findings of an existing project audit a
 
 # Audit-Remediation
 
-Aus den Findings eines Audits wird ein Umsetzungsplan, den Subagenten paketweise abarbeiten. Ein Paket, ein Subagent, ein Review, ein Commit.
+Aus den Findings eines Audits werden Pakete, die Subagenten der Reihe nach abarbeiten. Ein Paket, ein Detailplan gegen den aktuellen Code, ein Implementierer, ein Review, ein Commit.
 
 ## Ablauf-Übersicht
 
 1. Findings laden (1), Baseline messen (2), Scope festlegen (3).
 2. Offene Entscheidungen gebündelt klären (4).
-3. Pakete schnüren, ordnen, Plan schreiben, Freigabe holen (5).
-4. Paket für Paket umsetzen, prüfen, committen (6).
+3. Pakete schnüren, ordnen, Grobplan schreiben, Freigabe holen (5).
+4. Paket für Paket: unmittelbar davor detailliert planen, umsetzen, prüfen, committen (6).
 5. Semver bewerten, abschließen, Folgeaudit anbieten (7).
+
+Geplant wird zweistufig. Schritt 5 legt fest, **was** in welcher Reihenfolge passiert — das ist, was der Nutzer freigibt. **Wie** ein Paket umgesetzt wird, entsteht erst unmittelbar vor seiner Umsetzung, gegen den Code, der dann tatsächlich dasteht.
 
 Referenzdateien werden erst gelesen, wenn ihr Schritt dran ist:
 
 | Datei | Wann lesen |
 | --- | --- |
-| `references/execution.md` | Schritt 6 — vor dem ersten Subagenten |
+| `references/execution.md` | Schritt 6 — vor dem ersten Paket |
 | `references/semver-and-closeout.md` | Schritt 7 — nach dem letzten Paket |
 
 ## Grenzen des Laufs
 
 Diese Regeln stehen über jeder Abwägung im Einzelfall:
 
-- **Ohne Freigabe des Plans wird keine Zeile Projektcode geändert.** Auch nicht »schon mal das Triviale vorziehen«.
+- **Ohne Freigabe des Grobplans wird keine Zeile Projektcode geändert.** Auch nicht »schon mal das Triviale vorziehen«.
 - **Nie rot committen.** Der Report eines Subagenten ist keine Evidenz. Evidenz ist der Verify-Lauf, den du selbst nach dem Paket ausführst und dessen Ausgabe du gelesen hast.
 - **Kein Push, kein Merge, kein Pull Request, kein Tag, kein Publish.** Der Lauf endet mit lokalen Commits.
 - **Kein Worktree, kein neuer Branch von sich aus.** Gearbeitet wird auf dem Branch, den Schritt 5 benennt und der Nutzer freigibt.
 - **Der Orchestrator schreibt keinen Projektcode.** Weder als schnelle Korrektur noch nachdem ein Subagent gescheitert ist. Eigene Fixes umgehen das Review und verbrauchen den Kontext, den die Koordination über viele Pakete braucht.
-- **Kein Finding außerhalb des Plans.** Was ein Subagent nebenbei entdeckt, wird notiert und geht ins nächste Audit, nicht in diesen Lauf.
+- **Gefixt wird nur, was im Plan steht.** Kein Implementierer behebt etwas nebenbei; was ihm auffällt, meldet er. Ob so ein Nebenbefund in ein späteres Paket wandert oder ins nächste Audit geht, entscheidet der Paket-Planer aus Schritt 6 — indem er es in den Plan schreibt. Einen Fix ohne Zeile im Plan gibt es nicht.
+- **Der Planer schärft den Plan, er ersetzt ihn nicht.** Freigegeben sind Zielsetzung, Paketschnitt und Reihenfolge aus Schritt 5. Wer davon im Kern abweichen will — andere Architektur, eine Entscheidung des Nutzers verworfen, der halbe Restplan neu — hält an und fragt.
 
 ## Workflow
 
@@ -69,7 +72,7 @@ Vor dem Plan, nicht während der Umsetzung. Gefragt wird, wo eine Entscheidung f
 
 Gebündelt fragen, in einer Runde, je mit Vorschlag statt offener Frage. Die Antworten kommen mit Datum in den Plan-Abschnitt »Entscheidungen«, damit ein späterer Lauf sie nicht neu aufwirft.
 
-### 5. Pakete, Reihenfolge, Plan
+### 5. Pakete, Reihenfolge, Grobplan
 
 **Bündeln** nach gemeinsamer Ursache, nicht nach Kategorie. Drei `any`-Findings in derselben Datei sind ein Paket; drei `any`-Findings in drei Subsystemen sind drei. Obergrenze etwa fünf Findings oder eine Handvoll Dateien. Sprengt ein einzelnes Finding das schon (`strict: true` über ein gewachsenes Projekt), wird es in Teilpakete zerlegt. Ein kritischer Fix wandert nie in ein Kosmetik-Paket, sonst versteckt sich der wichtige Commit im unwichtigen.
 
@@ -83,7 +86,9 @@ Gebündelt fragen, in einer Runde, je mit Vorschlag statt offener Frage. Die Ant
 
 Drei Querregeln schlagen die Phasen: echte Abhängigkeiten gehen vor (verlangt ein Bugfix erst eine Umstrukturierung, kommt die Umstrukturierung zuerst); Dependency-Bumps, die APIs verändern, gehören nach vorn und nicht ans Ende; breitflächige Umformatierungen oder Renames liegen ganz vorn oder ganz hinten, nie dazwischen, weil sonst jeder folgende Diff unlesbar wird.
 
-**Der Plan** wird nach `./remediation-plan.md` geschrieben, überschreibt eine vorhandene Datei und ist gleichzeitig Auftragsmappe für die Subagenten und Fortschritts-Ledger. Deshalb steht in jedem Paket alles, was zur Umsetzung nötig ist, im Volltext. Format:
+**Der Grobplan** wird nach `./remediation-plan.md` geschrieben, überschreibt eine vorhandene Datei und wächst über den Lauf hinweg: Schritt 5 legt Kopf, Entscheidungen und die Paketliste an, Schritt 6 füllt Paket für Paket den Detailplan nach und trägt Ergebnisse ein.
+
+Hier wird **nicht** ausformuliert, wie ein Paket umgesetzt wird. Ein Vorgehen, das zwölf Pakete im Voraus beschreibt, ist ab dem dritten Paket zur Hälfte Fiktion — der Code darunter hat sich inzwischen bewegt, Findings sind nebenbei mit weggefallen, neue Stellen sind aufgetaucht. Was hier steht, muss reichen, damit der Nutzer Schnitt und Reihenfolge beurteilen kann. Mehr nicht.
 
 ```markdown
 # Remediation-Plan — <Projektname>
@@ -101,26 +106,25 @@ Scope: 24 von 31 Findings (3 critical, 8 high, 13 medium) · ausgenommen: info, 
 ## Pakete
 
 ### [ ] 1. WebSocket-Reconnect: Listener und Timer aufräumen
-- Findings: LEAK-001, LEAK-003
+- Findings: LEAK-001 (high), LEAK-003 (high)
 - Ziel: <ein Satz>
-- Dateien: `src/net/socket.ts`, `src/net/reconnect.ts`
-- Modell: mittlere Stufe
-- Verify: `npm run typecheck && npm test -- src/net`
-- Commit: `fix(net): clean up socket listeners and reconnect timers (LEAK-001, LEAK-003)`
+- Bereich: `src/net/`
+- Hängt ab von: —
+- Modell: mittlere Stufe (vorläufig)
 - Hash: —
-
-**LEAK-001 · high · src/net/socket.ts:88** — Listener wird bei Reconnect nicht entfernt
-<description im Volltext>
-Empfehlung: <recommendation im Volltext>
 ```
 
-Statusmarken: `[ ]` offen, `[x]` erledigt, `[!]` blockiert. Vor dem Schreiben ein Durchgang gegen Platzhalter: kein »TBD«, kein »Fehlerbehandlung ergänzen«, kein »analog zu Paket 3«. Ein Paket, dessen Ziel sich nicht in einem Satz sagen lässt, ist falsch geschnitten.
+Der Abschnitt »Entscheidungen« ist die wichtigste Zeile im Kopf: an ihr misst der Paket-Planer später, ob eine Umplanung noch im Rahmen liegt oder eine Rückfrage braucht.
 
-**Freigabe.** Der Plan wird vorgelegt, und zwar ausdrücklich mit Branch und Commit-Modus: »<N> Pakete, <N> Commits direkt auf `<branch>`, ohne GPG-Signatur«. Diese Freigabe ist die Zustimmung zum Arbeiten auf diesem Branch. Ohne sie beginnt die Umsetzung nicht.
+Das Feld **Hängt ab von** wird ernst genommen und nicht mit der bloßen Reihenfolge verwechselt. Es benennt nur echte Zwänge — Paket 4 braucht die Modulgrenze aus Paket 2 —, denn genau daran entscheidet sich später, was umgestellt werden darf und was nicht. Steht dort nichts, ist das Paket verschiebbar.
+
+Statusmarken: `[ ]` offen, `[~]` Detailplan steht und Umsetzung läuft, `[x]` erledigt, `[!]` blockiert. Ein Paket, dessen Ziel sich nicht in einem Satz sagen lässt, ist falsch geschnitten — nicht unterspezifiziert, sondern falsch geschnitten.
+
+**Freigabe.** Der Grobplan wird vorgelegt, und zwar ausdrücklich mit Branch und Commit-Modus: »<N> Pakete, <N> Commits direkt auf `<branch>`, ohne GPG-Signatur«. Dazu ein Satz, dass jedes Paket unmittelbar vor seiner Umsetzung gegen den dann aktuellen Code detailliert wird, und dass eine Umplanung, die Zielsetzung oder Architektur berührt, zurück zum Nutzer kommt. Freigegeben werden Paketschnitt und Reihenfolge. Ohne diese Freigabe beginnt die Umsetzung nicht.
 
 ### 6. Umsetzung
 
-Jetzt `references/execution.md` lesen. Dort stehen Subagenten-Briefing, Review, Verify- und Commit-Regeln, die Fehlerkette und die Wiederaufnahme.
+Jetzt `references/execution.md` lesen. Dort stehen der Paket-Planer, das Subagenten-Briefing, Review, Verify- und Commit-Regeln, die Fehlerkette und die Wiederaufnahme.
 
 ### 7. Abschluss
 
@@ -140,9 +144,11 @@ Im Zweifel eine Stufe höher: die Rundenzahl schlägt den Tokenpreis. Ein günst
 
 Das Modell des Reviewers wählst du nach dem Diff, nicht nach dem Paket: ein kleiner mechanischer Diff braucht die mittlere Stufe, eine subtile Änderung an Nebenläufigkeit oder Sicherheit die stärkste.
 
+Der **Paket-Planer** aus Schritt 6 läuft immer auf der stärksten Stufe, auch vor einem Dreizeiler-Paket. Die Stufen oben bewerten, wie schwer eine Umsetzung ist; der Planer entscheidet über Schnitt und Reihenfolge des Restplans, und ein Fehlurteil dort schlägt auf jedes folgende Paket durch.
+
 ## Prinzipien
 
-- **Die Empfehlung gilt.** Das Audit hat den Weg bereits benannt. Ein anderer Weg braucht einen Grund, der im Report des Subagenten steht, keine stille Umdeutung.
+- **Die Empfehlung gilt.** Das Audit hat den Weg bereits benannt. Ein anderer Weg braucht einen Grund, der im Detailplan oder im Report des Subagenten steht, keine stille Umdeutung.
 - **Bugfix heißt Test zuerst.** Ein Paket, das einen Korrektheitsfehler behebt, schreibt zuerst den fehlschlagenden Test, sieht ihn rot, und behebt dann. Ohne rot gesehenen Test weiß niemand, ob der Test den Fehler überhaupt fangen würde. Ausgenommen sind Pakete ohne testbaren Kern: Konfiguration, Dokumentation, Dependency-Bumps, reine Formatierung. Fehlt dem Projekt jede Testinfrastruktur, ist das selbst ein Finding und gehört in Phase 1 — mitten im Bugfix wird kein Test-Harness nachgerüstet.
 - **Sequenziell.** Nie zwei Implementierungs-Subagenten gleichzeitig. Sie teilen sich einen Arbeitsbaum, und der Konflikt kostet mehr als die gesparte Zeit.
 - **Der Plan ist die Wahrheit, nicht die Erinnerung.** Nach einer Kontext-Kompaktierung gelten `./remediation-plan.md` und `git log`, nicht das, was du zu wissen glaubst.
@@ -153,6 +159,6 @@ Das Modell des Reviewers wählst du nach dem Diff, nicht nach dem Paket: ein kle
 Dieser Skill funktioniert allein und setzt keine Erweiterung voraus. Sind die Superpowers-Skills installiert, gilt folgende Aufteilung, damit sich nichts doppelt:
 
 - `js-ts-project-audit` liefert den Input und übernimmt am Ende den Folgelauf. Es fixt nie selbst, dieser Skill auditiert nie selbst.
-- Fährt der Nutzer die Umsetzung ausdrücklich über `superpowers:subagent-driven-development`, gewinnt dessen Prozess für Schritt 6. Findings-Quelle, Paketschnitt, Semver-Bewertung und Folgeaudit bleiben hier.
+- Fährt der Nutzer die Umsetzung ausdrücklich über `superpowers:subagent-driven-development`, gewinnt dessen Prozess für Zug 1 bis 5 von Schritt 6. Findings-Quelle, Paketschnitt, der Paket-Planer aus Zug 0, Semver-Bewertung und Folgeaudit bleiben hier — ein fremder Umsetzungsprozess ersetzt das Briefing, nicht den Abgleich gegen den aktuellen Code.
 - Bleibt ein Verify-Lauf nach zwei Runden unerklärlich rot, ist das ein Debugging-Problem. Dann nicht weiterraten: `superpowers:systematic-debugging`, falls vorhanden, sonst Paket blockieren und berichten.
 - Wurde ausnahmsweise auf einem Feature-Branch gearbeitet, ist die Integration Sache des Nutzers. Dieser Skill pusht und merged nicht.

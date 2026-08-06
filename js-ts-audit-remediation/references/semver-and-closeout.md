@@ -89,8 +89,13 @@ Fünf bis acht Zeilen, nicht mehr:
 - was blockiert blieb und warum, mit Paketnummer und Stash-Name
 - die Semver-Entscheidung mit einem Satz Begründung, oder der Hinweis, dass
   das Projekt keine Version führt
-- Anzahl der Nebenbefunde, die während der Umsetzung auffielen, mit dem
-  Hinweis, dass sie bewusst nicht Teil dieses Laufs waren
+- wie der Plan sich unterwegs bewegt hat: Findings, die als gegenstandslos
+  entfielen, Nebenbefunde, die noch in ein Paket wanderten, umgestellte oder
+  neu geschnittene Pakete. Je eine Zeile, gegen den freigegebenen Grobplan
+  gehalten — der Nutzer hat den freigegeben und soll ohne Diff sehen, was
+  daraus geworden ist.
+- Anzahl der Nebenbefunde, die offen blieben, mit dem Hinweis, dass sie
+  bewusst nicht mehr in diesen Lauf gezogen wurden
 - das Angebot eines Folgeaudits
 
 Das Folgeaudit läuft über `js-ts-project-audit`. Es verifiziert jedes behobene

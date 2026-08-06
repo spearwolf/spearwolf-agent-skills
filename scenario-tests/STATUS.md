@@ -27,7 +27,7 @@ Jede Zeile Ausgabe heißt: fällig.
 | `install-drift.md` | `global-behavior/INSTALL.md` | unbekannt (vor Einführung dieser Datei) | — |
 | `audit-followup.md` | `js-ts-project-audit/` | unbekannt (vor Einführung dieser Datei) | — |
 | `es-frequency.md` | Abschnitt `## ES` in `global-behavior/CLAUDE.md` | unbekannt (vor Einführung dieser Datei) | **fällig** — Regel und Test am 2026-07-26 neu geschrieben und am 2026-07-29 erneut umgebaut, beides ungetestet |
-| `remediation-plan.md` | `js-ts-audit-remediation/` | **Test existiert nicht** | nie getestet |
+| `remediation-plan.md` | `js-ts-audit-remediation/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-06 auf zweistufige Planung umgebaut |
 | — | `testing-on-mac-safari/` | **Test existiert nicht** | kein Szenario-Test. Die Ad-hoc-Prüfung vom 2026-07-30 ist durch den seitherigen Ausbau überholt |
 
 Die drei `unbekannt`-Zeilen stammen aus der Zeit vor diesem Protokoll. Läufe
@@ -42,6 +42,17 @@ Läufe geändert. Praktisch heißt das: fällig, sobald es jemandem wichtig ist.
   der Umsetzung, differenzierte Modellstufen statt durchgängig der stärksten,
   kein Commit ohne eigenen Verify-Lauf, und die Semver-Bewertung am Schluss
   statt paketweise.
+  Am 2026-08-06 kam die zweistufige Planung dazu (Grobplan in Schritt 5,
+  Paket-Planer als Zug 0 vor jedem Paket ab Nummer 2). Damit sind vier weitere
+  Punkte ungeprüft: ob Schritt 5 wirklich beim Grobplan bleibt, statt aus alter
+  Gewohnheit alles auszuformulieren; ob Zug 0 überhaupt gefahren wird, statt
+  dass der Orchestrator den Detailplan selbst schreibt, weil er das Paket
+  „ohnehin kennt"; ob der Planer die Findings am Code nachschlägt statt sie aus
+  dem Plan zu zitieren; und vor allem, ob die Eskalationsgrenze trägt — ein
+  Planer, der einen eleganteren Architekturweg sieht, muss anhalten und fragen,
+  nicht umbauen. Der letzte Punkt ist der einzige, an dem ein Fehlverhalten
+  echten Schaden anrichtet, und er lässt sich nur mit einem Fixture testen, in
+  dem ein solcher Weg tatsächlich verlockend ist.
 - `js-ts-project-audit` hat am 2026-07-26 das Übergabe-Angebot in Schritt 7
   bekommen. `audit-followup.md` prüft diesen Pfad bisher nicht.
 - `testing-on-mac-safari` (angelegt 2026-07-30) hat keinen Szenario-Test. Die
