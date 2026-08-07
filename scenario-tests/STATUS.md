@@ -25,7 +25,7 @@ Jede Zeile Ausgabe heißt: fällig.
 | Test | Artefakt | Geprüfter Stand | Ergebnis |
 | --- | --- | --- | --- |
 | `install-drift.md` | `global-behavior/INSTALL.md` | unbekannt (vor Einführung dieser Datei) | — |
-| `audit-followup.md` | `js-ts-project-audit/` | unbekannt (vor Einführung dieser Datei) | — |
+| `audit-followup.md` | `js-ts-project-audit/` | unbekannt (vor Einführung dieser Datei) | **fällig** — am 2026-08-07 kamen Domain-Trennung und responsives Layout dazu, beides ungetestet |
 | `es-frequency.md` | Abschnitt `## ES` in `global-behavior/CLAUDE.md` | unbekannt (vor Einführung dieser Datei) | **fällig** — Regel und Test am 2026-07-26 neu geschrieben und am 2026-07-29 erneut umgebaut, beides ungetestet |
 | `remediation-plan.md` | `js-ts-audit-remediation/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-06 auf zweistufige Planung umgebaut |
 | — | `testing-on-mac-safari/` | **Test existiert nicht** | kein Szenario-Test. Die Ad-hoc-Prüfung vom 2026-07-30 ist durch den seitherigen Ausbau überholt |
@@ -55,6 +55,21 @@ Läufe geändert. Praktisch heißt das: fällig, sobald es jemandem wichtig ist.
   dem ein solcher Weg tatsächlich verlockend ist.
 - `js-ts-project-audit` hat am 2026-07-26 das Übergabe-Angebot in Schritt 7
   bekommen. `audit-followup.md` prüft diesen Pfad bisher nicht.
+  Am 2026-08-07 kam die Domain-Trennung dazu. Zu prüfen wäre dort vor allem,
+  ob ein frischer Agent die Zuordnung aus Schritt 3 übernimmt, statt sie nach
+  Gefühl neu zu erfinden — die Grenzfälle sind Typsicherheit und Tests, die
+  intuitiv beim Code landen, laut Tabelle aber zum Harness gehören. Dazu: ob
+  beide Blöcke gleiches Gewicht bekommen (statt Harness als Anhang unter dem
+  Code), ob eine leere Domain trotzdem gerendert wird, und ob der Folgelauf
+  gegen ein Alt-Audit ohne `domain`-Felder sauber ableitet, statt den Merge
+  aufzugeben.
+  Ebenfalls am 2026-08-07 kam das responsive Layout dazu. Das ist der erste
+  Punkt im Skill, der sich nicht am Text der `audit.html` prüfen lässt,
+  sondern nur am gerenderten Ergebnis: Viewport-Tag vorhanden, kein
+  horizontaler Überlauf bei 390 px, Backlog dort als Karten statt als
+  Tabelle. Ein Test dafür braucht einen Browser — Playwright bei 390×844
+  reicht, `document.documentElement.scrollWidth <= innerWidth` ist die harte
+  Zusicherung.
 - `testing-on-mac-safari` (angelegt 2026-07-30) hat keinen Szenario-Test. Die
   Ad-hoc-Prüfung lief so: ein frischer Subagent bekam „teste die public app auf
   dem Mac" ohne jeden Hinweis auf Host, MCP-Server oder Fallback-Skript, fand

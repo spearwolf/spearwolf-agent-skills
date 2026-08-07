@@ -2,6 +2,16 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-08-07
+
+### Geändert
+- **`js-ts-project-audit` trennt die Zusammenfassung in zwei Domains.** `code` (Code & Laufzeit) sammelt Architektur, API, Implementierungsstand, Lesbarkeit, Bugs, Memory Leaks, Async, Konsistenz, Sicherheit und Performance; `harness` (Projekt-Harness) sammelt Build- und Projektaufbau, Developer Experience, Tests, Typsicherheit und Dependencies. Executive Summary, Severity- und Kategorie-Übersicht erscheinen im Report als zwei gleichwertige Blöcke nebeneinander — erst Code, dann Harness. Der Grund: ein sauber gebauter Haufen kaputter Software und korrekte Software in einem verrotteten Build sind zwei verschiedene Befunde, und ein einziger Balken erzählt beide als denselben.
+- Jedes Finding trägt jetzt `domain`; die Zuordnung folgt der Kategorie und weicht nur ab, wenn der Befund selbst eindeutig woanders liegt (Secret in einem CI-Workflow → `harness`). `summary.domains` hält Label, Teilscore, Severity- und Kategoriezählung sowie die Executive Summary je Domain.
+- **Zwei Teilscores neben der Leitzahl.** Dieselbe Formel läuft je Domain noch einmal; die Teilscores werden nicht zum Gesamtscore verrechnet und tauchen im Header klein unter der großen Zahl auf. Verlauf, Delta und Diagramm bleiben beim Gesamtscore — ein Teilscore hat keinen Vorwert und bekommt keinen Pfeil.
+- Das Backlog bleibt eine Tabelle, bekommt aber eine Domain-Spalte und einen Domain-Filter; der Kategorie-Filter zeigt nur noch, was zur aktiven Domain passt. Eine leere Domain wird trotzdem gerendert (Score 100, ein Satz) — ein fehlender Block liest sich wie ein vergessener Prüfbereich.
+- Folgeläufe gegen ältere Audits leiten fehlende `domain`-Felder aus der Kategorie ab; Teilscores des Vorlaufs werden nicht rückwirkend erfunden.
+- **Die `audit.html` ist jetzt responsiv — Zielgeräte sind Desktop und Handy im Portrait.** Viewport-Meta-Tag gehört zum Datei-Vertrag, die Seite scrollt nie horizontal (breite Inhalte scrollen in ihrem eigenen Container), und die Inhaltsbreite ist auf dem Desktop bei ~1100 px gedeckelt. Zwei Breakpoints: ab 900 px stehen die Domain-Blöcke nebeneinander, unter 720 px wird das Backlog von der Tabelle zur Kartenliste — sechs Spalten auf 390 px sind keine Tabelle mehr. Dazu Vorgaben für Filterleiste, Balken, Diagramme und lange Pfade.
+
 ## 2026-08-06
 
 ### Geändert

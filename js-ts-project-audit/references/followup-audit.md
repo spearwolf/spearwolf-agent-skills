@@ -17,6 +17,10 @@ Altscore, `scoreHistory`, `theme`, `acknowledged`.
 
 - Fehlt `scoreHistory`, aus Altscore und Altdatum einen einzelnen Eintrag
   synthetisieren: `[{date: <altDatum>, score: <altScore>}]`.
+- Fehlt `domain` an den alten Findings (Audits vor der Domain-Trennung), aus
+  der Kategorie nach Schritt 3 der `SKILL.md` ableiten. Der neue Lauf setzt
+  die Domain ohnehin selbst; die Ableitung dient nur dem Vergleich alter
+  Zahlen. Teilscores des Vorlaufs werden nicht rückwirkend rekonstruiert.
 - Ist gar nichts parsebar, Findings best-effort aus der Backlog-Tabelle
   rekonstruieren (Titel, Severity, Location, Kategorie). Auch das schlägt
   fehl? Dann reiner Neu-Audit, Vermerk in der Methodik-Sektion, keinen Merge

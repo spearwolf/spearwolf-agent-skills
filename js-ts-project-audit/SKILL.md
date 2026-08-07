@@ -60,23 +60,34 @@ Bei jedem gelesenen File Notizen pro Dimension sammeln.
 
 Für jede Dimension Findings sammeln: Schweregrad, Datei-/Zeilenreferenz wo möglich, konkreter Verbesserungsvorschlag.
 
-1. **Architektur & Struktur** — Layering, Abhängigkeitsrichtung, Modulgrenzen, Zyklen, Trennung Domain/Infrastruktur, Konsistenz der Ordnerlogik.
-2. **Projektaufbau & Build** — Tooling-Wahl, TS-Konfiguration (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), Pfad-Aliase, Tree-Shaking, Bundle-Größe, Sourcemaps.
-3. **Developer Experience** — README-Qualität, Setup-Schritte, npm-Scripts, Linting, Formatter, Pre-Commit-Hooks, Editor-Konfiguration, Onboarding-Hürden, Fehlerverständlichkeit, Hot-Reload.
-4. **Öffentliche API** — Klarheit und Naming der Exports, Stabilität und Breaking-Change-Strategie, JSDoc/TSDoc, Typ-Exporte, Default- vs. Named-Exports, Treeshakeability.
-5. **Implementierungsstand** — Vollständigkeit gegenüber README/Docs, offene TODOs/FIXMEs, tote Pfade, ungenutzte Exporte, auskommentierter Code.
-6. **Testabdeckung & Teststrategie** — Balance Unit/Integration/E2E, Coverage-Konfiguration, Test-Doubles, Flakiness-Indikatoren, Snapshot-Hygiene, fehlende kritische Pfade.
-7. **Lesbarkeit & Clean Code** — Funktionsgrößen, Verschachtelungstiefe, Naming, Single Responsibility, Magic Numbers, Kommentar-Qualität, Stilkonsistenz.
-8. **Bugs & Korrektheitsrisiken** — fehlende `await`, unbehandelte Rejections, falsche Equality, Off-by-One, Mutation geteilter States, fehlende Null-Checks, unsichere Casts, ungeschütztes `JSON.parse`.
-9. **Memory Leaks & Ressourcen** — nicht entfernte Listener, nicht gecleartes Timer/Interval, unbeendete Subscriptions, fehlender `AbortController`, Closure-Captures großer Objekte, Caches ohne Eviction, fehlende Stream-/FileHandle-Cleanups.
-10. **Async & Concurrency** — Race Conditions, fehlende Cancellation, `Promise.all` vs. sequenziell, unklare Reentrancy, blockierender Code im Eventloop.
-11. **Konsistenz** — Stilbrüche zwischen Modulen, gemischte Patterns (Class vs. funktional, Callback vs. Promise vs. async), uneinheitliche Fehlerbehandlung, uneinheitliches Logging.
-12. **Typsicherheit (TS)** — `any`-Vorkommen, unsichere Casts, fehlende Generics, schwache Rückgabetypen, breite Unions ohne Discriminator.
-13. **Sicherheit** — `eval`, Template-Injection, ungeprüfte Inputs, Secrets im Repo, unsichere Defaults, veraltete Crypto, CORS/CSRF/XSS, `dangerouslySetInnerHTML`.
-14. **Dependencies** — veraltet, deprecated, doppelt, ungenutzt, Lizenzrisiken, unnötig schwer. `npm outdated` / `pnpm outdated` ausführen, sofern Netzwerk und Lockfile es zulassen.
-15. **Performance** — N+1, unnötige Re-Renders, fehlende Memoization, große synchrone Loops, fehlende Pagination, fehlende Caching-Layer.
+1. **Architektur & Struktur** *(code)* — Layering, Abhängigkeitsrichtung, Modulgrenzen, Zyklen, Trennung Fachlogik/Infrastruktur, Konsistenz der Ordnerlogik.
+2. **Projektaufbau & Build** *(harness)* — Tooling-Wahl, TS-Konfiguration (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), Pfad-Aliase, Tree-Shaking, Bundle-Größe, Sourcemaps.
+3. **Developer Experience** *(harness)* — README-Qualität, Setup-Schritte, npm-Scripts, Linting, Formatter, Pre-Commit-Hooks, Editor-Konfiguration, Onboarding-Hürden, Fehlerverständlichkeit, Hot-Reload.
+4. **Öffentliche API** *(code)* — Klarheit und Naming der Exports, Stabilität und Breaking-Change-Strategie, JSDoc/TSDoc, Typ-Exporte, Default- vs. Named-Exports, Treeshakeability.
+5. **Implementierungsstand** *(code)* — Vollständigkeit gegenüber README/Docs, offene TODOs/FIXMEs, tote Pfade, ungenutzte Exporte, auskommentierter Code.
+6. **Testabdeckung & Teststrategie** *(harness)* — Balance Unit/Integration/E2E, Coverage-Konfiguration, Test-Doubles, Flakiness-Indikatoren, Snapshot-Hygiene, fehlende kritische Pfade.
+7. **Lesbarkeit & Clean Code** *(code)* — Funktionsgrößen, Verschachtelungstiefe, Naming, Single Responsibility, Magic Numbers, Kommentar-Qualität, Stilkonsistenz.
+8. **Bugs & Korrektheitsrisiken** *(code)* — fehlende `await`, unbehandelte Rejections, falsche Equality, Off-by-One, Mutation geteilter States, fehlende Null-Checks, unsichere Casts, ungeschütztes `JSON.parse`.
+9. **Memory Leaks & Ressourcen** *(code)* — nicht entfernte Listener, nicht gecleartes Timer/Interval, unbeendete Subscriptions, fehlender `AbortController`, Closure-Captures großer Objekte, Caches ohne Eviction, fehlende Stream-/FileHandle-Cleanups.
+10. **Async & Concurrency** *(code)* — Race Conditions, fehlende Cancellation, `Promise.all` vs. sequenziell, unklare Reentrancy, blockierender Code im Eventloop.
+11. **Konsistenz** *(code)* — Stilbrüche zwischen Modulen, gemischte Patterns (Class vs. funktional, Callback vs. Promise vs. async), uneinheitliche Fehlerbehandlung, uneinheitliches Logging.
+12. **Typsicherheit (TS)** *(harness)* — `any`-Vorkommen, unsichere Casts, fehlende Generics, schwache Rückgabetypen, breite Unions ohne Discriminator.
+13. **Sicherheit** *(code)* — `eval`, Template-Injection, ungeprüfte Inputs, Secrets im Repo, unsichere Defaults, veraltete Crypto, CORS/CSRF/XSS, `dangerouslySetInnerHTML`.
+14. **Dependencies** *(harness)* — veraltet, deprecated, doppelt, ungenutzt, Lizenzrisiken, unnötig schwer. `npm outdated` / `pnpm outdated` ausführen, sofern Netzwerk und Lockfile es zulassen.
+15. **Performance** *(code)* — N+1, unnötige Re-Renders, fehlende Memoization, große synchrone Loops, fehlende Pagination, fehlende Caching-Layer.
 
 Erst alle Befunde sammeln, dann Schritt 4 — nicht parallel HTML zusammenbauen.
+
+#### Die beiden Domains
+
+Jede Dimension gehört zu genau einer von zwei Domains; die Klammer oben ist die verbindliche Zuordnung. Sie trennt zwei Fragen, die im Report nicht vermischt werden dürfen, weil sie verschiedene Leser und verschiedene Konsequenzen haben:
+
+- **`code` — Code & Laufzeit**: das, was das Produkt tut und wie es das tut. Bugs, Leaks, Nebenläufigkeit, Architektur, API, Performance, Sicherheit im Quelltext. Findings hier bedeuten: die Software ist falsch, riskant oder schwer zu ändern.
+- **`harness` — Projekt-Harness**: das Gerüst um den Code herum. Build- und Bundler-Setup, TypeScript- und Typisierungslage, Tests und Coverage, Tooling, Skripte, Onboarding, Dependencies. Findings hier bedeuten: das Projekt lässt sich schlechter bauen, prüfen oder weiterreichen — auch wenn der Code selbst korrekt ist.
+
+Die Domain wird pro Finding gesetzt, nicht pro Kategorie berechnet, und folgt im Regelfall der Zuordnung oben. **Abweichen nur, wenn der Befund selbst eindeutig in der anderen Domain liegt** — ein Secret in einem CI-Workflow ist Kategorie »Sicherheit«, aber `harness`; ein Lizenzrisiko in einer Dependency, die im ausgelieferten Bundle landet, bleibt trotzdem `harness`. Im Zweifel gewinnt die Tabelle: eine stabile Zuordnung über Läufe hinweg ist mehr wert als ein perfekt einsortiertes Einzelfinding.
+
+Nicht zu verwechseln mit den **Domänen** aus Schritt 1b: die sind fachlich und projektspezifisch (»Auth«, »Renderer«), diese zwei sind fix und gelten für jedes Projekt. Im Report begegnen sie sich nicht — die fachlichen Domänen stehen im Portrait, die zwei hier in der Zusammenfassung.
 
 ### 4. Datenmodell
 
@@ -88,6 +99,7 @@ Ein Finding:
 | --- | --- |
 | `id` | Kategorie-Kürzel + laufende Nummer, z. B. `ARCH-001` |
 | `category` | eine der 15 Dimensionen aus Schritt 3 |
+| `domain` | `code` \| `harness` — Zuordnung nach Schritt 3 |
 | `severity` | `critical` \| `high` \| `medium` \| `low` \| `info` |
 | `title` | kurz und imperativ: „Memory Leak in WebSocket-Reconnect beheben" |
 | `location` | Pfad, wenn möglich mit Zeile |
@@ -99,11 +111,24 @@ Ein Finding:
 
 Dazu ein `summary`-Objekt: Projektname, Stack, Findings pro Severity, Findings pro Kategorie, Health-Score, Datum, `theme` (Schritt 6a), `scoreHistory` (chronologisch `[{date, score}, …]`, aktueller Lauf immer als letzter Eintrag). Im Folgelauf zusätzlich Datum des Vorgängers, `resolvedCount`, Anzahl verbesserter Findings, Score-Delta — und bei einem großen Sprung dessen Einordnung (`deltaCause`, `deltaExplanation`; Regeln in `references/followup-audit.md`).
 
+Alles, was der Report je Domain zeigt, liegt in `summary.domains` — kein Zusammenrechnen zur Laufzeit, damit Report und Datenmodell nicht auseinanderlaufen können:
+
+```
+summary.domains: {
+  code:    {label, score, bySeverity: {critical, high, medium, low, info}, byCategory: {…}, executiveSummary},
+  harness: {label, score, bySeverity: {…},                                 byCategory: {…}, executiveSummary}
+}
+```
+
+`label` ist die im Report sichtbare Bezeichnung in der Report-Sprache (deutsch: »Code & Laufzeit« / »Projekt-Harness«, englisch: "Code & Runtime" / "Project Harness"). `executiveSummary` sind die 2–4 Sätze, die im Report unter dieser Domain stehen. Die Gesamtzahlen bleiben daneben bestehen — die Domains ersetzen sie nicht, sie schlüsseln sie auf.
+
 Separat daneben die Liste `acknowledged` — vom Nutzer bewusst zurückgestellte Punkte. Keine Backlog-Findings, kein Gewicht im Health-Score (Details in `references/followup-audit.md`).
 
 ### 5. Health-Score
 
 Sichtbar dokumentierte Heuristik, keine Black Box: Start bei 100, Abzug `critical` -10, `high` -5, `medium` -2, `low` -0.5, `info` 0, Untergrenze 0. Score und Rechenweg im Report ausweisen.
+
+Dieselbe Formel läuft dreimal: einmal über alle Findings (`summary.score`, die Leitzahl) und je einmal über die Findings einer Domain (`summary.domains.<d>.score`). Die Teilscores sind keine Summanden des Gesamtscores und werden nicht dorthin verrechnet — ein Projekt mit sauberem Code und verrottetem Build soll genau das zeigen, statt beides zu einem mittelmäßigen Mittelwert zu glätten.
 
 `scoreHistory` führt den Verlauf mit — beim Erstlauf ein Eintrag, danach fortgeschrieben (Schritt 5b), maximal 20 Einträge (FIFO). Einen separaten History-Store gibt es nicht; die Quelle der Wahrheit ist der git-Verlauf der `./audit.html`.
 
@@ -131,15 +156,16 @@ Vertrag der Datei:
 
 - **Zielpfad** `./audit.html` relativ zum Projekt-Root. Eine vorhandene Datei wird überschrieben, kein Suffix — der Merge ist zu diesem Zeitpunkt erledigt, Historie liefert git.
 - **Standalone**: kein externes CSS/JS, keine CDN-Imports, keine externen Fonts oder Bilder, kein Mermaid. Alles inline, SVG-Icons inline.
+- **Responsive**: der Report wird auf dem Desktop *und* auf dem Handy im Portrait gelesen. Viewport-Meta-Tag ist Pflicht, die Seite scrollt nie horizontal, und das Backlog wird auf schmalen Screens zur Kartenliste statt zur gequetschten Tabelle. Regeln und Breakpoints in `references/report-rendering.md`.
 - **Genau eine JSON-Insel** `<script id="audit-data" type="application/json">…</script>` mit dem vollständigen Datenmodell aus Schritt 4 inklusive `summary`, `scoreHistory` und `acknowledged`. Die Filter-UI liest sie per `JSON.parse(document.getElementById('audit-data').textContent)`.
-- **Interaktion** in Vanilla-JS: Backlog filterbar nach Severity, Kategorie und (im Folgelauf) Status, Zeilen aufklappbar für `description` und `recommendation`. Keine Frameworks.
+- **Interaktion** in Vanilla-JS: Backlog filterbar nach Domain, Severity, Kategorie und (im Folgelauf) Status, Zeilen aufklappbar für `description` und `recommendation`. Keine Frameworks.
 
-Sektionsfolge, Score-Anzeige-Stufen, Diff-Header, Status-Badges, Farben und Typografie stehen in `references/report-rendering.md`.
+Sektionsfolge, Domain-Trennung in der Zusammenfassung, responsives Layout, Score-Anzeige-Stufen, Diff-Header, Status-Badges, Farben und Typografie stehen in `references/report-rendering.md`.
 
 ### 7. Ergebnis ausliefern
 
 - Datei übergeben über den Mechanismus, den der Host zum Präsentieren von Dateien anbietet; gibt es keinen, den Pfad `./audit.html` klar benennen.
-- Begleittext von maximal 5–8 Zeilen: Health-Score, Top-3 aus critical/high, Hinweis auf die Methodik-Sektion. Den Report nicht im Chat wiederholen.
+- Begleittext von maximal 5–8 Zeilen: Health-Score mit beiden Teilscores (»Gesamt 74 — Code & Laufzeit 81, Projekt-Harness 62«), Top-3 aus critical/high, Hinweis auf die Methodik-Sektion. Den Report nicht im Chat wiederholen.
 - Im Folgelauf eine Zeile „X behoben / Y verbessert / Z neu seit `<Datum>`" — behobene Punkte nicht einzeln aufzählen. Hat der Nutzer in diesem Lauf Punkte zurückgestellt, das in einer Zeile bestätigen und auf den Anhang verweisen.
 - Enthält das Backlog Findings ab `medium`, zum Schluss eine Zeile: ob die Punkte abgearbeitet werden sollen, dann übernimmt `js-ts-audit-remediation` mit Umsetzungsplan und Subagenten. Ein Angebot, keine Ankündigung — ohne Zusage endet der Lauf hier.
 
