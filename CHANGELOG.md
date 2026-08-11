@@ -2,6 +2,17 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-08-11
+
+### Geändert
+- **`js-ts-audit-remediation` schreibt den Plan jetzt zugweise fort, nicht erst beim Commit.** Bisher hielt `./remediation-plan.md` den Stand an drei Stellen fest — Statusmarke, Hash, Stash-Name — und alles davon entstand erst nach dem Commit. Riss ein Lauf zwischen Paket-Planer und Commit ab, stand dort `[~]` und sonst nichts: ob ein Implementierer gelaufen war, ob Änderungen im Arbeitsbaum lagen, ob die erste Review-Runde schon durch war, wusste nur der Kontext, der gerade verloren ging. Maßstab ist jetzt ausdrücklich der fremde Agent ohne Vorgeschichte, und fortgeschrieben wird *vor* dem nächsten Zug, nicht danach.
+- **Zwei neue Felder tragen den Stand.** Im Kopf die Zeile `Stand:` mit Datum (welches Paket, welcher Zug, wie der Arbeitsbaum aussieht), unter dem laufenden Paket ein `Verlauf:` mit einer Zeile je Zug. `references/execution.md` sagt in einer Tabelle, was nach welchem Zug hineingehört. Beim Commit weicht der Verlauf einer `Ergebnis:`-Zeile — ein Paket auf `[!]` behält ihn dagegen, weil er die einzige Spur des Versuchs ist. Zwölf Pakete mit vollem Verlauf würden die offene Restliste nach unten schieben, und genau die ist der Zweck der Datei.
+- **Der Plan erklärt sich selbst.** Sein Kopf trägt jetzt fünf Zeilen Einstieg: welcher Skill ihn führt, wie man aufsetzt (Skill laden, Hashes gegen `git log` halten, oberstes Paket ohne `[x]`), und die Legende der Statusmarken. Damit hängt die Wiederaufnahme nicht daran, dass der nächste Agent den Skill überhaupt findet.
+- **Die Wiederaufnahme liest Verlauf und `git status` gegeneinander.** Sauberer Baum nach Zug 0 heißt weiterhin zurück auf `[ ]`. Schmutziger Baum heißt jetzt nicht mehr nur »Rückfrage«, sondern eine Rückfrage mit Stand: wessen Änderungen dort liegen und welche Runden sie hinter sich haben. Widersprechen sich beide, oder fehlt der Verlauf ganz, entscheidet der Nutzer über den Arbeitsbaum, bevor irgendetwas läuft.
+- **Der Stash beim gescheiterten Paket nimmt den Plan nicht mehr mit.** `git stash push -u` sicherte bisher auch untracked Dateien, und `remediation-plan.md` ist während des ganzen Laufs untracked — die Datei verschwand also aus dem Arbeitsbaum, genau wenn ein Paket blockierte und der Stash-Name noch hineingeschrieben werden sollte. Das Kommando trägt jetzt `-- . ':(exclude)remediation-plan.md'`.
+- **Der Verbleib des Plans wird bei der Freigabe angesagt, nicht stillschweigend entschieden.** Zusammen mit Branch und Commit-Modus: am Ende nimmt ein Commit `./remediation-plan.md` mit ins Repo, Widerspruch landet datiert in »Entscheidungen«, und der Abschluss greift darauf zu. Bleibt er draußen, wird er weder gelöscht noch in `.gitignore` geschoben, sondern im Bericht namentlich genannt. Während des Laufs bleibt die Datei in jedem Fall ungetrackt: sie trägt die Hashes der Commits, in denen sie deshalb nicht liegen kann.
+- Entscheidungen, die der Nutzer mitten im Lauf trifft, gehören datiert in »Entscheidungen« im Kopf statt in den Verlauf des Pakets — der wird eingedampft, die Entscheidung muss den ganzen Lauf überleben. Und der Abschluss setzt `Stand:` auf »abgeschlossen«: ein Kopf, der noch »Paket 7 in Zug 3« sagt, während alle Pakete `[x]` tragen, schickt den nächsten Agenten auf die Suche nach Arbeit, die es nicht gibt.
+
 ## 2026-08-07
 
 ### Geändert

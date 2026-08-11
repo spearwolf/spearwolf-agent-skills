@@ -72,9 +72,22 @@ Konvention, kein Fix — es sei denn, genau das war ein Finding.
 
 ## 5. Abschluss-Commit
 
+Davor bekommt der Plan seinen Endstand: die Zeile `Stand:` im Kopf nennt mit
+Datum, dass der Lauf abgeschlossen ist, und was gegebenenfalls blockiert
+liegenblieb. Ein Plan, dessen Kopf noch »Paket 7 in Zug 3« sagt, während alle
+Pakete `[x]` tragen, schickt den nächsten Agenten auf eine Suche nach Arbeit,
+die es nicht gibt.
+
 Ein Commit, der Versionsanhebung, CHANGELOG-Eintrag und den fortgeschriebenen
 `./remediation-plan.md` zusammenfasst. Message im Stil, den `git log` des
 Projekts zeigt.
+
+Der Plan geht mit hinein, sofern »Entscheidungen« nichts anderes sagt — das ist
+die Ansage aus der Freigabe in Schritt 5. Steht dort, dass er draußen bleibt,
+wird er weder geaddet noch gelöscht noch in `.gitignore` eingetragen: er liegt
+im Arbeitsbaum, gehört dem Nutzer, und was damit geschieht, entscheidet er.
+Erwähne die Datei dann im Bericht namentlich, sonst steht am Ende eine
+ungetrackte Datei im Projektroot, deren Herkunft niemand mehr kennt.
 
 Danach ist Schluss. Kein Tag, kein Push, kein Pull Request, kein `npm
 publish` — auch dann nicht, wenn das Projekt ein Release-Skript mitbringt und

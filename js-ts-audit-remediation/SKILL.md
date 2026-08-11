@@ -34,6 +34,7 @@ Diese Regeln stehen über jeder Abwägung im Einzelfall:
 - **Kein Worktree, kein neuer Branch von sich aus.** Gearbeitet wird auf dem Branch, den Schritt 5 benennt und der Nutzer freigibt.
 - **Der Orchestrator schreibt keinen Projektcode.** Weder als schnelle Korrektur noch nachdem ein Subagent gescheitert ist. Eigene Fixes umgehen das Review und verbrauchen den Kontext, den die Koordination über viele Pakete braucht.
 - **Gefixt wird nur, was im Plan steht.** Kein Implementierer behebt etwas nebenbei; was ihm auffällt, meldet er. Ob so ein Nebenbefund in ein späteres Paket wandert oder ins nächste Audit geht, entscheidet der Paket-Planer aus Schritt 6 — indem er es in den Plan schreibt. Einen Fix ohne Zeile im Plan gibt es nicht.
+- **Der Plan wird fortgeschrieben, bevor der nächste Schritt beginnt.** `./remediation-plan.md` ist das Übergabedokument des Laufs: ein Agent ohne jede Vorgeschichte muss ihm entnehmen können, was erledigt ist, was gerade im Arbeitsbaum liegt und was als Nächstes dran ist. Was nur du weißt, ist nach der nächsten Kompaktierung verloren. Wie das im Einzelnen aussieht, steht in `references/execution.md`.
 - **Der Planer schärft den Plan, er ersetzt ihn nicht.** Freigegeben sind Zielsetzung, Paketschnitt und Reihenfolge aus Schritt 5. Wer davon im Kern abweichen will — andere Architektur, eine Entscheidung des Nutzers verworfen, der halbe Restplan neu — hält an und fragt.
 
 ## Workflow
@@ -96,6 +97,13 @@ Hier wird **nicht** ausformuliert, wie ein Paket umgesetzt wird. Ein Vorgehen, d
 Quelle: ./audit.html vom <Datum> · Branch: <name> · erstellt: <Datum>
 Baseline: lint ✓ · typecheck ✓ · test 3 Fehler (vorbestehend, siehe unten) · build ✓
 Scope: 24 von 31 Findings (3 critical, 8 high, 13 medium) · ausgenommen: info, acknowledged
+Stand (<Datum>): Paket 1 noch nicht begonnen · Arbeitsbaum sauber
+
+Diese Datei führt einen Lauf des Skills `js-ts-audit-remediation` und hält
+seinen Stand. Wer hier weiterarbeitet: diesen Skill laden, die eingetragenen
+Hashes gegen `git log --oneline` halten, beim obersten Paket ohne `[x]`
+einsteigen. Statusmarken: `[ ]` offen · `[~]` Detailplan steht, Umsetzung
+läuft · `[x]` erledigt · `[!]` blockiert.
 
 ## Entscheidungen
 - Alten `parseConfig`-Export entfernen statt deprecaten (2026-07-26)
@@ -118,9 +126,13 @@ Der Abschnitt »Entscheidungen« ist die wichtigste Zeile im Kopf: an ihr misst 
 
 Das Feld **Hängt ab von** wird ernst genommen und nicht mit der bloßen Reihenfolge verwechselt. Es benennt nur echte Zwänge — Paket 4 braucht die Modulgrenze aus Paket 2 —, denn genau daran entscheidet sich später, was umgestellt werden darf und was nicht. Steht dort nichts, ist das Paket verschiebbar.
 
-Statusmarken: `[ ]` offen, `[~]` Detailplan steht und Umsetzung läuft, `[x]` erledigt, `[!]` blockiert. Ein Paket, dessen Ziel sich nicht in einem Satz sagen lässt, ist falsch geschnitten — nicht unterspezifiziert, sondern falsch geschnitten.
+Der Absatz mit Einstieg und Statuslegende steht wörtlich so in der Datei und wird nicht als Redundanz zum Skill-Text weggekürzt. Er ist der Grund, warum jemand die Datei einordnen kann, der sie als Erstes findet und nicht diesen Skill. Die Zeile `Stand:` wird über den ganzen Lauf hinweg fortgeschrieben, das Feld `Hash:` bleibt bis zum Commit des Pakets leer.
+
+Ein Paket, dessen Ziel sich nicht in einem Satz sagen lässt, ist falsch geschnitten — nicht unterspezifiziert, sondern falsch geschnitten.
 
 **Freigabe.** Der Grobplan wird vorgelegt, und zwar ausdrücklich mit Branch und Commit-Modus: »<N> Pakete, <N> Commits direkt auf `<branch>`, ohne GPG-Signatur«. Dazu ein Satz, dass jedes Paket unmittelbar vor seiner Umsetzung gegen den dann aktuellen Code detailliert wird, und dass eine Umplanung, die Zielsetzung oder Architektur berührt, zurück zum Nutzer kommt. Freigegeben werden Paketschnitt und Reihenfolge. Ohne diese Freigabe beginnt die Umsetzung nicht.
+
+Im selben Aufwasch der Verbleib des Plans, als Ansage statt als Frage: »am Ende nimmt ein Commit `./remediation-plan.md` mit ins Repo — sag Bescheid, wenn er stattdessen ungetrackt bleiben soll«. Ohne Widerspruch wird committet; widerspricht der Nutzer, steht das datiert in »Entscheidungen«, weil der Abschluss danach greift. Während des Laufs bleibt die Datei in jedem Fall ungetrackt: sie trägt die Hashes der Commits, in denen sie deshalb nicht liegen kann.
 
 ### 6. Umsetzung
 
@@ -151,7 +163,7 @@ Der **Paket-Planer** aus Schritt 6 läuft immer auf der stärksten Stufe, auch v
 - **Die Empfehlung gilt.** Das Audit hat den Weg bereits benannt. Ein anderer Weg braucht einen Grund, der im Detailplan oder im Report des Subagenten steht, keine stille Umdeutung.
 - **Bugfix heißt Test zuerst.** Ein Paket, das einen Korrektheitsfehler behebt, schreibt zuerst den fehlschlagenden Test, sieht ihn rot, und behebt dann. Ohne rot gesehenen Test weiß niemand, ob der Test den Fehler überhaupt fangen würde. Ausgenommen sind Pakete ohne testbaren Kern: Konfiguration, Dokumentation, Dependency-Bumps, reine Formatierung. Fehlt dem Projekt jede Testinfrastruktur, ist das selbst ein Finding und gehört in Phase 1 — mitten im Bugfix wird kein Test-Harness nachgerüstet.
 - **Sequenziell.** Nie zwei Implementierungs-Subagenten gleichzeitig. Sie teilen sich einen Arbeitsbaum, und der Konflikt kostet mehr als die gesparte Zeit.
-- **Der Plan ist die Wahrheit, nicht die Erinnerung.** Nach einer Kontext-Kompaktierung gelten `./remediation-plan.md` und `git log`, nicht das, was du zu wissen glaubst.
+- **Der Plan ist die Wahrheit, nicht die Erinnerung.** Nach einer Kontext-Kompaktierung gelten `./remediation-plan.md` und `git log`, nicht das, was du zu wissen glaubst. Die Umkehrung wiegt schwerer: was nur in deinem Kontext steht und nicht im Plan, gibt es beim nächsten Aufsetzen nicht mehr.
 - **Sprache.** Antworten an den Nutzer in der Sprache seiner Anfrage. Commit-Messages in der Sprache, die `git log` des Projekts zeigt.
 
 ## Zusammenspiel mit anderen Skills
@@ -159,6 +171,6 @@ Der **Paket-Planer** aus Schritt 6 läuft immer auf der stärksten Stufe, auch v
 Dieser Skill funktioniert allein und setzt keine Erweiterung voraus. Sind die Superpowers-Skills installiert, gilt folgende Aufteilung, damit sich nichts doppelt:
 
 - `js-ts-project-audit` liefert den Input und übernimmt am Ende den Folgelauf. Es fixt nie selbst, dieser Skill auditiert nie selbst.
-- Fährt der Nutzer die Umsetzung ausdrücklich über `superpowers:subagent-driven-development`, gewinnt dessen Prozess für Zug 1 bis 5 von Schritt 6. Findings-Quelle, Paketschnitt, der Paket-Planer aus Zug 0, Semver-Bewertung und Folgeaudit bleiben hier — ein fremder Umsetzungsprozess ersetzt das Briefing, nicht den Abgleich gegen den aktuellen Code.
+- Fährt der Nutzer die Umsetzung ausdrücklich über `superpowers:subagent-driven-development`, gewinnt dessen Prozess für Zug 1 bis 5 von Schritt 6. Findings-Quelle, Paketschnitt, der Paket-Planer aus Zug 0, die Fortschreibung von `./remediation-plan.md`, Semver-Bewertung und Folgeaudit bleiben hier — ein fremder Umsetzungsprozess ersetzt das Briefing, nicht den Abgleich gegen den aktuellen Code und nicht das Dokument, an dem ein Dritter den Stand abliest.
 - Bleibt ein Verify-Lauf nach zwei Runden unerklärlich rot, ist das ein Debugging-Problem. Dann nicht weiterraten: `superpowers:systematic-debugging`, falls vorhanden, sonst Paket blockieren und berichten.
 - Wurde ausnahmsweise auf einem Feature-Branch gearbeitet, ist die Integration Sache des Nutzers. Dieser Skill pusht und merged nicht.

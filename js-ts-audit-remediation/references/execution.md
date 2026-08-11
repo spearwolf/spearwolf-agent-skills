@@ -15,6 +15,40 @@ Diff-Dateien gehören nicht ins Projekt. Lege sie im Scratchpad-Verzeichnis
 des Hosts ab; gibt es keines, in `.git/remediation/` — das liegt außerhalb
 der Versionierung.
 
+## Der Plan trägt den Stand
+
+`./remediation-plan.md` ist das Übergabedokument des Laufs. Maßstab ist nicht,
+ob du dich erinnerst, sondern ob ein Agent ohne jede Vorgeschichte die Datei
+öffnet und daraus weiß: was ist erledigt, was liegt gerade im Arbeitsbaum, was
+ist als Nächstes dran. Deshalb wird fortgeschrieben, **bevor** der nächste Zug
+startet, nicht danach.
+
+Zwei Orte tragen den Stand. Im Kopf die Zeile `Stand:` mit Datum — welches
+Paket, welcher Zug, wie der Arbeitsbaum aussieht. Unter dem laufenden Paket der
+`Verlauf:` mit einer Zeile je Zug:
+
+| Nach Zug | Zeile im Verlauf |
+| --- | --- |
+| 0 | schreibt der Planer selbst: Detailplan steht, Abgleich je Finding in Kurzform |
+| 1 | Implementierer beauftragt, mit Modellstufe |
+| 2 | Status des Reports, geänderte Dateien, und dass der Arbeitsbaum jetzt schmutzig ist |
+| 3 | Urteil des Reviewers in Kurzform, Pfad der Diff-Datei |
+| 4 | je Runde eine Zeile: was offen war, wer sie bekam, was zurückkam |
+| 5 | der Verlauf wird durch die Ergebniszeile ersetzt, siehe dort |
+
+Eine Verlaufszeile ist eine Zeile. Sie nennt Dateien, Pfade, Namen und Zahlen,
+keine Begründungen — die stehen im Detailplan. Was ein Subagent im Klartext
+zurückgegeben hat, wird nicht hineinkopiert.
+
+Verdichtet wird nur durch den Commit. Ein Paket auf `[!]` behält seinen
+Verlauf: er ist die einzige Spur dessen, was versucht wurde und woran es lag.
+
+Was der Nutzer mitten im Lauf entscheidet — eine Rückfrage aus Zug 0, ein
+Konflikt aus Zug 4 —, gehört mit Datum in den Abschnitt »Entscheidungen« im
+Kopf, nicht in den Verlauf des Pakets. Der Verlauf wird eingedampft, die
+Entscheidung muss den ganzen Lauf überleben und darf in keinem späteren Paket
+neu aufgeworfen werden.
+
 ## Zug 0 — Paket-Planer
 
 Der Grobplan sagt, *was* Paket N erreichen soll. Wie das geht, entsteht
@@ -67,8 +101,9 @@ Urteil ohne Fundstelle ist keins.
   2. <…>
 - Verify: `npm run typecheck && npm test -- src/net`
 - Commit: `fix(net): clean up socket listeners and reconnect timers (LEAK-001, LEAK-003)`
-- Abgleich (2026-08-06): LEAK-001 unverändert · LEAK-003 nach `reconnect.ts:41`
-  gewandert (Paket 1 hat die Datei geteilt)
+- Verlauf:
+  - 2026-08-06 Zug 0: Detailplan steht · LEAK-001 unverändert · LEAK-003 nach
+    `reconnect.ts:41` gewandert (Paket 1 hat die Datei geteilt)
 
 **LEAK-001 · high · src/net/socket.ts:88** — Listener wird bei Reconnect nicht entfernt
 <description im Volltext>
@@ -139,9 +174,11 @@ Commit, kein `git`-Schreibbefehl.
 | Modell | die Stufe, die er für den Implementierer gesetzt hat |
 
 Dann du: Sind Rückfragen da, gehen sie gebündelt und mit seinem Vorschlag an
-den Nutzer, bevor irgendetwas umgesetzt wird. Sind alle Findings des Pakets
-gegenstandslos, wird das Paket ohne Commit auf `[x]` gesetzt, mit dem Vermerk
-»entfallen« und der Begründung. Sonst Paket auf `[~]` und weiter mit Zug 1.
+den Nutzer, bevor irgendetwas umgesetzt wird; seine Antwort kommt datiert in
+»Entscheidungen«. Sind alle Findings des Pakets gegenstandslos, wird das Paket
+ohne Commit auf `[x]` gesetzt, mit `Ergebnis: entfallen` und der Begründung.
+Sonst Paket auf `[~]` und weiter mit Zug 1. In beiden Fällen wird die Zeile
+`Stand:` im Kopf mitgezogen, bevor der nächste Zug beginnt.
 
 ## Zug 1 — Implementierer beauftragen
 
@@ -240,8 +277,21 @@ Befunde ansetzen, nicht auf das ganze Paket.
 Bleibt nach Runde 2 etwas offen:
 
 - Paket im Plan auf `[!]` setzen, mit den offenen Befunden in einer Zeile.
-- Arbeitsbaum sichern statt wegwerfen:
-  `git stash push -u -m "paket-N-abgebrochen"`, Stash-Name in den Plan.
+- Arbeitsbaum sichern statt wegwerfen, und dabei den Plan draußen halten:
+
+  ```bash
+  git stash push -u -m "paket-N-abgebrochen" -- . ':(exclude)remediation-plan.md'
+  ```
+
+  Der Ausschluss ist nicht optional. `remediation-plan.md` ist während des
+  ganzen Laufs untracked — `-u` nimmt ihn sonst mit in den Stash, und der Plan
+  verschwindet aus dem Arbeitsbaum, genau in dem Moment, in dem ein Paket
+  blockiert und ihn jemand braucht.
+- Der Stash-Name kommt als letzte Verlaufszeile in den Plan, der übrige Verlauf
+  bleibt stehen. Wer das Paket später aufnimmt, hat sonst einen Stash ohne
+  Vorgeschichte.
+- `Stand:` im Kopf auf das nächste Paket setzen und den Arbeitsbaum dort als
+  sauber vermerken — der Stash ist gerade der Grund dafür.
 - Bauen spätere Pakete darauf auf, hält der Lauf hier an und berichtet. Sonst
   weiter mit dem nächsten Paket.
 
@@ -270,10 +320,29 @@ Dateien in den Commit. Pre-Commit-Hooks laufen mit; `--no-verify` wird nicht
 gesetzt. Bricht ein Hook ab, ist das ein echter Befund und geht zurück in die
 Fehlerkette.
 
-Danach sofort, im selben Zug: im Plan `[~]` auf `[x]` setzen, Hash aus
-`git rev-parse --short HEAD` eintragen, kleine Befunde und Nebenbefunde
-darunter notieren. Nicht sammeln und am Ende nachtragen — nach einer
-Kompaktierung ist der Plan das Einzige, was den Stand kennt.
+Danach sofort, im selben Zug: `[~]` auf `[x]`, Hash aus
+`git rev-parse --short HEAD` eintragen, `Stand:` im Kopf auf das nächste Paket
+setzen. Nicht sammeln und am Ende nachtragen — nach einer Kompaktierung ist der
+Plan das Einzige, was den Stand kennt.
+
+Jetzt wird verdichtet: der `Verlauf:` des Pakets weicht einer `Ergebnis:`-Zeile,
+die Nebenbefunde stehen darunter als eigene Liste.
+
+```markdown
+### [x] 3. WebSocket-Reconnect: Listener und Timer aufräumen
+- Findings: LEAK-001 (high), LEAK-003 (high)
+- Ziel: <ein Satz>
+- Hash: a3f91c2
+- Ergebnis: 2 Runden · LEAK-001 und LEAK-003 behoben · klein: JSDoc an
+  `reconnect()` fehlt
+- Nebenbefunde: `src/net/pool.ts:120` — dieselbe Timer-Falle, nicht im Audit
+```
+
+Der Verlauf hat seinen Zweck erfüllt, sobald der Commit steht; ab da erzählt der
+Hash den Rest. Was ihn überlebt, ist genau das, was ein späteres Paket braucht:
+Ergebnis und Nebenbefunde. Zwölf Pakete mit vollem Verlauf schieben die offene
+Restliste so weit nach unten, dass sie niemand mehr zuerst liest — und die
+offene Restliste ist der Grund, warum diese Datei existiert.
 
 Die Nebenbefunde stehen dort nicht als Ablage. Sie sind der Eingabestapel für
 Zug 0 des nächsten Pakets: dort wird entschieden, ob einer davon in ein
@@ -295,11 +364,22 @@ Pakete auf `[!]` sind bewusst blockiert. Sie werden nicht stillschweigend neu
 versucht — erst fragen, ob und wie.
 
 Ein Paket auf `[~]` ist mitten im Zug abgerissen: der Detailplan steht, ein
-Commit fehlt. `git status` entscheidet. Sauberer Baum: der Detailplan ist von
-unbekanntem Alter, das Paket geht zurück auf `[ ]` und beginnt bei Zug 0.
-Schmutziger Baum: du weißt nicht, wie weit der Implementierer kam — Stand dem
-Nutzer vorlegen und fragen, ob die Änderungen weiterverwendet oder verworfen
-werden, bevor irgendetwas läuft.
+Commit fehlt. Sein `Verlauf:` sagt, wie weit es kam, `git status` sagt, ob das
+noch stimmt. Beides wird gegeneinander gehalten, keins allein geglaubt.
+
+Sauberer Baum und ein Verlauf, der nach Zug 0 endet: es ist nichts verloren, das
+Paket geht auf `[ ]` zurück und beginnt bei Zug 0.
+
+Schmutziger Baum: der Verlauf sagt, wessen Änderungen dort liegen und welche
+Runden sie hinter sich haben. Das ist der Stand, den du dem Nutzer vorlegst,
+zusammen mit der Frage, ob die Änderungen weiterverwendet oder verworfen werden.
+Ohne diese Antwort läuft nichts.
+
+Widersprechen sich beide — der Verlauf endet nach Zug 0, aber der Baum ist
+schmutzig, oder umgekehrt —, dann hat jemand außerhalb des Laufs gearbeitet oder
+ein Zug hat seine Zeile nicht geschrieben. Dasselbe gilt für ein `[~]`-Paket
+ganz ohne `Verlauf:`, etwa aus einem Lauf vor dieser Regel. In beiden Fällen
+entscheidet der Nutzer über den Arbeitsbaum, bevor irgendetwas läuft.
 
 Bei jeder Wiederaufnahme läuft Zug 0 für das nächste offene Paket, auch wenn
 es Paket 1 ist. Die Ausnahme im Zug 0 gilt für den frischen Grobplan, nicht
@@ -317,6 +397,10 @@ für einen, der seit einer unbekannten Zahl von Commits herumliegt.
 | »Der Befund ist offensichtlich falsch, ich lasse ihn weg« | Dann steht die Begründung im Plan. Ein stilles Verschwinden gibt es nicht. |
 | »Das andere Problem fixe ich gleich mit« | Es steht nicht im Plan, also nicht in diesem Paket. Als Nebenbefund mit Datei und Zeile notieren; Zug 0 des nächsten Pakets entscheidet, ob es noch in diesen Lauf gehört. |
 | »Den Plan aktualisiere ich am Ende in einem Rutsch« | Der Kontext kann vorher enden. Dann sind Stand und Hashes weg. |
+| »Den Verlauf schreibe ich, wenn das Paket durch ist« | Ist es durch, ersetzt die Ergebniszeile ihn ohnehin. Der Verlauf wird ausschließlich für den Fall geschrieben, dass es nicht durchkommt. |
+| »`[~]` sagt doch schon, dass das Paket läuft« | Es sagt nicht, wie weit. Zwischen »Detailplan steht« und »ein Implementierer hat den Arbeitsbaum voll« liegt der Unterschied zwischen weitermachen und den Nutzer fragen. |
+| »Der Nutzer hat das eben entschieden, das weiß ich noch« | Der nächste Agent weiß es nicht und fragt es neu. Datiert in »Entscheidungen«, sofort. |
+| »Der Plan kann ruhig mit in den Paket-Commit« | Er trägt den Hash genau dieses Commits — der steht erst danach fest. Dazu läge der Auftrag des Reviewers in dem Diff, den er beurteilen soll. Der Plan geht einmal mit, im Abschluss-Commit. |
 | »Der Grobplan sagt schon genug, Zug 0 spare ich mir« | Der Grobplan sagt *was*, nicht *wie*. Ohne Abgleich arbeitet der Implementierer gegen einen Code-Stand von vor N Commits. |
 | »Ich kenne das Paket, ich schreibe den Detailplan selbst« | Dein Kontext kennt den Plan, nicht den aktuellen Code. Der Abgleich ist der Zweck der Übung, und er kostet Lesearbeit, die nicht in deinen Kontext gehört. Nur Paket 1 ist ausgenommen. |
 | »Der Planer hat einen besseren Weg gefunden, den nehme ich« | Weicht er vom freigegebenen Weg ab, entscheidet der Nutzer. »Besser« ist genau die Begründung, für die die Rückfrage existiert. |

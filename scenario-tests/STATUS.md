@@ -27,7 +27,7 @@ Jede Zeile Ausgabe heißt: fällig.
 | `install-drift.md` | `global-behavior/INSTALL.md` | unbekannt (vor Einführung dieser Datei) | — |
 | `audit-followup.md` | `js-ts-project-audit/` | unbekannt (vor Einführung dieser Datei) | **fällig** — am 2026-08-07 kamen Domain-Trennung und responsives Layout dazu, beides ungetestet |
 | `es-frequency.md` | Abschnitt `## ES` in `global-behavior/CLAUDE.md` | unbekannt (vor Einführung dieser Datei) | **fällig** — Regel und Test am 2026-07-26 neu geschrieben und am 2026-07-29 erneut umgebaut, beides ungetestet |
-| `remediation-plan.md` | `js-ts-audit-remediation/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-06 auf zweistufige Planung umgebaut |
+| `remediation-plan.md` | `js-ts-audit-remediation/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-06 auf zweistufige Planung umgebaut, am 2026-08-11 um die zugweise Fortschreibung des Plans erweitert |
 | — | `testing-on-mac-safari/` | **Test existiert nicht** | kein Szenario-Test. Die Ad-hoc-Prüfung vom 2026-07-30 ist durch den seitherigen Ausbau überholt |
 
 Die drei `unbekannt`-Zeilen stammen aus der Zeit vor diesem Protokoll. Läufe
@@ -53,6 +53,22 @@ Läufe geändert. Praktisch heißt das: fällig, sobald es jemandem wichtig ist.
   nicht umbauen. Der letzte Punkt ist der einzige, an dem ein Fehlverhalten
   echten Schaden anrichtet, und er lässt sich nur mit einem Fixture testen, in
   dem ein solcher Weg tatsächlich verlockend ist.
+  Am 2026-08-11 kam die zugweise Fortschreibung dazu (`Stand:` im Kopf,
+  `Verlauf:` unter dem laufenden Paket, Verdichtung zur `Ergebnis:`-Zeile beim
+  Commit, selbsterklärender Plan-Kopf). Der eigentliche Prüfpunkt ist hier
+  nicht, ob ein Agent die Felder anlegt — das tut er, sie stehen im Template —,
+  sondern ob er sie *während* eines Pakets fortschreibt statt am Ende in einem
+  Rutsch. Ein Test dafür muss den Lauf mitten in Zug 2 oder 3 abschneiden und
+  danach einen frischen Agenten allein auf `remediation-plan.md` und das Repo
+  setzen: Erkennt er, dass Änderungen im Baum liegen und von wem? Fragt er beim
+  Widerspruch zwischen Verlauf und `git status` nach, statt weiterzumachen?
+  Beginnt er das laufende Paket stillschweigend neu und wirft damit die Arbeit
+  weg? Der zweite Punkt ist die Verdichtung: nach mehreren Paketen darf kein
+  Verlauf einer erledigten Nummer mehr dastehen, sonst wächst die Datei über
+  ihre offene Restliste hinweg. Dazu am selben Tag der Verbleib des Plans:
+  ob die Ansage bei der Freigabe wirklich als Ansage kommt und nicht als
+  vierte Rückfrage, und ob ein Widerspruch des Nutzers bis zum Abschluss
+  durchhält, statt dort vom Standardweg überfahren zu werden.
 - `js-ts-project-audit` hat am 2026-07-26 das Übergabe-Angebot in Schritt 7
   bekommen. `audit-followup.md` prüft diesen Pfad bisher nicht.
   Am 2026-08-07 kam die Domain-Trennung dazu. Zu prüfen wäre dort vor allem,
