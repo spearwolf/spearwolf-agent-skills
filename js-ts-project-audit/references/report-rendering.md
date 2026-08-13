@@ -6,6 +6,15 @@ Reihenfolge erscheinen und wie sie aussehen. Wird von Schritt 6a der
 (Zielpfad, Standalone-Regel, JSON-Insel) steht in Schritt 6 der `SKILL.md`,
 die Folgelauf-Logik in `references/followup-audit.md`.
 
+Die Haltung über allem: **schön, minimal, lesbar, klar.** Im Zweifel weniger.
+Ein Report, den jemand am Montagmorgen aufmacht, gewinnt nichts durch eine
+zweite Akzentfarbe und verliert alles durch eine dritte Spalte.
+
+Diese Datei ist auch die Quelle für einen Lauf von `js-ts-audit-remediation`,
+der eine bestehende `./audit.html` am Ende nachführt und gestalten lässt. Was
+hier steht, gilt dort ebenso — sonst zieht der nächste Audit-Lauf die
+Gestaltung wieder zurück.
+
 ## Sektionsfolge
 
 1. **Header** — Projektname, Stack-Badges, Audit-Datum, Health-Score (Anzeige
@@ -39,6 +48,31 @@ die Folgelauf-Logik in `references/followup-audit.md`.
     `acknowledged` nicht leer ist. Pro Eintrag Titel, Kategorie, Location,
     `reason`, `acknowledgedDate`. Eine knappe Einleitung erklärt, dass diese
     Punkte auf Nutzerwunsch ruhen und jederzeit reaktivierbar sind.
+
+## Was zugeklappt startet
+
+Der Report beantwortet beim Öffnen zwei Fragen: wie steht es, und was ist als
+Nächstes dran. Was keine davon beantwortet, startet eingeklappt — `<details>`
+ohne `open`, mit einer `<summary>`-Zeile, die den Inhalt benennt statt
+»Details« zu sagen.
+
+| Sektion | Start |
+| --- | --- |
+| Header, Portrait, Executive Summary, Severity, Kategorien, Backlog | offen |
+| Offene Fragen | offen — eine Frage, die niemand sieht, wird nicht beantwortet |
+| Optimierungspotenzial | offen |
+| Methodik | zugeklappt |
+| Anhang akzeptierter Punkte | zugeklappt |
+
+Die Methodik ist der Fall, der am häufigsten falsch entschieden wird. Sie ist
+für den nächsten Lauf unentbehrlich und für den Leser beim Öffnen fast nie
+interessant — zugeklappt ist beides erfüllt: der Text steht im DOM, er steht
+nur nicht im Weg. Weglassen macht den Folgelauf blind, aufgeklappt schiebt sie
+das Backlog aus dem Bild.
+
+Gemeint sind ganze Sektionen. Die Faltung *innerhalb* des Backlogs bleibt, wie
+sie ist: `description` und `recommendation` klappen pro Zeile auf, unabhängig
+davon.
 
 ## Zwei Domains in der Zusammenfassung
 
@@ -88,9 +122,16 @@ Grundregeln:
 - **Die Seite scrollt nie horizontal.** Was zu breit ist — Tabelle,
   Diagramm, ASCII-Block, langer Pfad — scrollt in seinem eigenen
   `overflow-x: auto`-Container oder bricht um. Nie der `body`.
-- Inhaltsbreite auf dem Desktop begrenzen (~1100 px, zentriert), Fließtext
-  bei ~72 Zeichen. Ein Report über die volle Breite eines 4K-Monitors liest
-  sich nicht.
+- **Auf dem Desktop trägt die volle Breite.** Der Report ist ein Dashboard,
+  keine Textseite; eine 1100-px-Säule auf einem 27-Zöller verschenkt zwei
+  Drittel der Fläche. Die Seite läuft bis an den Rand, mit einem mitwachsenden
+  Gutter (`clamp(16px, 4vw, 64px)`).
+- **Der Fließtext deckelt sich selbst, nicht die Seite.** Prosa-Blöcke —
+  Kurzbeschreibung, Executive Summaries, `description`, `recommendation` —
+  bekommen `max-width: 72ch`, während ihr Container die volle Breite behält.
+  Ohne diese Trennung wird aus »volle Breite« eine Zeile über 200 Zeichen, und
+  die liest niemand. Die gewonnene Fläche gehört Zahlen, Balken, Backlog und
+  den beiden Domain-Blöcken.
 - Schriftgrößen relativ bzw. per `clamp()`, mobil nicht unter 16 px.
   Innenabstände mobil schmal (~16 px), auf dem Desktop großzügig — dieselben
   48 px sind auf 390 px Breite ein Drittel des Bildschirms.
@@ -103,6 +144,11 @@ Genau zwei Breakpoints, mehr braucht der Report nicht:
 - **≥ 900 px** — Domain-Blöcke nebeneinander, Backlog als Tabelle.
 - **< 720 px** — Domain-Blöcke gestapelt, Filter umbrechend, Backlog als
   Kartenliste.
+
+Oberhalb von 900 px kommt kein dritter Breakpoint dazu. Die zusätzliche Breite
+nimmt das vorhandene Grid auf: Domain-Blöcke und Backlog-Spalten wachsen mit,
+Prosa bleibt bei ihren 72 Zeichen stehen. Wer für 1440, 1920 und 2560 je eine
+eigene Regel schreibt, pflegt danach vier Layouts und prüft eins.
 
 ### Backlog unter 720 px
 
@@ -182,6 +228,20 @@ entsättigt, damit sie nicht glühen.
 Beide folgen derselben typografischen Grundhaltung — der Wechsel ist eine
 Farbumkehr, kein anderes Design. Das Theme wird fix ausgeliefert, kein
 `prefers-color-scheme` (Begründung in Schritt 6a der `SKILL.md`).
+
+**Farbe trägt Bedeutung oder sie verschwindet.** Der Report kennt genau zwei
+Farbachsen: die Severity-Skala und eine einzige Akzentfarbe. Alles Übrige ist
+Grau in Abstufungen. Eine dritte Achse — Domains, Kategorien oder Status je
+eigenfarbig — macht die Severity-Balken unlesbar, und die sind der Grund,
+warum jemand die Datei überhaupt öffnet. Innerhalb dieser Grenze ist die
+konkrete Palette frei.
+
+Kontrast ist der einzige Punkt daran, der nicht Geschmackssache ist: alles,
+was gelesen werden muss — Fließtext, Badge-Beschriftungen, Achsenlabels,
+gedämpfte Metazeilen — mindestens 4.5:1 gegen seinen Hintergrund, rein
+dekorative Flächen und Rahmen mindestens 3:1. Gilt in beiden Themes. Ein
+gedämpftes Grau, das im Light-Theme gerade noch trägt, fällt im Dark-Theme
+darunter; beide Seiten werden gerechnet, nicht eine gespiegelt.
 
 ## Typografie
 

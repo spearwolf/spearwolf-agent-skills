@@ -13,7 +13,7 @@ Aus den Findings eines Audits werden Pakete, die Subagenten der Reihe nach abarb
 2. Offene Entscheidungen gebündelt klären (4).
 3. Pakete schnüren, ordnen, Grobplan schreiben, Freigabe holen (5).
 4. Paket für Paket: unmittelbar davor detailliert planen, umsetzen, prüfen, committen (6).
-5. Semver bewerten, abschließen, Folgeaudit anbieten (7).
+5. Semver bewerten, `./audit.html` nachführen und gestalten lassen, abschließen, Folgeaudit anbieten (7).
 
 Geplant wird zweistufig. Schritt 5 legt fest, **was** in welcher Reihenfolge passiert — das ist, was der Nutzer freigibt. **Wie** ein Paket umgesetzt wird, entsteht erst unmittelbar vor seiner Umsetzung, gegen den Code, der dann tatsächlich dasteht.
 
@@ -23,6 +23,7 @@ Referenzdateien werden erst gelesen, wenn ihr Schritt dran ist:
 | --- | --- |
 | `references/execution.md` | Schritt 6 — vor dem ersten Paket |
 | `references/semver-and-closeout.md` | Schritt 7 — nach dem letzten Paket |
+| `references/audit-report-update.md` | Schritt 7 — nur wenn eine `./audit.html` im Projekt liegt |
 
 ## Grenzen des Laufs
 
@@ -33,7 +34,7 @@ Diese Regeln stehen über jeder Abwägung im Einzelfall:
 - **Kein Push, kein Merge, kein Pull Request, kein Tag, kein Publish.** Der Lauf endet mit lokalen Commits.
 - **Kein Worktree, kein neuer Branch von sich aus.** Gearbeitet wird auf dem Branch, den Schritt 5 benennt und der Nutzer freigibt.
 - **Der Orchestrator schreibt keinen Projektcode.** Weder als schnelle Korrektur noch nachdem ein Subagent gescheitert ist. Eigene Fixes umgehen das Review und verbrauchen den Kontext, den die Koordination über viele Pakete braucht.
-- **Gefixt wird nur, was im Plan steht.** Kein Implementierer behebt etwas nebenbei; was ihm auffällt, meldet er. Ob so ein Nebenbefund in ein späteres Paket wandert oder ins nächste Audit geht, entscheidet der Paket-Planer aus Schritt 6 — indem er es in den Plan schreibt. Einen Fix ohne Zeile im Plan gibt es nicht.
+- **Gefixt wird nur, was im Plan steht.** Kein Implementierer behebt etwas nebenbei; was ihm auffällt, meldet er. Ob so ein Nebenbefund in ein späteres Paket wandert oder ins nächste Audit geht, entscheidet der Paket-Planer aus Schritt 6 — indem er es in den Plan schreibt. Bei einer Folge dieses Laufs entscheidet er nur noch, in welches Paket sie gehört, nicht ob. Einen Fix ohne Zeile im Plan gibt es trotzdem nicht.
 - **Der Plan wird fortgeschrieben, bevor der nächste Schritt beginnt.** `./remediation-plan.md` ist das Übergabedokument des Laufs: ein Agent ohne jede Vorgeschichte muss ihm entnehmen können, was erledigt ist, was gerade im Arbeitsbaum liegt und was als Nächstes dran ist. Was nur du weißt, ist nach der nächsten Kompaktierung verloren. Wie das im Einzelnen aussieht, steht in `references/execution.md`.
 - **Der Planer schärft den Plan, er ersetzt ihn nicht.** Freigegeben sind Zielsetzung, Paketschnitt und Reihenfolge aus Schritt 5. Wer davon im Kern abweichen will — andere Architektur, eine Entscheidung des Nutzers verworfen, der halbe Restplan neu — hält an und fragt.
 
@@ -58,6 +59,15 @@ Dazu `git status` und `git branch --show-current`. Ein unsauberer Arbeitsbaum is
 ### 3. Scope festlegen
 
 Vorschlag: alle Findings außer `info`. Anzahl je Severity nennen, bestätigen lassen. Der Nutzer kann eingrenzen, auf Severity-Stufen oder auf einzelne IDs. Was draußen bleibt, steht im Plan, damit später niemand rätselt, warum `PERF-007` nie auftauchte.
+
+Der Scope sind diese Findings **samt dem, was ihre Behebung nach sich zieht**. Ein Lauf, der zwölf Findings schließt und dabei fünf neue Defekte hinterlässt, hat nichts erledigt, sondern die Buchhaltung verschoben — und das nächste Audit sieht die neuen Defekte ohne Vorgeschichte und hält sie für vorbestehend. Zwei Dinge, die leicht verwechselt werden und verschieden behandelt werden:
+
+| | Was es ist | Wohin |
+| --- | --- | --- |
+| **Nebenbefund** | war auch ohne diesen Lauf falsch, fiel nur auf, weil jemand hinsah | in ein Paket, wenn dieselbe Ursache — sonst ins nächste Audit |
+| **Folge** | hat eine Änderung dieses Laufs verursacht | in ein Paket dieses Laufs, ausnahmslos |
+
+Wie Folgen eingeordnet und geschnitten werden, entscheidet der Paket-Planer in Schritt 6. Er gleicht sie nicht bloß ab, er wiegt sie: bloßes Symptom einer nicht zu Ende behobenen Ursache, oder ein eigenständiges neues Issue. Der Unterschied entscheidet darüber, ob ein Paket nachgeschärft oder ein neues geschnitten wird — und er ist der Grund, warum ein Lauf zum Ende kommt, statt sich selbst Arbeit nachzulegen.
 
 ### 4. Offene Entscheidungen klären
 
@@ -143,7 +153,7 @@ Der Absatz mit Einstieg und Statuslegende steht wörtlich so in der Datei und wi
 
 Ein Paket, dessen Ziel sich nicht in einem Satz sagen lässt, ist falsch geschnitten — nicht unterspezifiziert, sondern falsch geschnitten.
 
-**Freigabe.** Der Grobplan wird vorgelegt, und zwar ausdrücklich mit Branch und Commit-Modus: »<N> Pakete, <N> Commits direkt auf `<branch>`, ohne GPG-Signatur«. Dazu ein Satz, dass jedes Paket unmittelbar vor seiner Umsetzung gegen den dann aktuellen Code detailliert wird, und dass eine Umplanung, die Zielsetzung oder Architektur berührt, zurück zum Nutzer kommt. Freigegeben werden Paketschnitt und Reihenfolge. Ohne diese Freigabe beginnt die Umsetzung nicht.
+**Freigabe.** Der Grobplan wird vorgelegt, und zwar ausdrücklich mit Branch und Commit-Modus: »<N> Pakete, <N> Commits direkt auf `<branch>`, ohne GPG-Signatur«. Dazu ein Satz, dass jedes Paket unmittelbar vor seiner Umsetzung gegen den dann aktuellen Code detailliert wird, und dass eine Umplanung, die Zielsetzung oder Architektur berührt, zurück zum Nutzer kommt. Ebenso ein Satz zu den Folgen: zieht ein Fix anderswo etwas nach sich, wird das in diesem Lauf mit behoben, notfalls in zusätzlichen Paketen — die Paketzahl ist damit eine Untergrenze, keine Zusage. Freigegeben werden Paketschnitt und Reihenfolge. Ohne diese Freigabe beginnt die Umsetzung nicht.
 
 Im selben Aufwasch der Verbleib des Plans, als Ansage statt als Frage: »am Ende nimmt ein Commit `./remediation-plan.md` mit ins Repo — sag Bescheid, wenn er stattdessen ungetrackt bleiben soll«. Ohne Widerspruch wird committet; widerspricht der Nutzer, steht das datiert in »Entscheidungen«, weil der Abschluss danach greift. Während des Laufs bleibt die Datei in jedem Fall ungetrackt: sie trägt die Hashes der Commits, in denen sie deshalb nicht liegen kann.
 
@@ -153,7 +163,7 @@ Jetzt `references/execution.md` lesen. Dort stehen der Paket-Planer, das Subagen
 
 ### 7. Abschluss
 
-Nach dem letzten Paket `references/semver-and-closeout.md` lesen. Dort stehen die Semver-Bewertung, der Umgang mit dem CHANGELOG des Zielprojekts, der Abschluss-Commit und die Übergabe.
+Nach dem letzten Paket `references/semver-and-closeout.md` lesen. Dort stehen die Semver-Bewertung, der Umgang mit dem CHANGELOG des Zielprojekts, das Nachführen der `./audit.html`, der Abschluss-Commit und die Übergabe.
 
 ## Modellwahl
 
@@ -169,7 +179,7 @@ Im Zweifel eine Stufe höher: die Rundenzahl schlägt den Tokenpreis. Ein günst
 
 Das Modell des Reviewers wählst du nach dem Diff, nicht nach dem Paket: ein kleiner mechanischer Diff braucht die mittlere Stufe, eine subtile Änderung an Nebenläufigkeit oder Sicherheit die stärkste.
 
-Der **Paket-Planer** aus Schritt 6 läuft immer auf der stärksten Stufe, auch vor einem Dreizeiler-Paket. Die Stufen oben bewerten, wie schwer eine Umsetzung ist; der Planer entscheidet über Schnitt und Reihenfolge des Restplans, und ein Fehlurteil dort schlägt auf jedes folgende Paket durch.
+Der **Paket-Planer** aus Schritt 6 läuft immer auf der stärksten Stufe, auch vor einem Dreizeiler-Paket. Die Stufen oben bewerten, wie schwer eine Umsetzung ist; der Planer entscheidet über Schnitt und Reihenfolge des Restplans und darüber, ob eine Folge Symptom oder eigenes Issue ist. Ein Fehlurteil dort schlägt auf jedes folgende Paket durch — und die Symptom-Frage falsch beantwortet heißt, dass der Lauf sich selbst Arbeit nachlegt.
 
 ## Prinzipien
 
@@ -183,7 +193,7 @@ Der **Paket-Planer** aus Schritt 6 läuft immer auf der stärksten Stufe, auch v
 
 Dieser Skill funktioniert allein und setzt keine Erweiterung voraus. Sind die Superpowers-Skills installiert, gilt folgende Aufteilung, damit sich nichts doppelt:
 
-- `js-ts-project-audit` liefert den Input und übernimmt am Ende den Folgelauf. Es fixt nie selbst, dieser Skill auditiert nie selbst.
+- `js-ts-project-audit` liefert den Input und übernimmt am Ende den Folgelauf. Es fixt nie selbst, dieser Skill auditiert nie selbst. Dass hier am Ende trotzdem in die `./audit.html` geschrieben wird, ist kein Bruch dieser Linie: gebucht wird, was Reviewer-Urteil und Commit-Hash belegen, und der Score ist die Formel des Audits auf ein verändertes Backlog. Die Bewertung des Codes bleibt beim Folgelauf. Auch die Optik gehört dorthin: der Design-Pass in Schritt 7 folgt `references/report-rendering.md` des Audit-Skills, statt eigene Vorgaben zu erfinden — sonst zieht der nächste Audit-Lauf beim Neurendern alles wieder zurück.
 - Fährt der Nutzer die Umsetzung ausdrücklich über `superpowers:subagent-driven-development`, gewinnt dessen Prozess für Zug 1 bis 5 von Schritt 6. Findings-Quelle, Paketschnitt, der Paket-Planer aus Zug 0, die Fortschreibung von `./remediation-plan.md`, Semver-Bewertung und Folgeaudit bleiben hier — ein fremder Umsetzungsprozess ersetzt das Briefing, nicht den Abgleich gegen den aktuellen Code und nicht das Dokument, an dem ein Dritter den Stand abliest.
 - Bleibt ein Verify-Lauf nach zwei Runden unerklärlich rot, ist das ein Debugging-Problem. Dann nicht weiterraten: `superpowers:systematic-debugging`, falls vorhanden, sonst Paket blockieren und berichten.
 - Wurde ausnahmsweise auf einem Feature-Branch gearbeitet, ist die Integration Sache des Nutzers. Dieser Skill pusht und merged nicht.

@@ -4,6 +4,14 @@ Gilt ab Schritt 7, nachdem das letzte Paket committet oder blockiert ist.
 Während der Umsetzung war es gleichgültig, ob eine Änderung bricht. Jetzt
 wird das für den Lauf als Ganzes bewertet, einmal.
 
+**Vorher: steht unter dem letzten Paket noch eine Liste `Folgen:`, ist der Lauf
+nicht am Ende.** Diese Einträge hat der Lauf selbst verursacht, und für sie gibt
+es keinen Zug 0 mehr, der sie verteilen würde. Also läuft der Paket-Planer noch
+einmal, allein für die Triage aus `references/execution.md`; was er als Symptom
+oder echte Folge einordnet, wird als Paket abgearbeitet, und erst dann beginnt
+dieser Schritt. Ein Lauf, der seine eigenen Trümmer dem nächsten Audit übergibt,
+schließt nichts ab — er reicht weiter.
+
 ## 1. Voller Verify-Lauf
 
 Alle Kommandos aus der Baseline erneut ausführen, nicht nur die Verifies der
@@ -107,7 +115,19 @@ Draußen bleibt die Vorgeschichte der Sache — wie es dazu kam, welche Anläufe
 gab, dass ein Audit sie gefunden hat. Der Eintrag sagt, was jetzt gilt und was
 der Leser zu tun hat. Finding-IDs bleiben auch hier draußen.
 
-## 5. Abschluss-Commit
+## 5. Audit-Report nachführen
+
+Liegt eine `./audit.html` im Projekt, wird sie jetzt auf den Stand nach dem
+Lauf gebracht: behobene Findings raus, was der Lauf hinterlassen hat rein,
+Zahlen nachziehen — und danach ein frischer Subagent, der die Seite gestaltet.
+Regeln, Belegpflicht und die Grenzen des Design-Passes stehen in
+`references/audit-report-update.md`; jetzt lesen.
+
+Ohne `audit.html` entfällt der Schritt. Er läuft vor dem Commit, damit die
+Datei mit hineingeht, und vor dem Bericht, damit das Angebot eines Folgeaudits
+gegen den nachgeführten Stand steht und nicht gegen den vom Lauf-Beginn.
+
+## 6. Abschluss-Commit
 
 Davor bekommt der Plan seinen Endstand: die Zeile `Stand:` im Kopf nennt mit
 Datum, dass der Lauf abgeschlossen ist, und was gegebenenfalls blockiert
@@ -119,8 +139,15 @@ Ein Commit, der Versionsanhebung, CHANGELOG-Eintrag und den fortgeschriebenen
 `./remediation-plan.md` zusammenfasst. Message im Stil, den `git log` des
 Projekts zeigt.
 
+Die nachgeführte `./audit.html` geht mit hinein, sofern sie im Repo verfolgt
+wird — dann ist ihr Verlauf die Historie der Reports, und ein uncommitteter
+Zwischenstand macht den nächsten Vergleich unbrauchbar. Ist sie ungetrackt,
+bleibt sie es: nicht adden, nicht in `.gitignore` schreiben, im Bericht
+namentlich nennen.
+
 Der Plan geht mit hinein, sofern »Entscheidungen« nichts anderes sagt — das ist
-die Ansage aus der Freigabe in Schritt 5. Steht dort, dass er draußen bleibt,
+die Ansage aus der Freigabe in Schritt 5 der `SKILL.md`. Steht dort, dass er
+draußen bleibt,
 wird er weder geaddet noch gelöscht noch in `.gitignore` eingetragen: er liegt
 im Arbeitsbaum, gehört dem Nutzer, und was damit geschieht, entscheidet er.
 Erwähne die Datei dann im Bericht namentlich, sonst steht am Ende eine
@@ -131,7 +158,7 @@ publish` — auch dann nicht, wenn das Projekt ein Release-Skript mitbringt und
 der Weg naheliegt. Die Veröffentlichung ist eine eigene Entscheidung und
 gehört dem Nutzer.
 
-## 6. Bericht und Übergabe
+## 7. Bericht und Übergabe
 
 Fünf bis acht Zeilen, nicht mehr:
 
@@ -144,14 +171,33 @@ Fünf bis acht Zeilen, nicht mehr:
   neu geschnittene Pakete. Je eine Zeile, gegen den freigegebenen Grobplan
   gehalten — der Nutzer hat den freigegeben und soll ohne Diff sehen, was
   daraus geworden ist.
+- die Pakete, die als Folge dieses Laufs dazukamen, mit ihrer Herkunft
+  (`Folge von: Paket N`). Das ist die eine Zahl, an der der Nutzer abliest, was
+  ihn die Behebung über den Grobplan hinaus gekostet hat — und die einzige, die
+  er im Grobplan nicht freigegeben hat
 - Anzahl der Nebenbefunde, die offen blieben, mit dem Hinweis, dass sie
-  bewusst nicht mehr in diesen Lauf gezogen wurden
+  bewusst nicht mehr in diesen Lauf gezogen wurden. Offene **Folgen** stehen
+  hier nur, wenn ein Paket blockiert liegenblieb — dann mit Paketnummer und
+  Grund, benannt als das, was sie sind: Schaden, den dieser Lauf angerichtet
+  und nicht wieder eingeholt hat
+- der neue Stand der `./audit.html`, sofern es eine gibt: alter und neuer
+  Score, wie viele Findings geschlossen und wie viele neu eingetragen wurden,
+  und was der Design-Pass an der Seite geändert hat — eine Zeile für beides
 - das Angebot eines Folgeaudits
 
-Das Folgeaudit läuft über `js-ts-project-audit`. Es verifiziert jedes behobene
-Finding am Code, zählt sie in `resolvedCount` und schreibt Score und Historie
-fort. `./audit.html` wird von diesem Skill nicht angefasst: wer sich selbst
-benotet, hat immer bestanden.
+Das Folgeaudit läuft über `js-ts-project-audit`. Es prüft den Code frisch,
+verifiziert jeden übernommenen Punkt an der Fundstelle und schreibt Score und
+Historie fort. Die Arbeitsteilung, die dabei gilt: dieser Lauf hat oben in
+Schritt 5 gebucht, wofür er Belege hatte — Reviewer-Urteil und Commit-Hash —, und der
+Score dort ist die Formel des Audits auf ein verändertes Backlog, kein neues
+Urteil über den Code. Wer sich selbst benotet, hat immer bestanden; wer nur
+zählt, was ein anderer geprüft hat, nicht.
+
+Der nächste Audit-Lauf rendert `./audit.html` neu, und zwar nach denselben
+Vorgaben, nach denen der Design-Pass gearbeitet hat — die Gestaltung hält also,
+soweit sie sich daran gehalten hat. Was ein Agent darüber hinaus erfunden hat,
+verschwindet dort. Das ist kein Mangel, sondern der Grund, warum die Vorgaben
+im Audit-Skill stehen und nicht hier.
 
 ## Häufige Ausreden
 
@@ -164,4 +210,5 @@ benotet, hat immer bestanden.
 | »Die Finding-IDs im CHANGELOG zeigen, worauf der Eintrag zurückgeht« | Sie zeigen es genau einer Person, die eine `audit.html` von heute hat. Für alle anderen ist es Rauschen. |
 | »Die Tests liefen vorhin schon« | Der volle Lauf gehört auf den Baum, den du übergibst. Ein grüner Lauf beweist nur den Baum, auf dem er lief. |
 | »Ein Tag wäre jetzt konsequent« | Der Lauf endet mit lokalen Commits. Veröffentlichen entscheidet der Nutzer. |
-| »Ich trage die behobenen Findings schnell in audit.html nach« | Der Folgelauf verifiziert am Code. Nachtragen ohne Prüfung ist eine Behauptung im Report. |
+| »Ich trage die behobenen Findings schnell in audit.html nach« | Nicht schnell und nicht nach Erinnerung: geschlossen wird, was Reviewer-Urteil mit Fundstelle *und* Commit-Hash hat. Der Rest bleibt stehen. |
+| »Die audit.html sieht schon okay aus, den Design-Pass spare ich mir« | Er ist der einzige Schritt im ganzen Lauf, der die Datei ansieht, die der Nutzer am Ende öffnet. Der Report ist das Produkt, nicht der Beleg. |

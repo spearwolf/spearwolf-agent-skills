@@ -25,9 +25,9 @@ Jede Zeile Ausgabe heißt: fällig.
 | Test | Artefakt | Geprüfter Stand | Ergebnis |
 | --- | --- | --- | --- |
 | `install-drift.md` | `global-behavior/INSTALL.md` | unbekannt (vor Einführung dieser Datei) | — |
-| `audit-followup.md` | `js-ts-project-audit/` | unbekannt (vor Einführung dieser Datei) | **fällig** — am 2026-08-07 kamen Domain-Trennung und responsives Layout dazu, beides ungetestet |
+| `audit-followup.md` | `js-ts-project-audit/` | unbekannt (vor Einführung dieser Datei) | **fällig** — am 2026-08-07 kamen Domain-Trennung und responsives Layout dazu, am 2026-08-13 volle Desktop-Breite, Sektions-Faltung und Farbdisziplin, alles ungetestet |
 | `es-frequency.md` | Abschnitt `## ES` in `global-behavior/CLAUDE.md` | unbekannt (vor Einführung dieser Datei) | **fällig** — Regel und Test am 2026-07-26 neu geschrieben und am 2026-07-29 erneut umgebaut, beides ungetestet |
-| `remediation-plan.md` | `js-ts-audit-remediation/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-06 auf zweistufige Planung umgebaut, am 2026-08-11 um die zugweise Fortschreibung des Plans erweitert, am 2026-08-13 um die Konventionen für Code, Doku und CHANGELOG |
+| `remediation-plan.md` | `js-ts-audit-remediation/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-06 auf zweistufige Planung umgebaut, am 2026-08-11 um die zugweise Fortschreibung des Plans erweitert, am 2026-08-13 um die Konventionen für Code, Doku und CHANGELOG, um die Triage der Folgen und um das Nachführen der `audit.html` samt Design-Pass |
 | — | `testing-on-mac-safari/` | **Test existiert nicht** | kein Szenario-Test. Die Ad-hoc-Prüfung vom 2026-07-30 ist durch den seitherigen Ausbau überholt |
 
 Die drei `unbekannt`-Zeilen stammen aus der Zeit vor diesem Protokoll. Läufe
@@ -82,6 +82,39 @@ Läufe geändert. Praktisch heißt das: fällig, sobald es jemandem wichtig ist.
   Abschluss den Umbau als breaking, weil er groß war, und schweigt über den
   Export? Und trennt der Eintrag Aufrufer von Implementierern, oder rührt er
   beide in einen Absatz?
+  Ebenfalls am 2026-08-13 kam die Triage der Folgen dazu (Nebenbefund vs.
+  Folge, drei Einordnungen in Zug 0, `Folge von:`, Generationsgrenze). Das ist
+  der bisher teuerste Prüfpunkt, weil ein Fixture ihn *provozieren* muss: ein
+  Finding, dessen sauberer Fix zwangsläufig eine zweite Stelle bricht — ein
+  entfernter Export mit einem Aufrufer außerhalb des Pakets ist der billigste
+  Aufbau. Vier Fragen daran. Zieht der Implementierer den Aufrufer mit, oder
+  meldet er ihn als Nebenbefund und liefert ein rotes Repo ab? Nennt der
+  Reviewer die nicht mitgezogene Stelle `wichtig`, oder wertet er sie als
+  „nicht Teil des Pakets"? Ordnet der Planer drei Stellen einer Ursache als
+  ein Nachtragspaket ein oder als drei — das ist der Punkt, an dem ein Lauf
+  anfängt, sich selbst zu füttern. Und hält die Asymmetrie in der
+  Eskalationsregel: eine `critical`-Folge wird ohne Rückfrage eingeplant,
+  während dieselbe Schwere als vorbestehender Befund zum Nutzer geht. Die
+  Generationsgrenze lässt sich kaum als Szenario fahren; sie wäre am Plan
+  eines abgebrochenen Laufs zu prüfen, in dem `Folge von:` bereits dreimal
+  hängt.
+  Ebenfalls am 2026-08-13 kam das Nachführen der `audit.html` dazu
+  (`references/audit-report-update.md`, Schritt 5 des Abschlusses) plus der
+  Design-Pass. Das ist der erste Punkt im Skill mit einer maschinell prüfbaren
+  Zusicherung, und die gehört in den Test: JSON-Insel vor und nach dem
+  Design-Pass parsen und vergleichen, Findings im DOM gegen Findings in der
+  Insel zählen, `scrollWidth <= innerWidth` bei 390 px. Ein Fixture braucht
+  eine `audit.html` mit bekanntem Backlog und einen Plan, in dem genau ein
+  Paket blockiert liegt — dann prüft ein Lauf drei Dinge auf einmal: Bleibt
+  das Finding des blockierten Pakets stehen, weil der Beleg fehlt? Wandern
+  die `klein`-Befunde und Nebenbefunde als neue Findings mit Fundstelle
+  hinein, statt unter den Tisch zu fallen? Und rechnet der Agent den Score mit
+  der Formel aus der Methodik-Sektion nach, statt eine plausible Zahl zu
+  setzen — der Punkt, an dem ein Lauf anfängt, sich selbst zu benoten. Der
+  Design-Pass selbst ist der teuerste Arm: er braucht einen Browser und einen
+  Agenten mit echtem Ermessensspielraum, und die interessante Frage ist nicht,
+  ob die Seite schöner wird, sondern ob er die Insel in Ruhe lässt, wenn er
+  die Tabelle zur Kartenliste umbaut.
 - `js-ts-project-audit` hat am 2026-07-26 das Übergabe-Angebot in Schritt 7
   bekommen. `audit-followup.md` prüft diesen Pfad bisher nicht.
   Am 2026-08-07 kam die Domain-Trennung dazu. Zu prüfen wäre dort vor allem,
@@ -99,6 +132,19 @@ Läufe geändert. Praktisch heißt das: fällig, sobald es jemandem wichtig ist.
   Tabelle. Ein Test dafür braucht einen Browser — Playwright bei 390×844
   reicht, `document.documentElement.scrollWidth <= innerWidth` ist die harte
   Zusicherung.
+  Am 2026-08-13 kippte die Desktop-Regel: statt einer Säule von 1100 px trägt
+  jetzt die volle Breite, und die Deckelung sitzt im Fließtext
+  (`max-width: 72ch`). Der Test dafür läuft im selben Browser-Lauf mit, bei
+  1920 oder 2560: Nutzt die Seite die Breite überhaupt, oder klebt der Agent
+  aus Gewohnheit einen Container davor? Und die Gegenprobe, die wichtiger ist —
+  bleibt die Prosa in den Executive Summaries bei rund 72 Zeichen, statt über
+  den ganzen Monitor zu laufen? Beide Fehler sehen im Screenshot ähnlich harmlos
+  aus und sind es nicht. Dazu die Faltung: starten Methodik und Anhang als
+  geschlossene `<details>`, während »Offene Fragen« offen bleibt — die
+  Versuchung ist, alles Sekundäre einzuklappen und die Frageliste gleich mit.
+  Der Kontrastteil (4.5:1 für Lesbares, beide Themes gerechnet) lässt sich am
+  gerenderten DOM messen und gehört in denselben Lauf; er ist der einzige
+  Punkt der Palette, der nicht Geschmackssache ist.
 - `testing-on-mac-safari` (angelegt 2026-07-30) hat keinen Szenario-Test. Die
   Ad-hoc-Prüfung lief so: ein frischer Subagent bekam „teste die public app auf
   dem Mac" ohne jeden Hinweis auf Host, MCP-Server oder Fallback-Skript, fand
