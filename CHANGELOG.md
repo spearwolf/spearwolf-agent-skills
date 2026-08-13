@@ -2,6 +2,13 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-08-13
+
+### Geändert
+- **`js-ts-audit-remediation` trennt jetzt Lauf-Artefakte von dem, was im Repo zurückbleibt.** Der Plan-Kopf bekommt einen Abschnitt »Konventionen«, der für jede Zeile gilt, die im Lauf entsteht: Inline-Kommentare sind erwünscht, wo sie *warum* erklären; Finding-IDs leben im Plan und in Commit-Messages und sonst nirgends, weil sie an genau ein Audit gebunden und danach tot sind; ein Rückblick auf den Vorzustand gehört in die Commit-Message, nicht in die Datei. Der Test dafür steht im Plan: Ergibt der Satz für jemanden Sinn, der den Vorzustand nie gesehen hat? Der Abschnitt steht im Plan statt im Dispatch-Prompt, weil ihn dort Planer, Implementierer und Reviewer ohnehin mitlesen.
+- Das Briefing in Zug 1 weist auf den Abschnitt hin, und der Reviewer prüft ihn mit: eine Finding-ID im Kommentar ist ein `kleiner` Befund, in veröffentlichter Doku ein `wichtiger`.
+- **Der CHANGELOG-Schritt im Abschluss bewertet jeden Eintrag einzeln, statt die Semver-Stufe des Laufs durchzureichen.** Zuerst: bricht es überhaupt? Ein neuer Export oder ein zweiter Weg neben dem alten bricht nichts, so groß der Umbau darunter auch war — ohne eine Zeile fremden Codes, die scheitert, ist es eine neue Funktion. Dann: für wen? Wer die Funktion benutzt, fragt nach Aufrufcode; wer sie erweitert, nach seiner Implementierung. Beides gehört hinein, getrennt und erkennbar; was keines der beiden Publika erreicht, gehört gar nicht ins CHANGELOG. Migrations-Hinweise folgen derselben Trennung.
+
 ## 2026-08-11
 
 ### Geändert

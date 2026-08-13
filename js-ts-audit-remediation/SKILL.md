@@ -108,6 +108,17 @@ läuft · `[x]` erledigt · `[!]` blockiert.
 ## Entscheidungen
 - Alten `parseConfig`-Export entfernen statt deprecaten (2026-07-26)
 
+## Konventionen
+Gelten für jede Zeile, die in diesem Lauf entsteht — Code, Kommentare,
+Dokumentation, CHANGELOG, Migrations-Hinweise:
+- Inline-Kommentare sind erwünscht, wo sie erklären, *warum* etwas so ist.
+- Keine Finding-IDs. Sie gehören diesem einen Audit und sind danach tot. Sie
+  leben in diesem Plan und in Commit-Messages, sonst nirgends.
+- Kein Rückblick auf den Vorzustand: kein »früher«, kein »statt bisher«, kein
+  »im Zuge des Audits umgestellt«. Der Test: Ergibt der Satz für jemanden Sinn,
+  der den Vorzustand nie gesehen hat? Dann bleibt er. Braucht er ihn, gehört er
+  in die Commit-Message — die Historie ist bereits konserviert.
+
 ## Vorbestehende Fehler
 - `test/legacy.spec.ts` — 3 Fehler, vor Lauf-Beginn vorhanden, kein Teil des Scopes
 
@@ -123,6 +134,8 @@ läuft · `[x]` erledigt · `[!]` blockiert.
 ```
 
 Der Abschnitt »Entscheidungen« ist die wichtigste Zeile im Kopf: an ihr misst der Paket-Planer später, ob eine Umplanung noch im Rahmen liegt oder eine Rückfrage braucht.
+
+Der Abschnitt »Konventionen« steht wörtlich so in der Datei und wird projektspezifisch ergänzt, nicht ersetzt: hat das Zielprojekt eigene Regeln für Kommentare oder Doku, kommen sie darunter. Er steht im Plan und nicht im Brief, weil ihn dort jeder liest, der ohnehin den Plan öffnet — Planer, Implementierer, Reviewer —, und weil er sonst in jeden Dispatch-Prompt kopiert werden müsste. Die Trennlinie dahinter: Plan, Reports und Commit-Messages sind Artefakte dieses Laufs und dürfen seine Sprache sprechen; alles, was im Repo zurückbleibt, wird von jemandem gelesen, der weder das Audit noch diesen Lauf kennt.
 
 Das Feld **Hängt ab von** wird ernst genommen und nicht mit der bloßen Reihenfolge verwechselt. Es benennt nur echte Zwänge — Paket 4 braucht die Modulgrenze aus Paket 2 —, denn genau daran entscheidet sich später, was umgestellt werden darf und was nicht. Steht dort nichts, ist das Paket verschiebbar.
 

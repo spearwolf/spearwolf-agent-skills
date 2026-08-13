@@ -70,6 +70,43 @@ gruppiert, nicht einer pro Paket.
 Hat das Projekt kein CHANGELOG, wird keines angelegt. Das wäre eine neue
 Konvention, kein Fix — es sei denn, genau das war ein Finding.
 
+### Bricht es wirklich?
+
+Die Versionsnummer aus Schritt 3 gilt für den Lauf als Ganzes. Im CHANGELOG
+wird jeder Eintrag noch einmal einzeln bewertet, und die Fehlmarkierung geht
+fast immer in dieselbe Richtung: Aufwand wird für Bruch gehalten. Ein neuer
+Export, eine zusätzliche optionale Option, ein zweiter Weg neben dem alten
+bricht nichts — bestehender Code läuft unverändert weiter, so groß der Umbau
+darunter auch war. Breaking ist nur, woran vorhandener fremder Code scheitert:
+roter Build, anderes Laufzeitverhalten, weggefallene Schnittstelle. Wer den
+Bruch nicht an einer konkreten Zeile fremden Codes zeigen kann, hat kein
+Breaking Change, sondern eine neue Funktion.
+
+### Für wen bricht es?
+
+Zwei Publika, mit verschiedenen Fragen:
+
+| Wer liest | Fragt sich | Braucht |
+| --- | --- | --- |
+| wer die Funktion **benutzt** | Muss ich meinen Aufrufcode ändern? | Signatur, Default, Verhalten, der Migrationsschritt |
+| wer sie **erweitert oder ändert** | Muss ich meine Implementierung nachziehen? | interne Struktur, Erweiterungspunkte, geänderter Vertrag |
+
+Beides gehört hinein, getrennt und als solches erkennbar. Kennt das Projekt
+keine eigene Markierung dafür, trennt die Formulierung: der erste Satz eines
+Eintrags sagt, wen er angeht. Wer die Funktion nur benutzt, soll nicht durch
+Interna lesen müssen, um festzustellen, dass ihn der Eintrag nichts angeht —
+und ein Umbau, der keines der beiden Publika erreicht, gehört gar nicht ins
+CHANGELOG. Der steht in der Commit-Historie.
+
+Führt das Projekt Migrations-Hinweise, folgen sie derselben Trennung: ein Weg
+für Aufrufer, ein Weg für Implementierer, keine Vermischung.
+
+Der Rückblick-Test aus den Konventionen greift hier anders als im Code: ein
+CHANGELOG beschreibt naturgemäß den Unterschied zu vorher, das ist sein Zweck.
+Draußen bleibt die Vorgeschichte der Sache — wie es dazu kam, welche Anläufe es
+gab, dass ein Audit sie gefunden hat. Der Eintrag sagt, was jetzt gilt und was
+der Leser zu tun hat. Finding-IDs bleiben auch hier draußen.
+
 ## 5. Abschluss-Commit
 
 Davor bekommt der Plan seinen Endstand: die Zeile `Stand:` im Kopf nennt mit
@@ -122,6 +159,9 @@ benotet, hat immer bestanden.
 | --- | --- |
 | »Waren doch alles Bugfixes, also patch« | Zählt wird die Oberfläche, nicht die Absicht. Ein entfernter Export ist major, auch im Bugfix-Lauf. |
 | »Die Typänderung ist doch nur Kosmetik« | Ein fremder Build, der daran rot wird, sieht das anders. Verschärfte Typen sind breaking. |
+| »Das war eine große Umstellung, also breaking« | Groß ist nicht breaking. Ohne eine Zeile fremden Codes, die daran scheitert, ist es eine neue Funktion. |
+| »Der interne Umbau war die eigentliche Arbeit, der gehört ins CHANGELOG« | Nur wenn ihn jemand merkt — als Aufrufer oder als Implementierer. Sonst reicht die Commit-Historie. |
+| »Die Finding-IDs im CHANGELOG zeigen, worauf der Eintrag zurückgeht« | Sie zeigen es genau einer Person, die eine `audit.html` von heute hat. Für alle anderen ist es Rauschen. |
 | »Die Tests liefen vorhin schon« | Der volle Lauf gehört auf den Baum, den du übergibst. Ein grüner Lauf beweist nur den Baum, auf dem er lief. |
 | »Ein Tag wäre jetzt konsequent« | Der Lauf endet mit lokalen Commits. Veröffentlichen entscheidet der Nutzer. |
 | »Ich trage die behobenen Findings schnell in audit.html nach« | Der Folgelauf verifiziert am Code. Nachtragen ohne Prüfung ist eine Behauptung im Report. |

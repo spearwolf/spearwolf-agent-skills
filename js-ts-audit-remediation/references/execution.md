@@ -188,7 +188,9 @@ Der Prompt besteht aus diesen fünf Teilen, in dieser Reihenfolge:
 2. Der Pfad `./remediation-plan.md` und die Paketnummer, eingeführt als:
    »Lies zuerst den Abschnitt zu Paket N. Das sind deine Anforderungen, mit
    den exakten Werten, und sie sind gegen den aktuellen Stand des Codes
-   geschrieben. Die anderen Pakete gehören anderen Läufen.«
+   geschrieben. Die anderen Pakete gehören anderen Läufen. Dazu den Abschnitt
+   »Konventionen« im Kopf des Plans: er gilt für jede Zeile, die du schreibst,
+   Kommentare und Doku eingeschlossen.«
 3. Schnittstellen aus erledigten Paketen, soweit der Detailplan sie nicht
    ohnehin nennt: neue Signaturen, umbenannte Exporte, eingeführte Konstanten.
    Steht es im Plan, wiederholst du es hier nicht.
@@ -251,6 +253,12 @@ Er liefert zwei Urteile:
 - **Erfüllung**, je Finding-ID des Pakets: behoben oder nicht, mit Fundstelle.
 - **Qualität** der Änderung selbst, Befunde eingestuft als `kritisch`,
   `wichtig` oder `klein`.
+
+Zur Qualität gehört der Abschnitt »Konventionen« aus dem Plan-Kopf. Eine
+Finding-ID in einem Kommentar oder ein Satz, der den Vorzustand erzählt, ist
+ein Befund wie jeder andere: `klein` im Code, `wichtig` in Doku, die
+veröffentlicht wird — dort liest ihn jemand, der weder Audit noch Vorzustand
+kennt.
 
 Modellstufe nach dem Diff, nicht nach dem Paket: klein und mechanisch nimmt
 die mittlere Stufe, subtile Nebenläufigkeit oder Sicherheit die stärkste.
@@ -399,6 +407,8 @@ für einen, der seit einer unbekannten Zahl von Commits herumliegt.
 | »Den Plan aktualisiere ich am Ende in einem Rutsch« | Der Kontext kann vorher enden. Dann sind Stand und Hashes weg. |
 | »Den Verlauf schreibe ich, wenn das Paket durch ist« | Ist es durch, ersetzt die Ergebniszeile ihn ohnehin. Der Verlauf wird ausschließlich für den Fall geschrieben, dass es nicht durchkommt. |
 | »`[~]` sagt doch schon, dass das Paket läuft« | Es sagt nicht, wie weit. Zwischen »Detailplan steht« und »ein Implementierer hat den Arbeitsbaum voll« liegt der Unterschied zwischen weitermachen und den Nutzer fragen. |
+| »Die Finding-ID im Kommentar hilft beim Nachvollziehen« | Nach dem Lauf verweist sie auf eine Datei, die niemand mehr hat. Wer nachvollziehen will, hat `git log` und die Commit-Message. |
+| »Ein Satz zum Vorzustand macht die Änderung verständlich« | Verständlich für den, der den Vorzustand kennt. Alle anderen lesen die Erklärung von etwas, das sie nie gesehen haben. |
 | »Der Nutzer hat das eben entschieden, das weiß ich noch« | Der nächste Agent weiß es nicht und fragt es neu. Datiert in »Entscheidungen«, sofort. |
 | »Der Plan kann ruhig mit in den Paket-Commit« | Er trägt den Hash genau dieses Commits — der steht erst danach fest. Dazu läge der Auftrag des Reviewers in dem Diff, den er beurteilen soll. Der Plan geht einmal mit, im Abschluss-Commit. |
 | »Der Grobplan sagt schon genug, Zug 0 spare ich mir« | Der Grobplan sagt *was*, nicht *wie*. Ohne Abgleich arbeitet der Implementierer gegen einen Code-Stand von vor N Commits. |

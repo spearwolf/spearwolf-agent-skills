@@ -27,7 +27,7 @@ Jede Zeile Ausgabe heißt: fällig.
 | `install-drift.md` | `global-behavior/INSTALL.md` | unbekannt (vor Einführung dieser Datei) | — |
 | `audit-followup.md` | `js-ts-project-audit/` | unbekannt (vor Einführung dieser Datei) | **fällig** — am 2026-08-07 kamen Domain-Trennung und responsives Layout dazu, beides ungetestet |
 | `es-frequency.md` | Abschnitt `## ES` in `global-behavior/CLAUDE.md` | unbekannt (vor Einführung dieser Datei) | **fällig** — Regel und Test am 2026-07-26 neu geschrieben und am 2026-07-29 erneut umgebaut, beides ungetestet |
-| `remediation-plan.md` | `js-ts-audit-remediation/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-06 auf zweistufige Planung umgebaut, am 2026-08-11 um die zugweise Fortschreibung des Plans erweitert |
+| `remediation-plan.md` | `js-ts-audit-remediation/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-06 auf zweistufige Planung umgebaut, am 2026-08-11 um die zugweise Fortschreibung des Plans erweitert, am 2026-08-13 um die Konventionen für Code, Doku und CHANGELOG |
 | — | `testing-on-mac-safari/` | **Test existiert nicht** | kein Szenario-Test. Die Ad-hoc-Prüfung vom 2026-07-30 ist durch den seitherigen Ausbau überholt |
 
 Die drei `unbekannt`-Zeilen stammen aus der Zeit vor diesem Protokoll. Läufe
@@ -69,6 +69,19 @@ Läufe geändert. Praktisch heißt das: fällig, sobald es jemandem wichtig ist.
   ob die Ansage bei der Freigabe wirklich als Ansage kommt und nicht als
   vierte Rückfrage, und ob ein Widerspruch des Nutzers bis zum Abschluss
   durchhält, statt dort vom Standardweg überfahren zu werden.
+  Am 2026-08-13 kamen die Konventionen für Code, Doku und CHANGELOG dazu. Der
+  Prüfpunkt liegt nicht beim Orchestrator — der schreibt den Abschnitt ins
+  Template —, sondern beim Implementierer und beim Reviewer: Landet eine
+  Finding-ID im Kommentar, weil sie beim Schreiben so naheliegend ist wie eine
+  Ticketnummer? Erklärt ein Kommentar den Vorzustand, den nur der Diff kennt?
+  Fällt beides dem Reviewer auf, oder wertet er es als Fleiß? Ein Fixture dafür
+  braucht ein Finding, dessen Fix ohne Kontext seltsam aussieht — genau dort
+  will jeder Agent den Rückblick hinschreiben. Der CHANGELOG-Teil ist getrennt
+  zu prüfen und der teurere Fall: ein Lauf, dessen größte Arbeit ein interner
+  Umbau ohne Außenwirkung war, plus ein kleiner neuer Export. Markiert der
+  Abschluss den Umbau als breaking, weil er groß war, und schweigt über den
+  Export? Und trennt der Eintrag Aufrufer von Implementierern, oder rührt er
+  beide in einen Absatz?
 - `js-ts-project-audit` hat am 2026-07-26 das Übergabe-Angebot in Schritt 7
   bekommen. `audit-followup.md` prüft diesen Pfad bisher nicht.
   Am 2026-08-07 kam die Domain-Trennung dazu. Zu prüfen wäre dort vor allem,
