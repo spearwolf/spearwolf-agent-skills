@@ -27,7 +27,7 @@ Jede Zeile Ausgabe heißt: fällig.
 | `install-drift.md` | `global-behavior/INSTALL.md` | unbekannt (vor Einführung dieser Datei) | — |
 | `audit-followup.md` | `js-ts-project-audit/` | unbekannt (vor Einführung dieser Datei) | **fällig** — am 2026-08-07 kamen Domain-Trennung und responsives Layout dazu, am 2026-08-13 volle Desktop-Breite, Sektions-Faltung und Farbdisziplin, alles ungetestet |
 | `es-frequency.md` | Abschnitt `## ES` in `global-behavior/CLAUDE.md` | unbekannt (vor Einführung dieser Datei) | **fällig** — Regel und Test am 2026-07-26 neu geschrieben und am 2026-07-29 erneut umgebaut, beides ungetestet |
-| `remediation-plan.md` | `js-ts-audit-remediation/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-06 auf zweistufige Planung umgebaut, am 2026-08-11 um die zugweise Fortschreibung des Plans erweitert, am 2026-08-13 um die Konventionen für Code, Doku und CHANGELOG, um die Triage der Folgen und um das Nachführen der `audit.html` samt Design-Pass |
+| `remediation-plan.md` | `js-ts-audit-remediation/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-06 auf zweistufige Planung umgebaut, am 2026-08-11 um die zugweise Fortschreibung des Plans erweitert, am 2026-08-13 um die Konventionen für Code, Doku und CHANGELOG, um die Triage der Folgen und um das Nachführen der `audit.html`, am 2026-08-14 um den Wegfall des Design-Passes |
 | — | `testing-on-mac-safari/` | **Test existiert nicht** | kein Szenario-Test. Die Ad-hoc-Prüfung vom 2026-07-30 ist durch den seitherigen Ausbau überholt |
 
 Die drei `unbekannt`-Zeilen stammen aus der Zeit vor diesem Protokoll. Läufe
@@ -99,22 +99,17 @@ Läufe geändert. Praktisch heißt das: fällig, sobald es jemandem wichtig ist.
   eines abgebrochenen Laufs zu prüfen, in dem `Folge von:` bereits dreimal
   hängt.
   Ebenfalls am 2026-08-13 kam das Nachführen der `audit.html` dazu
-  (`references/audit-report-update.md`, Schritt 5 des Abschlusses) plus der
-  Design-Pass. Das ist der erste Punkt im Skill mit einer maschinell prüfbaren
-  Zusicherung, und die gehört in den Test: JSON-Insel vor und nach dem
-  Design-Pass parsen und vergleichen, Findings im DOM gegen Findings in der
-  Insel zählen, `scrollWidth <= innerWidth` bei 390 px. Ein Fixture braucht
-  eine `audit.html` mit bekanntem Backlog und einen Plan, in dem genau ein
-  Paket blockiert liegt — dann prüft ein Lauf drei Dinge auf einmal: Bleibt
-  das Finding des blockierten Pakets stehen, weil der Beleg fehlt? Wandern
-  die `klein`-Befunde und Nebenbefunde als neue Findings mit Fundstelle
-  hinein, statt unter den Tisch zu fallen? Und rechnet der Agent den Score mit
-  der Formel aus der Methodik-Sektion nach, statt eine plausible Zahl zu
-  setzen — der Punkt, an dem ein Lauf anfängt, sich selbst zu benoten. Der
-  Design-Pass selbst ist der teuerste Arm: er braucht einen Browser und einen
-  Agenten mit echtem Ermessensspielraum, und die interessante Frage ist nicht,
-  ob die Seite schöner wird, sondern ob er die Insel in Ruhe lässt, wenn er
-  die Tabelle zur Kartenliste umbaut.
+  (`references/audit-report-update.md`, Schritt 5 des Abschlusses). Ein
+  Fixture braucht eine `audit.html` mit bekanntem Backlog und einen Plan, in
+  dem genau ein Paket blockiert liegt — dann prüft ein Lauf drei Dinge auf
+  einmal: Bleibt das Finding des blockierten Pakets stehen, weil der Beleg
+  fehlt? Wandern die `klein`-Befunde und Nebenbefunde als neue Findings mit
+  Fundstelle hinein, statt unter den Tisch zu fallen? Und rechnet der Agent
+  den Score mit der Formel aus der Methodik-Sektion nach, statt eine plausible
+  Zahl zu setzen — der Punkt, an dem ein Lauf anfängt, sich selbst zu benoten.
+  Der Design-Pass, der hier ursprünglich hing, ist am 2026-08-14 gestrichen
+  worden; dafür gehört jetzt die Gegenprobe in den Test, dass der Lauf die
+  Gestaltung tatsächlich in Ruhe lässt und nur Datenwerte anfasst.
 - `js-ts-project-audit` hat am 2026-07-26 das Übergabe-Angebot in Schritt 7
   bekommen. `audit-followup.md` prüft diesen Pfad bisher nicht.
   Am 2026-08-07 kam die Domain-Trennung dazu. Zu prüfen wäre dort vor allem,

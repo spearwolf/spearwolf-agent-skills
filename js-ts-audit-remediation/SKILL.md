@@ -13,7 +13,7 @@ Aus den Findings eines Audits werden Pakete, die Subagenten der Reihe nach abarb
 2. Offene Entscheidungen gebündelt klären (4).
 3. Pakete schnüren, ordnen, Grobplan schreiben, Freigabe holen (5).
 4. Paket für Paket: unmittelbar davor detailliert planen, umsetzen, prüfen, committen (6).
-5. Semver bewerten, `./audit.html` nachführen und gestalten lassen, abschließen, Folgeaudit anbieten (7).
+5. Semver bewerten, `./audit.html` nachführen, abschließen, Folgeaudit anbieten (7).
 
 Geplant wird zweistufig. Schritt 5 legt fest, **was** in welcher Reihenfolge passiert — das ist, was der Nutzer freigibt. **Wie** ein Paket umgesetzt wird, entsteht erst unmittelbar vor seiner Umsetzung, gegen den Code, der dann tatsächlich dasteht.
 
@@ -193,7 +193,7 @@ Der **Paket-Planer** aus Schritt 6 läuft immer auf der stärksten Stufe, auch v
 
 Dieser Skill funktioniert allein und setzt keine Erweiterung voraus. Sind die Superpowers-Skills installiert, gilt folgende Aufteilung, damit sich nichts doppelt:
 
-- `js-ts-project-audit` liefert den Input und übernimmt am Ende den Folgelauf. Es fixt nie selbst, dieser Skill auditiert nie selbst. Dass hier am Ende trotzdem in die `./audit.html` geschrieben wird, ist kein Bruch dieser Linie: gebucht wird, was Reviewer-Urteil und Commit-Hash belegen, und der Score ist die Formel des Audits auf ein verändertes Backlog. Die Bewertung des Codes bleibt beim Folgelauf. Auch die Optik gehört dorthin: der Design-Pass in Schritt 7 folgt `references/report-rendering.md` des Audit-Skills, statt eigene Vorgaben zu erfinden — sonst zieht der nächste Audit-Lauf beim Neurendern alles wieder zurück.
+- `js-ts-project-audit` liefert den Input und übernimmt am Ende den Folgelauf. Es fixt nie selbst, dieser Skill auditiert nie selbst. Dass hier am Ende trotzdem in die `./audit.html` geschrieben wird, ist kein Bruch dieser Linie: gebucht wird, was Reviewer-Urteil und Commit-Hash belegen, und der Score ist die Formel des Audits auf ein verändertes Backlog. Die Bewertung des Codes bleibt beim Folgelauf. Auch die Optik gehört dorthin: Schritt 7 fasst die Gestaltung der Seite nicht an — der nächste Audit-Lauf rendert sie ohnehin nach seinen eigenen Vorgaben neu.
 - Fährt der Nutzer die Umsetzung ausdrücklich über `superpowers:subagent-driven-development`, gewinnt dessen Prozess für Zug 1 bis 5 von Schritt 6. Findings-Quelle, Paketschnitt, der Paket-Planer aus Zug 0, die Fortschreibung von `./remediation-plan.md`, Semver-Bewertung und Folgeaudit bleiben hier — ein fremder Umsetzungsprozess ersetzt das Briefing, nicht den Abgleich gegen den aktuellen Code und nicht das Dokument, an dem ein Dritter den Stand abliest.
 - Bleibt ein Verify-Lauf nach zwei Runden unerklärlich rot, ist das ein Debugging-Problem. Dann nicht weiterraten: `superpowers:systematic-debugging`, falls vorhanden, sonst Paket blockieren und berichten.
 - Wurde ausnahmsweise auf einem Feature-Branch gearbeitet, ist die Integration Sache des Nutzers. Dieser Skill pusht und merged nicht.

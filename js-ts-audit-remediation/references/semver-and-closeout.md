@@ -119,9 +119,9 @@ der Leser zu tun hat. Finding-IDs bleiben auch hier draußen.
 
 Liegt eine `./audit.html` im Projekt, wird sie jetzt auf den Stand nach dem
 Lauf gebracht: behobene Findings raus, was der Lauf hinterlassen hat rein,
-Zahlen nachziehen — und danach ein frischer Subagent, der die Seite gestaltet.
-Regeln, Belegpflicht und die Grenzen des Design-Passes stehen in
-`references/audit-report-update.md`; jetzt lesen.
+Zahlen nachziehen. Regeln und Belegpflicht stehen in
+`references/audit-report-update.md`; jetzt lesen. Die Gestaltung der Seite
+bleibt unangetastet — sie gehört dem Audit-Skill.
 
 Ohne `audit.html` entfällt der Schritt. Er läuft vor dem Commit, damit die
 Datei mit hineingeht, und vor dem Bericht, damit das Angebot eines Folgeaudits
@@ -181,8 +181,8 @@ Fünf bis acht Zeilen, nicht mehr:
   Grund, benannt als das, was sie sind: Schaden, den dieser Lauf angerichtet
   und nicht wieder eingeholt hat
 - der neue Stand der `./audit.html`, sofern es eine gibt: alter und neuer
-  Score, wie viele Findings geschlossen und wie viele neu eingetragen wurden,
-  und was der Design-Pass an der Seite geändert hat — eine Zeile für beides
+  Score, wie viele Findings geschlossen und wie viele neu eingetragen wurden —
+  eine Zeile
 - das Angebot eines Folgeaudits
 
 Das Folgeaudit läuft über `js-ts-project-audit`. Es prüft den Code frisch,
@@ -193,11 +193,9 @@ Score dort ist die Formel des Audits auf ein verändertes Backlog, kein neues
 Urteil über den Code. Wer sich selbst benotet, hat immer bestanden; wer nur
 zählt, was ein anderer geprüft hat, nicht.
 
-Der nächste Audit-Lauf rendert `./audit.html` neu, und zwar nach denselben
-Vorgaben, nach denen der Design-Pass gearbeitet hat — die Gestaltung hält also,
-soweit sie sich daran gehalten hat. Was ein Agent darüber hinaus erfunden hat,
-verschwindet dort. Das ist kein Mangel, sondern der Grund, warum die Vorgaben
-im Audit-Skill stehen und nicht hier.
+Der nächste Audit-Lauf rendert `./audit.html` neu, nach den Vorgaben des
+Audit-Skills. Was dieser Lauf an ihr geändert hat, ist deshalb Datenstand und
+nichts Gestalterisches — die Optik gehört dorthin, wo die Datei entsteht.
 
 ## Häufige Ausreden
 
@@ -211,4 +209,4 @@ im Audit-Skill stehen und nicht hier.
 | »Die Tests liefen vorhin schon« | Der volle Lauf gehört auf den Baum, den du übergibst. Ein grüner Lauf beweist nur den Baum, auf dem er lief. |
 | »Ein Tag wäre jetzt konsequent« | Der Lauf endet mit lokalen Commits. Veröffentlichen entscheidet der Nutzer. |
 | »Ich trage die behobenen Findings schnell in audit.html nach« | Nicht schnell und nicht nach Erinnerung: geschlossen wird, was Reviewer-Urteil mit Fundstelle *und* Commit-Hash hat. Der Rest bleibt stehen. |
-| »Die audit.html sieht schon okay aus, den Design-Pass spare ich mir« | Er ist der einzige Schritt im ganzen Lauf, der die Datei ansieht, die der Nutzer am Ende öffnet. Der Report ist das Produkt, nicht der Beleg. |
+| »Wenn ich schon in der Datei bin, bügle ich die Optik gleich mit auf« | Die Gestaltung entsteht beim Audit und wird beim nächsten Lauf neu gerendert. Hier wird gebucht, sonst nichts. |

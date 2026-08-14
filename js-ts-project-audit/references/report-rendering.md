@@ -10,10 +10,9 @@ Die Haltung über allem: **schön, minimal, lesbar, klar.** Im Zweifel weniger.
 Ein Report, den jemand am Montagmorgen aufmacht, gewinnt nichts durch eine
 zweite Akzentfarbe und verliert alles durch eine dritte Spalte.
 
-Diese Datei ist auch die Quelle für einen Lauf von `js-ts-audit-remediation`,
-der eine bestehende `./audit.html` am Ende nachführt und gestalten lässt. Was
-hier steht, gilt dort ebenso — sonst zieht der nächste Audit-Lauf die
-Gestaltung wieder zurück.
+Die Gestaltung entsteht ausschließlich hier. Ein Lauf von
+`js-ts-audit-remediation` führt eine bestehende `./audit.html` am Ende nur
+inhaltlich nach — Layout und Optik fasst er nicht an.
 
 ## Sektionsfolge
 

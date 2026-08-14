@@ -2,6 +2,11 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-08-14
+
+### Entfernt
+- **Der Design-Pass am Ende von `js-ts-audit-remediation` ist gestrichen** — ersatzlos. Ein frischer Subagent auf der stärksten Stufe hat die `./audit.html` zum Abschluss noch einmal gestaltet, samt Sicherungskopie, Insel-Vergleich per `node`-Einzeiler und Viewport-Prüfung; Ertrag war eine Optik, die der nächste Audit-Lauf beim Neurendern ohnehin ersetzt. Schritt 5 des Abschlusses führt die Datei jetzt nur noch inhaltlich nach: Findings schließen, Findings eintragen, Zahlen rechnen. Die Gestaltung entsteht ausschließlich in `js-ts-project-audit` — dessen `references/report-rendering.md` ist damit wieder die einzige Quelle für die Optik des Reports und nennt den Remediation-Lauf nur noch als das, was er ist: ein Schreiber von Datenwerten.
+
 ## 2026-08-13
 
 ### Hinzugefügt
