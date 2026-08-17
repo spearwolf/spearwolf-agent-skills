@@ -11,6 +11,10 @@ wird bei jedem weiteren Zug erneut gelesen. Deshalb sind die Prompts unten
 Pfadangaben statt Volltexte, deshalb schreiben die Subagenten ihre Ergebnisse
 in den Plan statt in ihre Antwort, und deshalb sind die Rückgabeverträge kurz.
 
+Sparsamkeit allein trägt einen Lauf über zwölf Pakete trotzdem nicht. Am Ende
+jedes Pakets steht deshalb der Checkpoint aus Zug 5: der Stand geht vollständig
+in den Plan, und der Kontext darf danach fallen.
+
 Diff-Dateien gehören nicht ins Projekt. Lege sie im Scratchpad-Verzeichnis
 des Hosts ab; gibt es keines, in `.git/remediation/` — das liegt außerhalb
 der Versionierung.
@@ -22,6 +26,12 @@ ob du dich erinnerst, sondern ob ein Agent ohne jede Vorgeschichte die Datei
 öffnet und daraus weiß: was ist erledigt, was liegt gerade im Arbeitsbaum, was
 ist als Nächstes dran. Deshalb wird fortgeschrieben, **bevor** der nächste Zug
 startet, nicht danach.
+
+Dieser Agent ohne Vorgeschichte bist regelmäßig du selbst. Nach einer
+Kompaktierung hast du eine Zusammenfassung deines Kontexts, nicht deinen
+Kontext — und ob sie den Stand trägt, entscheidest nicht du, sondern das
+Verfahren, das sie geschrieben hat. Der Plan ist die Fassung, die du selbst in
+der Hand hast.
 
 Zwei Orte tragen den Stand. Im Kopf die Zeile `Stand:` mit Datum — welches
 Paket, welcher Zug, wie der Arbeitsbaum aussieht. Unter dem laufenden Paket der
@@ -241,7 +251,10 @@ Der Prompt besteht aus diesen fünf Teilen, in dieser Reihenfolge:
    Kommentare und Doku eingeschlossen.«
 3. Schnittstellen aus erledigten Paketen, soweit der Detailplan sie nicht
    ohnehin nennt: neue Signaturen, umbenannte Exporte, eingeführte Konstanten.
-   Steht es im Plan, wiederholst du es hier nicht.
+   Quelle sind die `Schnittstellen:`-Zeilen unter den erledigten Paketen, nicht
+   deine Erinnerung an sie — nach einer Kompaktierung ist der Unterschied der
+   zwischen einer Signatur und einer plausiblen Signatur. Steht es im
+   Detailplan, wiederholst du es hier nicht.
 4. Das Verify-Kommando des Pakets.
 5. Der Rückgabevertrag aus Zug 2.
 
@@ -374,7 +387,7 @@ gilt.
 Zwei Runden ohne Erklärung rot heißt: das Problem ist ein anderes als
 vermutet. Dann nicht weiterraten, sondern blockieren und berichten.
 
-## Zug 5 — Verify, Commit, Plan fortschreiben
+## Zug 5 — Verify, Commit, Plan fortschreiben, Checkpoint
 
 Das Verify-Kommando des Pakets läufst **du** selbst und liest die Ausgabe.
 Der Report des Subagenten ist kein Beleg, auch wenn er dieselbe Zahl nennt.
@@ -398,7 +411,7 @@ setzen. Nicht sammeln und am Ende nachtragen — nach einer Kompaktierung ist de
 Plan das Einzige, was den Stand kennt.
 
 Jetzt wird verdichtet: der `Verlauf:` des Pakets weicht einer `Ergebnis:`-Zeile,
-Nebenbefunde und Folgen stehen darunter als zwei getrennte Listen.
+darunter stehen drei getrennte Listen — Nebenbefunde, Folgen, Schnittstellen.
 
 ```markdown
 ### [x] 3. WebSocket-Reconnect: Listener und Timer aufräumen
@@ -410,7 +423,17 @@ Nebenbefunde und Folgen stehen darunter als zwei getrennte Listen.
 - Nebenbefunde: `src/net/pool.ts:120` — dieselbe Timer-Falle, nicht im Audit
 - Folgen: `src/api/client.ts:33` — hält noch eine Referenz auf den entfernten
   `socket.retryDelay`
+- Schnittstellen: `createSocket(url, opts)` — zweiter Parameter neu und
+  pflichtig · `socket.retryDelay` entfernt, ersetzt durch `opts.backoff`
 ```
+
+`Schnittstellen:` steht nur unter Paketen, die an der Oberfläche etwas verändert
+haben, und nennt genau das, wogegen ein späterer Implementierer compiliert: neue
+oder geänderte Signaturen, umbenannte und entfernte Exporte, eingeführte
+Konstanten und Konfigschlüssel. Sie ist die Quelle für Punkt 3 des Briefings in
+Zug 1. Ohne sie lebt dieses Wissen ausschließlich in deinem Kontext, und Paket 7
+wird gegen eine Signatur gebaut, die du dir nach der Kompaktierung
+zusammenreimst.
 
 Der Verlauf hat seinen Zweck erfüllt, sobald der Commit steht; ab da erzählt der
 Hash den Rest. Was ihn überlebt, ist genau das, was ein späteres Paket braucht:
@@ -418,8 +441,8 @@ Ergebnis, Nebenbefunde, Folgen. Zwölf Pakete mit vollem Verlauf schieben die of
 Restliste so weit nach unten, dass sie niemand mehr zuerst liest — und die
 offene Restliste ist der Grund, warum diese Datei existiert.
 
-Beide Listen sind der Eingabestapel für Zug 0 des nächsten Pakets, aber mit
-verschiedenem Ausgang. Beim Nebenbefund entscheidet der Planer, *ob* er noch in
+Nebenbefunde und Folgen sind der Eingabestapel für Zug 0 des nächsten Pakets,
+aber mit verschiedenem Ausgang. Beim Nebenbefund entscheidet der Planer, *ob* er noch in
 diesen Lauf gehört. Bei einer Folge entscheidet er nur, in *welches* Paket —
 sie ist Arbeit dieses Laufs, und sie verlässt ihn nicht. Ein Eintrag, der beim
 Notieren schon eine Datei und eine Zeile hat, ist dort zehnmal mehr wert als
@@ -430,7 +453,69 @@ was auch ohne dieses Paket falsch gewesen wäre. Alles andere ist eine Folge.
 Im Zweifel Folge — die Fehleinordnung nach oben kostet einen Blick in
 `git show`, die nach unten schiebt eigenen Schaden ins nächste Audit.
 
+### Checkpoint
+
+Der Commit steht, der Plan ist fortgeschrieben: das ist die einzige Stelle im
+Lauf, an der kein Detailplan halb geschrieben und kein Arbeitsbaum halb gefüllt
+ist. Hier wird der Kontext entbehrlich gemacht, bevor er es von selbst wird.
+
+Die Prüffrage lautet nicht »habe ich die Felder ausgefüllt«, sondern: **was
+weiß ich über diesen Lauf, das nicht in `./remediation-plan.md` steht?** Alles,
+was ein späteres Paket braucht, wandert jetzt hinein. Der Rest darf vergessen
+werden.
+
+| Prüfen | Steht wo |
+| --- | --- |
+| Hash des Pakets eingetragen, Marke auf `[x]` | beim Paket |
+| `Stand:` nennt das nächste Paket und den Zustand des Arbeitsbaums | Kopf |
+| Verlauf durch die `Ergebnis:`-Zeile ersetzt | beim Paket |
+| Nebenbefunde und Folgen je mit Datei und Zeile | beim Paket |
+| Schnittstellen notiert, falls die Oberfläche sich bewegt hat | beim Paket |
+| Was der Nutzer während des Pakets entschieden hat, datiert | »Entscheidungen« |
+
+Bei einem blockierten Paket tritt der Stash-Name an die Stelle des Hashes, der
+Verlauf bleibt stehen; sonst gilt dieselbe Liste.
+
+Danach eine Zeile an den Nutzer, im Ton einer Statusmeldung und nicht als
+Frage: Paket N committet, `<hash>`, der Stand liegt vollständig im Plan,
+`/compact` ist ab hier gefahrlos. **Dann läuft Zug 0 des nächsten Pakets an,
+ohne auf eine Antwort zu warten.** Kompaktieren kann nur der Nutzer, und der
+Lauf hält dafür nicht an — er stellt den Moment nur her, an dem es nichts
+kostet.
+
+Der Checkpoint ist keine Ablage. Was nicht in eine der Zeilen oben passt,
+gehört auch nicht in den Plan: kein Protokoll deiner Überlegungen, keine
+Zusammenfassung dessen, was die Subagenten geschrieben haben, keine Notiz
+»für den Fall, dass«. Eine Datei, in die vorsichtshalber alles wandert, wird
+so schnell unlesbar wie ein Kontext, in dem alles bleibt.
+
 ## Wiederaufnahme
+
+Zwei Fälle, dieselbe Regel: eine neue Session, die einen Plan vorfindet, und
+dieselbe Session nach einer Kompaktierung.
+
+### Nach einer Kompaktierung
+
+Der Nutzer hat `/compact` getippt. Du bist derselbe Agent, aber was du über den
+Lauf zu wissen glaubst, ist jetzt eine Zusammenfassung: sie sagt, was beim
+Zusammenfassen wichtig schien, nicht was im Repository steht. Sie ist keine
+Quelle, sondern eine Erinnerung an eine.
+
+Also, bevor irgendein Zug startet: `./remediation-plan.md` ganz lesen und
+`git log --oneline` dagegen halten. Beides zusammen kostet zwei Aufrufe und ist
+danach wieder vollständig da.
+
+Die Versuchung liegt genau darin, dass die Zusammenfassung plausibel klingt.
+»Paket 4 committet, weiter mit Paket 5« reicht scheinbar zum Loslegen — und
+verschweigt, dass unter Paket 4 zwei Folgen stehen, die Zug 0 verteilen muss,
+und dass Paket 5 seit der Umsortierung gar nicht mehr das nächste ist.
+
+Steht dabei ein Paket auf `[~]`, hat die Kompaktierung nicht am Checkpoint
+zugeschlagen, sondern mitten im Paket — das automatische Kompaktieren fragt
+nicht, wo du gerade bist. Dann gilt zusätzlich alles, was unten für ein
+abgerissenes `[~]`-Paket steht, Rückfrage beim schmutzigen Baum eingeschlossen.
+
+### In einer neuen Session
 
 Existiert beim Start ein `./remediation-plan.md` mit offenen Paketen und passt
 sein Kopf zu Audit-Quelle und Branch, wird dort weitergearbeitet statt neu
@@ -461,9 +546,12 @@ ein Zug hat seine Zeile nicht geschrieben. Dasselbe gilt für ein `[~]`-Paket
 ganz ohne `Verlauf:`, etwa aus einem Lauf vor dieser Regel. In beiden Fällen
 entscheidet der Nutzer über den Arbeitsbaum, bevor irgendetwas läuft.
 
-Bei jeder Wiederaufnahme läuft Zug 0 für das nächste offene Paket, auch wenn
-es Paket 1 ist. Die Ausnahme im Zug 0 gilt für den frischen Grobplan, nicht
-für einen, der seit einer unbekannten Zahl von Commits herumliegt.
+### In beiden Fällen
+
+Zug 0 läuft für das nächste offene Paket, auch wenn es Paket 1 ist. Seine
+Ausnahme gilt einem Grobplan, der Minuten alt in deinem Kontext liegt — nicht
+einem, der seit einer unbekannten Zahl von Commits herumliegt, und nicht einem,
+den eine Kompaktierung soeben auf drei Zeilen eingedampft hat.
 
 ## Häufige Ausreden
 
@@ -484,6 +572,10 @@ für einen, der seit einer unbekannten Zahl von Commits herumliegt.
 | »Den Plan aktualisiere ich am Ende in einem Rutsch« | Der Kontext kann vorher enden. Dann sind Stand und Hashes weg. |
 | »Den Verlauf schreibe ich, wenn das Paket durch ist« | Ist es durch, ersetzt die Ergebniszeile ihn ohnehin. Der Verlauf wird ausschließlich für den Fall geschrieben, dass es nicht durchkommt. |
 | »`[~]` sagt doch schon, dass das Paket läuft« | Es sagt nicht, wie weit. Zwischen »Detailplan steht« und »ein Implementierer hat den Arbeitsbaum voll« liegt der Unterschied zwischen weitermachen und den Nutzer fragen. |
+| »Lieber nicht kompaktieren, dann geht nichts verloren« | Der Kontext endet so oder so, nur zu einem Zeitpunkt, den dann nicht du wählst. Am Checkpoint kostet das Vergessen nichts, mitten in Zug 3 kostet es das Paket. |
+| »Die Zusammenfassung nennt den Stand, den Plan lese ich nicht extra« | Sie nennt, was beim Zusammenfassen wichtig schien. Verteilte Folgen, umsortierte Pakete und der halbe Arbeitsbaum stehen selten darunter. Zwei Aufrufe, dann weißt du es wieder. |
+| »Die Signatur habe ich selbst beauftragt, die weiß ich noch« | Vor der Kompaktierung ja. Danach hast du eine plausible Signatur, und der Implementierer merkt den Unterschied erst im Typecheck. Sie gehört in die `Schnittstellen:`-Zeile, bevor sie gebraucht wird. |
+| »Der Nutzer hat auf die Compact-Zeile nicht geantwortet, ich warte« | Die Zeile ist eine Meldung, keine Frage. Kompaktieren kann nur er, entscheiden muss er nichts — Zug 0 des nächsten Pakets läuft an. |
 | »Die Finding-ID im Kommentar hilft beim Nachvollziehen« | Nach dem Lauf verweist sie auf eine Datei, die niemand mehr hat. Wer nachvollziehen will, hat `git log` und die Commit-Message. |
 | »Ein Satz zum Vorzustand macht die Änderung verständlich« | Verständlich für den, der den Vorzustand kennt. Alle anderen lesen die Erklärung von etwas, das sie nie gesehen haben. |
 | »Der Nutzer hat das eben entschieden, das weiß ich noch« | Der nächste Agent weiß es nicht und fragt es neu. Datiert in »Entscheidungen«, sofort. |

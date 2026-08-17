@@ -2,6 +2,14 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-08-17
+
+### Geändert
+- **`js-ts-audit-remediation` schneidet den Kontext jetzt bewusst, statt ihn auslaufen zu lassen.** Zug 5 endet nach dem Commit mit einem Checkpoint: eine Prüfliste geht die Frage durch, was der Orchestrator über den Lauf weiß, das nicht in `./remediation-plan.md` steht, und trägt es nach. Danach eine Zeile an den Nutzer, dass der Stand vollständig im Plan liegt und `/compact` ab hier gefahrlos ist — als Meldung, nicht als Frage. Der Lauf wartet nicht darauf, sondern startet Zug 0 des nächsten Pakets; kompaktieren kann ohnehin nur der Nutzer, der Lauf stellt bloß den Moment her, an dem es nichts kostet. Bei der Freigabe in Schritt 5 wird angesagt, dass diese Zeile kommt.
+- **Neue Liste `Schnittstellen:` unter der Ergebniszeile eines Pakets**, neben Nebenbefunden und Folgen: neue und geänderte Signaturen, umbenannte oder entfernte Exporte, eingeführte Konstanten. Punkt 3 des Briefings in Zug 1 verlangte diese Angaben schon immer, bezog sie aber aus dem Kontext des Orchestrators — nach einer Kompaktierung baut der Implementierer von Paket 7 damit gegen eine plausible Signatur statt gegen die wirkliche. Sie steht nur unter Paketen, die an der Oberfläche etwas verändert haben.
+- **Die Wiederaufnahme kennt zwei Fälle statt einem**: eine neue Session mit vorgefundenem Plan, und dieselbe Session nach einer Kompaktierung. Im zweiten Fall ist die Zusammenfassung keine Quelle, sondern eine Erinnerung an eine; Plan und `git log --oneline` werden gelesen, bevor ein Zug startet, auch wenn der Stand bekannt scheint. Steht dabei ein Paket auf `[~]`, hat das automatische Kompaktieren mitten im Paket zugeschlagen, und die Regeln für den abgerissenen Zug greifen zusätzlich.
+- Die Verify-Kommandos der Baseline stehen jetzt wörtlich im Kopf des Plans, nicht nur ihr Ausgang. Der volle Verify-Lauf im Abschluss nimmt sie von dort, statt sie aus `package.json` neu zusammenzusuchen und womöglich gegen etwas anderes zu prüfen als die Baseline.
+
 ## 2026-08-14
 
 ### Entfernt

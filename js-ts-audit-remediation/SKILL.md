@@ -12,7 +12,7 @@ Aus den Findings eines Audits werden Pakete, die Subagenten der Reihe nach abarb
 1. Findings laden (1), Baseline messen (2), Scope festlegen (3).
 2. Offene Entscheidungen gebündelt klären (4).
 3. Pakete schnüren, ordnen, Grobplan schreiben, Freigabe holen (5).
-4. Paket für Paket: unmittelbar davor detailliert planen, umsetzen, prüfen, committen (6).
+4. Paket für Paket: unmittelbar davor detailliert planen, umsetzen, prüfen, committen, Kontext schneiden (6).
 5. Semver bewerten, `./audit.html` nachführen, abschließen, Folgeaudit anbieten (7).
 
 Geplant wird zweistufig. Schritt 5 legt fest, **was** in welcher Reihenfolge passiert — das ist, was der Nutzer freigibt. **Wie** ein Paket umgesetzt wird, entsteht erst unmittelbar vor seiner Umsetzung, gegen den Code, der dann tatsächlich dasteht.
@@ -36,6 +36,7 @@ Diese Regeln stehen über jeder Abwägung im Einzelfall:
 - **Der Orchestrator schreibt keinen Projektcode.** Weder als schnelle Korrektur noch nachdem ein Subagent gescheitert ist. Eigene Fixes umgehen das Review und verbrauchen den Kontext, den die Koordination über viele Pakete braucht.
 - **Gefixt wird nur, was im Plan steht.** Kein Implementierer behebt etwas nebenbei; was ihm auffällt, meldet er. Ob so ein Nebenbefund in ein späteres Paket wandert oder ins nächste Audit geht, entscheidet der Paket-Planer aus Schritt 6 — indem er es in den Plan schreibt. Bei einer Folge dieses Laufs entscheidet er nur noch, in welches Paket sie gehört, nicht ob. Einen Fix ohne Zeile im Plan gibt es trotzdem nicht.
 - **Der Plan wird fortgeschrieben, bevor der nächste Schritt beginnt.** `./remediation-plan.md` ist das Übergabedokument des Laufs: ein Agent ohne jede Vorgeschichte muss ihm entnehmen können, was erledigt ist, was gerade im Arbeitsbaum liegt und was als Nächstes dran ist. Was nur du weißt, ist nach der nächsten Kompaktierung verloren. Wie das im Einzelnen aussieht, steht in `references/execution.md`.
+- **Jedes Paket endet mit einem Checkpoint.** Nach dem Commit geht der Stand vollständig in den Plan, und der Nutzer bekommt eine Zeile, dass `/compact` ab hier gefahrlos ist. Der Lauf wartet darauf nicht — er stellt den Moment her, an dem die Kompaktierung nichts kostet. Kompaktieren kann nur der Nutzer; ein Kontext, der ungeschnitten über zwölf Pakete läuft, endet mitten in einem Zug statt zwischen zweien.
 - **Der Planer schärft den Plan, er ersetzt ihn nicht.** Freigegeben sind Zielsetzung, Paketschnitt und Reihenfolge aus Schritt 5. Wer davon im Kern abweichen will — andere Architektur, eine Entscheidung des Nutzers verworfen, der halbe Restplan neu — hält an und fragt.
 
 ## Workflow
@@ -50,7 +51,7 @@ Quelle ist die JSON-Insel `<script id="audit-data" type="application/json">` in 
 
 ### 2. Baseline messen
 
-Verify-Kommandos aus `package.json#scripts` ermitteln: Lint, Typecheck, Test, Build. Jedes einmal laufen lassen und das Ergebnis festhalten.
+Verify-Kommandos aus `package.json#scripts` ermitteln: Lint, Typecheck, Test, Build. Jedes einmal laufen lassen und das Ergebnis festhalten. Die Kommandos kommen wörtlich in den Kopf des Plans, nicht nur ihr Ausgang: Schritt 7 fährt sie am Ende erneut, und wer sie dort aus `package.json` neu zusammensucht, prüft womöglich gegen etwas anderes als die Baseline.
 
 Das ist keine Formalie. Ohne Baseline hängt später jeder rote Lauf in der Luft: war das mein Paket oder war das schon vorher kaputt? Was jetzt schon fehlschlägt, wird im Plan namentlich notiert und blockiert später keinen Commit. Ist die Baseline auf breiter Front rot, ist ihre Reparatur das erste Paket.
 
@@ -105,7 +106,8 @@ Hier wird **nicht** ausformuliert, wie ein Paket umgesetzt wird. Ein Vorgehen, d
 # Remediation-Plan — <Projektname>
 
 Quelle: ./audit.html vom <Datum> · Branch: <name> · erstellt: <Datum>
-Baseline: lint ✓ · typecheck ✓ · test 3 Fehler (vorbestehend, siehe unten) · build ✓
+Baseline: `npm run lint` ✓ · `npm run typecheck` ✓ · `npm test` 3 Fehler
+(vorbestehend, siehe unten) · `npm run build` ✓
 Scope: 24 von 31 Findings (3 critical, 8 high, 13 medium) · ausgenommen: info, acknowledged
 Stand (<Datum>): Paket 1 noch nicht begonnen · Arbeitsbaum sauber
 
@@ -154,6 +156,8 @@ Der Absatz mit Einstieg und Statuslegende steht wörtlich so in der Datei und wi
 Ein Paket, dessen Ziel sich nicht in einem Satz sagen lässt, ist falsch geschnitten — nicht unterspezifiziert, sondern falsch geschnitten.
 
 **Freigabe.** Der Grobplan wird vorgelegt, und zwar ausdrücklich mit Branch und Commit-Modus: »<N> Pakete, <N> Commits direkt auf `<branch>`, ohne GPG-Signatur«. Dazu ein Satz, dass jedes Paket unmittelbar vor seiner Umsetzung gegen den dann aktuellen Code detailliert wird, und dass eine Umplanung, die Zielsetzung oder Architektur berührt, zurück zum Nutzer kommt. Ebenso ein Satz zu den Folgen: zieht ein Fix anderswo etwas nach sich, wird das in diesem Lauf mit behoben, notfalls in zusätzlichen Paketen — die Paketzahl ist damit eine Untergrenze, keine Zusage. Freigegeben werden Paketschnitt und Reihenfolge. Ohne diese Freigabe beginnt die Umsetzung nicht.
+
+Dazu ein Satz zum Kontext: nach jedem Paket-Commit meldet der Lauf, dass der Stand vollständig im Plan liegt und `/compact` gefahrlos ist. Der Nutzer soll wissen, dass diese Zeile kommt, dass sie keine Frage ist und dass er sie ignorieren kann — der Lauf läuft in jedem Fall weiter.
 
 Im selben Aufwasch der Verbleib des Plans, als Ansage statt als Frage: »am Ende nimmt ein Commit `./remediation-plan.md` mit ins Repo — sag Bescheid, wenn er stattdessen ungetrackt bleiben soll«. Ohne Widerspruch wird committet; widerspricht der Nutzer, steht das datiert in »Entscheidungen«, weil der Abschluss danach greift. Während des Laufs bleibt die Datei in jedem Fall ungetrackt: sie trägt die Hashes der Commits, in denen sie deshalb nicht liegen kann.
 

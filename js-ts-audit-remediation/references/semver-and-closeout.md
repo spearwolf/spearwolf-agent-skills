@@ -15,8 +15,9 @@ schließt nichts ab — er reicht weiter.
 ## 1. Voller Verify-Lauf
 
 Alle Kommandos aus der Baseline erneut ausführen, nicht nur die Verifies der
-einzelnen Pakete: Lint, Typecheck, Test, Build. Ausgabe lesen, gegen die
-Baseline halten.
+einzelnen Pakete: Lint, Typecheck, Test, Build. Sie stehen wörtlich im Kopf des
+Plans — von dort nehmen, nicht aus `package.json` neu zusammensuchen und nicht
+aus dem Gedächtnis. Ausgabe lesen, gegen die Baseline halten.
 
 Ist etwas rot, das vorher grün war, endet der Lauf hier. Das wird berichtet,
 nicht überschrieben. Vorbestehende Fehler bleiben vorbestehende Fehler.
