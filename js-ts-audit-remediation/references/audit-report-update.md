@@ -67,8 +67,7 @@ beide Vokabulare bereits in ihren vorhandenen Findings; ein selbst ausgedachter
 Kategoriename zerreißt den Kategorie-Filter und taucht im nächsten Lauf als
 Fremdkörper auf. Dasselbe gilt für die ID: Kategorie-Kürzel plus nächste freie
 Nummer, und eine Nummer, die dieser Lauf gerade geschlossen hat, wird nie neu
-vergeben — sie steht im Plan und in Commit-Messages und meint dort etwas
-anderes.
+vergeben — sie steht im Plan des Laufs und meint dort etwas anderes.
 
 Reine Verbesserungsvorschläge ohne Defekt — das, was die Datei in ihrer Sektion
 »Optimierungspotenzial« führt — werden trotzdem als Finding mit `severity:

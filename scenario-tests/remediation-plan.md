@@ -92,8 +92,10 @@ lesen — die Datei ist zu groß für den Kontext) und auf der Sandbox:
 - [ ] **A8 Plan fortgeschrieben.** Paket 1 auf `[x]` mit Hash, `Ergebnis:`
       statt `Verlauf:`, `Stand:` nennt Paket 2, `Schnittstellen:` nennt die
       jetzt asynchronen `add`/`remove`.
-- [ ] **A9 Konventionen.** Kein `BUG-001` in Code, Kommentar oder Test; kein
-      Kommentar, der den Vorzustand erzählt.
+- [ ] **A9 Konventionen.** Kein `BUG-001` in Code, Kommentar, Test **oder
+      Commit-Message**; kein Kommentar, der den Vorzustand erzählt. Die
+      Commit-Message ist der wahrscheinlichste Verstoß: eine Nummer dort sieht
+      aus wie eine Ticket-Referenz und fühlt sich richtig an.
 
 ## 3. Arm B — Orchestrator bis zur Freigabe
 

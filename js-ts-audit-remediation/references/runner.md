@@ -130,7 +130,7 @@ in `./remediation-plan.md`. Er ergänzt den Grobplan-Block, er ersetzt ihn nicht
   1. <Schritt mit exakten Namen, Signaturen, Werten>
   2. <…>
 - Verify: `npm run typecheck && npm test -- src/net`
-- Commit: `fix(net): clean up socket listeners and reconnect timers (LEAK-001, LEAK-003)`
+- Commit: `fix(net): clean up socket listeners and reconnect timers`
 - Verlauf:
   - 2026-08-06 Zug 0: Detailplan steht · LEAK-001 unverändert · LEAK-003 nach
     `reconnect.ts:41` gewandert (Paket 1 hat die Datei geteilt)
@@ -169,8 +169,7 @@ was davon ändert die Reihenfolge oder den Schnitt der noch offenen Pakete? Jede
 
 Beim Umsortieren und Umschneiden gilt eine Regel ohne Ausnahme: **Paketnummern
 werden nie neu vergeben.** Die Nummer ist eine ID, keine Position — sie steht
-in Commit-Messages, in bereits eingetragenen Hashes und in jedem Brief, der
-»Paket N« sagt. Die Reihenfolge ergibt sich aus der Stellung im Dokument.
+in bereits eingetragenen Hashes und in jedem Brief, der »Paket N« sagt. Die Reihenfolge ergibt sich aus der Stellung im Dokument.
 Ein geteiltes Paket 3 wird zu `3a` und `3b`, ein neu entstandenes hängt hinten
 an der höchsten vergebenen Nummer. Wer stattdessen durchnummeriert, macht
 jeden früheren Verweis im Plan zu einem Verweis auf etwas anderes.
@@ -302,7 +301,8 @@ Zur Qualität gehört der Abschnitt »Konventionen« aus dem Plan-Kopf. Eine
 Finding-ID in einem Kommentar oder ein Satz, der den Vorzustand erzählt, ist
 ein Befund wie jeder andere: `klein` im Code, `wichtig` in Doku, die
 veröffentlicht wird — dort liest ihn jemand, der weder Audit noch Vorzustand
-kennt.
+kennt. Die Commit-Message aus dem Detailplan prüfst du mit: auch sie bleibt im
+Repo, und eine Nummer darin verweist nach dem Lauf auf nichts.
 
 Ebenfalls Qualität: eine Stelle, die der Umbau hätte mitnehmen müssen und
 nicht mitgenommen hat — ein Aufrufer mit alter Signatur, ein Test gegen das
@@ -534,6 +534,7 @@ Das Modell des Reviewers wählst du nach dem Diff, nicht nach dem Paket.
 | »Den Plan aktualisiere ich am Ende in einem Rutsch« | Dein Kontext kann vorher enden. Dann sind Stand und Hashes weg, und niemand weiß, was im Arbeitsbaum liegt. |
 | »Den Verlauf schreibe ich, wenn das Paket durch ist« | Ist es durch, ersetzt die Ergebniszeile ihn ohnehin. Der Verlauf wird ausschließlich für den Fall geschrieben, dass es nicht durchkommt. |
 | »Den Nebenbefund merke ich mir für den Bericht« | Dein Kontext verfällt mit der Rückgabe. Was nicht in »Offene Befunde« steht, hat es nie gegeben. |
+| »Ins Repo darf die Nummer nicht, aber in die Commit-Message schon« | Die Commit-Message ist das Repo. Sie steht in `git log`, wenn das Audit längst überschrieben ist, und verweist dann auf nichts. Wer die Verbindung sucht, findet sie im Plan: dort steht der Hash neben dem Finding. |
 | »Die Signatur steht in meinem Detailplan, das reicht« | Der Detailplan gehört diesem Paket. Was ein späteres Paket compiliert, gehört in die `Schnittstellen:`-Zeile. |
 | »Der Grobplan sagt schon genug, Zug 0 spare ich mir« | Der Grobplan sagt *was*, nicht *wie*. Ohne Abgleich arbeitet der Implementierer gegen einen Code-Stand von vor N Commits. |
 | »Ich habe einen besseren Weg gefunden, den nehme ich« | Weicht er vom freigegebenen Weg ab, entscheidet der Nutzer. »Besser« ist genau die Begründung, für die die Rückfrage existiert. |

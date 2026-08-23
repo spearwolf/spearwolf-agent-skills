@@ -217,10 +217,13 @@ erledigt · `[!]` blockiert.
 
 ## Konventionen
 Gelten für jede Zeile, die in diesem Lauf entsteht — Code, Kommentare,
-Dokumentation, CHANGELOG, Migrations-Hinweise:
+Dokumentation, CHANGELOG, Migrations-Hinweise, Commit-Messages:
 - Inline-Kommentare sind erwünscht, wo sie erklären, *warum* etwas so ist.
-- Keine Finding-IDs. Sie gehören diesem einen Audit und sind danach tot. Sie
-  leben in diesem Plan und in Commit-Messages, sonst nirgends.
+- Keine Finding-IDs, auch nicht in der Commit-Message. Sie gehören diesem einen
+  Audit, sind danach tot, und die Commit-Message überdauert den Lauf. Sie leben
+  in diesem Plan und sonst nirgends; die Verbindung zwischen Finding und Commit
+  trägt das Feld `Hash:` unter dem Paket — in genau der Richtung, in der jemand
+  sie später sucht. Eine Commit-Message sagt in eigenen Worten, was sie ändert.
 - Kein Rückblick auf den Vorzustand: kein »früher«, kein »statt bisher«, kein
   »im Zuge des Audits umgestellt«. Der Test: Ergibt der Satz für jemanden Sinn,
   der den Vorzustand nie gesehen hat? Dann bleibt er. Braucht er ihn, gehört er
@@ -254,9 +257,11 @@ projektspezifisch ergänzt, nicht ersetzt: hat das Zielprojekt eigene Regeln fü
 Kommentare oder Doku, kommen sie darunter. Er steht im Plan und nicht im Brief,
 weil ihn dort jeder liest, der ohnehin den Plan öffnet — Runner, Implementierer,
 Reviewer —, und weil er sonst in jeden Dispatch-Prompt kopiert werden müsste.
-Die Trennlinie dahinter: Plan, Reports und Commit-Messages sind Artefakte dieses
-Laufs und dürfen seine Sprache sprechen; alles, was im Repo zurückbleibt, wird
-von jemandem gelesen, der weder das Audit noch diesen Lauf kennt.
+Die Trennlinie dahinter: Plan und Reports sind Artefakte dieses Laufs und
+verschwinden mit ihm. Alles, was im Repo zurückbleibt — Code, Doku, CHANGELOG
+und die Commit-Message —, wird von jemandem gelesen, der weder das Audit noch
+diesen Lauf kennt. Die Commit-Message steht auf der bleibenden Seite dieser
+Linie, auch wenn sie im Lauf entsteht.
 
 Das Feld **Hängt ab von** wird ernst genommen und nicht mit der bloßen
 Reihenfolge verwechselt. Es benennt nur echte Zwänge — Paket 4 braucht die
