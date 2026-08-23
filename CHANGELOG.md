@@ -2,6 +2,17 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-08-22
+
+### Hinzugefügt
+- **Neuer Skill `audit-github-sync`** — gleicht das Backlog einer `./audit.html` mit den Issues eines GitHub-Repos ab, in beide Richtungen und in einem Lauf. Hin: jedes Finding im Scope wird ein GitHub-Issue, englisch und ohne jeden Verweis auf das Audit, mit Labels für Severity, Domain, Kategorie, Aufwand und — abgeleitet aus dem Projektportrait — fachliche Komponente. Zurück: Zustand, Zuweisung und menschliche Kommentare landen im Report, und ein als »not planned« geschlossenes Issue verschiebt seinen Punkt nach `acknowledged`. Der Lauf schreibt keinen Projektcode, committet nichts und legt ohne Freigabe kein einziges Issue an.
+- **Die Zuordnung lebt in `./audit-sync.json`, nicht im Report.** Finding-IDs sind an einen Audit-Lauf gebunden und taugen als Schlüssel nicht; stattdessen ein Fingerprint aus Kategorie, Pfad und Titel, gespiegelt in einem unsichtbaren Marker im Issue-Body, damit die Zuordnung auch ohne die Datei rekonstruierbar bleibt. Zugeordnet wird über eine Kaskade aus vier Stufen, und die vierte entscheidet nichts: Mehrdeutigkeit geht als Rückfrage in den Plan, weil ein Duplikat auf GitHub Handarbeit für einen Menschen ist und ein falscher Match einen Befund verschluckt.
+- **Fünf Vorbedingungen, jede ein Stopp** — parsebare JSON-Insel, GitHub-Remote, Schreibrecht, aktivierte Issues und die Sichtbarkeit des Repos. Auf einem öffentlichen Repo werden Sicherheits-Findings nicht veröffentlicht: ein Befund, der ein ungeprüftes `JSON.parse` an einer benannten Zeile beschreibt, ist dort eine Anleitung. Sie gehen nur einzeln und ausdrücklich raus, auch wenn pauschal »alles« freigegeben wurde.
+- **Ein geschlossenes Issue entfernt kein Finding.** Eine Schließung auf GitHub ist eine Behauptung, dieser Lauf liest keinen Code, und der Report lebt von belegten Befunden. Gebucht wird der Zustand, das Finding behält sein Gewicht im Score, und der nächste Audit-Lauf prüft die Stelle — er findet den Vermerk vor und weiß, wo er hinsehen muss.
+
+### Geändert
+- **`js-ts-project-audit` trägt jetzt Fremdfelder mit.** Das Datenmodell kennt ein optionales `github`-Unterobjekt am Finding und am akzeptierten Punkt; der Folgelauf reicht es bei jedem Match unverändert weiter, ohne seinen Inhalt zu lesen, und der Report rendert den Issue-Link als Metaangabe in Backlog-Zeile, Karte und Anhang. Ohne diese drei kleinen Änderungen wäre jeder Link nach dem nächsten Audit-Lauf weg und der übernächste Abgleich hätte für jeden Befund ein zweites Issue angelegt.
+
 ## 2026-08-17
 
 ### Geändert

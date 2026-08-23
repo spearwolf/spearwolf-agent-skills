@@ -270,6 +270,26 @@ keine Diagramm-Library, kein Mermaid.
   Sekundär-Ton.
 - Bildunterschrift: „Verlauf der Health-Scores seit `<frühestes Datum>`".
 
+## GitHub-Issue-Links (nur wenn das Feld da ist)
+
+Trägt ein Finding das Unterobjekt `github`, zeigt der Report den Link. Das
+Feld stammt nicht aus diesem Lauf; es wird gerendert, nicht erzeugt, und ein
+fehlendes Feld ist der Normalfall und kein Mangel.
+
+- **Metazeile der Backlog-Zeile**, neben Location und Kategorie: `#142` als
+  Link auf `github.url`. Geschlossenes Issue: gedämpft, mit dem Zusatz
+  `closed`.
+- **Aufgeklappter Bereich**: `github.note`, falls gesetzt, als kurzer Absatz
+  unter der Empfehlung; `github.assignee`, falls gesetzt, als gedämpfte Zeile.
+- **Anhang**: bei akzeptierten Punkten mit `github` der Link hinter dem
+  `reason`.
+- **Karte unter 720 px**: dieselben Angaben in der Metazeile. Ein Renderer,
+  der den Link nur in der Tabelle zeigt, liefert auf dem Handy eine Seite
+  ohne Links aus.
+
+Keine eigene Spalte, kein Icon-Satz, keine zweite Akzentfarbe. Der Link ist
+eine Metaangabe unter anderen.
+
 ## Status-Badges im Backlog (nur im Folgelauf)
 
 Kleine Badges pro Zeile: `new` (Akzentfarbe), `unchanged` (neutral),

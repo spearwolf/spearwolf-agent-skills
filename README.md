@@ -20,6 +20,11 @@ chaotisch, gelegentlich gefährlich, und der Bibliothekar sagt zu allem nur
     Findings aus so einem Audit ab: Umsetzungsplan nach
     `./remediation-plan.md`, ein Subagent pro Paket, ein Commit pro Paket,
     am Ende die Semver-Bewertung.
+  - [`audit-github-sync`](./audit-github-sync/) — gleicht das Backlog aus
+    so einem Audit mit den Issues eines GitHub-Repos ab, in beide Richtungen:
+    Findings werden zu englischen, für sich stehenden Issues mit Labels, und
+    was auf GitHub passiert — geschlossen, abgelehnt, kommentiert — kommt in
+    den Report zurück.
   - [`testing-on-mac-safari`](./testing-on-mac-safari/) — Ein extrem nützlicher
     Skill, der beim Testen von Webanwendungen auf macOS/Safari und auch dem iOS-Simulator hilft.
     Er bedient sich dabei einem im lokalen Netzwerk befindlichen Mac mit `ssh` Zugang.

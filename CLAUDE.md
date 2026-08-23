@@ -96,6 +96,7 @@ Every install, update, or removal of a skill or of the global behavior — anyth
 | `js-ts-project-audit/` (SKILL.md or `references/`) | `scenario-tests/audit-followup.md` |
 | ES rule (`## ES` section in `global-behavior/CLAUDE.md`) | `scenario-tests/es-frequency.md` |
 | `js-ts-audit-remediation/` (SKILL.md or `references/`) | `scenario-tests/remediation-plan.md` — **not written yet**, so this artifact has never been tested at all |
+| `audit-github-sync/` (SKILL.md or `references/`) | none — **no test written**, so this artifact has never been tested at all |
 
 A skill with no mapped test row has never been tested. That is a legitimate state, not a defect to fix on your own initiative — but it belongs in `STATUS.md` and in the handback, same as a stale row.
 

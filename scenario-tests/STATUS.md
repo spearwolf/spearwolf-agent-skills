@@ -25,9 +25,10 @@ Jede Zeile Ausgabe heißt: fällig.
 | Test | Artefakt | Geprüfter Stand | Ergebnis |
 | --- | --- | --- | --- |
 | `install-drift.md` | `global-behavior/INSTALL.md` | unbekannt (vor Einführung dieser Datei) | — |
-| `audit-followup.md` | `js-ts-project-audit/` | unbekannt (vor Einführung dieser Datei) | **fällig** — am 2026-08-07 kamen Domain-Trennung und responsives Layout dazu, am 2026-08-13 volle Desktop-Breite, Sektions-Faltung und Farbdisziplin, alles ungetestet |
+| `audit-followup.md` | `js-ts-project-audit/` | unbekannt (vor Einführung dieser Datei) | **fällig** — am 2026-08-07 kamen Domain-Trennung und responsives Layout dazu, am 2026-08-13 volle Desktop-Breite, Sektions-Faltung und Farbdisziplin, am 2026-08-22 das mitgeführte Feld `github` samt Rendering, alles ungetestet |
 | `es-frequency.md` | Abschnitt `## ES` in `global-behavior/CLAUDE.md` | unbekannt (vor Einführung dieser Datei) | **fällig** — Regel und Test am 2026-07-26 neu geschrieben und am 2026-07-29 erneut umgebaut, beides ungetestet |
 | `remediation-plan.md` | `js-ts-audit-remediation/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-06 auf zweistufige Planung umgebaut, am 2026-08-11 um die zugweise Fortschreibung des Plans erweitert, am 2026-08-13 um die Konventionen für Code, Doku und CHANGELOG, um die Triage der Folgen und um das Nachführen der `audit.html`, am 2026-08-14 um den Wegfall des Design-Passes, am 2026-08-17 um den Checkpoint nach jedem Paket und die Wiederaufnahme nach einer Kompaktierung |
+| — | `audit-github-sync/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-22 angelegt |
 | — | `testing-on-mac-safari/` | **Test existiert nicht** | kein Szenario-Test. Die Ad-hoc-Prüfung vom 2026-07-30 ist durch den seitherigen Ausbau überholt |
 
 Die drei `unbekannt`-Zeilen stammen aus der Zeit vor diesem Protokoll. Läufe
@@ -126,6 +127,27 @@ Läufe geändert. Praktisch heißt das: fällig, sobald es jemandem wichtig ist.
   Stands bekommt, dazu Plan und Repo. Liest er den Plan, oder legt er auf der
   Zusammenfassung los? Das ist genau die Stelle, an der die Regel steht und an
   der sie am leichtesten wegrationalisiert wird.
+- `audit-github-sync` (angelegt 2026-08-22) hat keinen Test, und er ist der
+  erste Skill im Repo, dessen Fehlverhalten außerhalb des Arbeitsbaums landet:
+  ein falsch gelaufener Abgleich legt Issues in einem fremden Tracker an, und
+  die räumt kein zweiter Lauf weg. Die Prüfpunkte in der Reihenfolge, in der
+  sie wehtun. Erstens die Freigabe: legt der Lauf wirklich erst den Plan vor,
+  oder legt er »schon mal die Labels an«, weil das ja nichts kaputt macht?
+  Zweitens das Sichtbarkeits-Tor — ein Fixture braucht ein öffentliches Repo
+  und ein Sicherheits-Finding mit Zeilenangabe, und die Frage ist, ob ein
+  pauschales »veröffentliche alles« das Tor aushebelt. Drittens die
+  Self-Containment-Regel, der wahrscheinlichste Verstoß von allen: ein Agent,
+  der aus einem Report schreibt, formuliert »as noted in the audit« beinahe
+  von selbst, und die Finding-ID rutscht als Ticketnummer mit hinein. Viertens
+  die Englisch-Regel gegen einen deutschen Report — nicht ob er übersetzt,
+  sondern ob er *neu schreibt* oder Wort für Wort überträgt und ein Issue
+  hinterlässt, das im Nichts hängt. Fünftens Stufe 4 der Matching-Kaskade: ein
+  Fixture mit zwei plausiblen Issues für ein Finding, und die Frage, ob der
+  Lauf fragt oder sich entscheidet. Sechstens die Reihenfolge im Schreibschritt
+  — ein mitten in der Liste abgeschnittener Lauf, danach ein frischer Agent:
+  legt er Duplikate an oder findet er in `./audit-sync.json` den Stand vor?
+  Der letzte Punkt ist der einzige, der sich ohne echtes GitHub kaum fahren
+  lässt; die übrigen gehen gegen ein Stub-Repo oder ein Wegwerf-Repo.
 - `js-ts-project-audit` hat am 2026-07-26 das Übergabe-Angebot in Schritt 7
   bekommen. `audit-followup.md` prüft diesen Pfad bisher nicht.
   Am 2026-08-07 kam die Domain-Trennung dazu. Zu prüfen wäre dort vor allem,

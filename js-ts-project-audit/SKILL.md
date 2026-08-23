@@ -108,6 +108,7 @@ Ein Finding:
 | `effort` | `S` \| `M` \| `L` |
 | `status` | nur im Folgelauf: `new` \| `unchanged` \| `improved` \| `carried-over` |
 | `previousSeverity` | nur bei `improved`: Severity aus dem Vorlauf |
+| `github` | optional, nur wenn das Projekt seine Findings mit GitHub abgleicht: Zuordnung zu einem Issue. Dieser Skill erzeugt das Feld nie selbst, trägt es im Folgelauf aber unverändert mit und rendert seinen Link |
 
 Dazu ein `summary`-Objekt: Projektname, Stack, Findings pro Severity, Findings pro Kategorie, Health-Score, Datum, `theme` (Schritt 6a), `scoreHistory` (chronologisch `[{date, score}, …]`, aktueller Lauf immer als letzter Eintrag). Im Folgelauf zusätzlich Datum des Vorgängers, `resolvedCount`, Anzahl verbesserter Findings, Score-Delta — und bei einem großen Sprung dessen Einordnung (`deltaCause`, `deltaExplanation`; Regeln in `references/followup-audit.md`).
 

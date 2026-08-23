@@ -43,6 +43,18 @@ stehen zu lassen ist billiger als ein falsches „ist dasselbe".
 | Nicht aufgetaucht, aber im Code noch belegbar | Kandidat für `status: "carried-over"`, erst nach dem Re-Check unten |
 | Kein Match im alten Audit | `status: "new"` |
 
+### Mitgeführte Fremdfelder
+
+Ein Finding kann Felder tragen, die nicht aus einem Audit-Lauf stammen. Das
+Unterobjekt `github` etwa wird vom Skill `audit-github-sync` gesetzt und hält
+die Zuordnung zu einem GitHub-Issue. Bei jedem Match — `unchanged`,
+`improved` wie `carried-over` — wandert es unverändert an das neue Finding.
+Sein Inhalt wird nicht gelesen, nicht bewertet und nicht ergänzt.
+
+Wer es fallen lässt, kappt die Verbindung zwischen Report und Issue-Tracker,
+und der nächste Abgleich legt ein zweites Issue für denselben Befund an.
+Entfällt ein Finding (`resolvedCount`), entfällt das Feld mit ihm.
+
 ### Re-Check vor jedem carry-over (nicht optional)
 
 Ein Finding, das der neue Lauf weggelassen hat, ist kein „übersehenes"
@@ -116,7 +128,9 @@ acknowledged: [{id, title, category, location, reason, acknowledgedDate}, …]
 ```
 
 `reason` = warum akzeptabel bzw. wo dokumentiert. `acknowledgedDate` = Datum
-der Akzeptanz.
+der Akzeptanz. Ein Eintrag kann zusätzlich ein `github`-Unterobjekt tragen —
+dann gilt für ihn dieselbe Regel wie für Findings: unverändert mitführen,
+Inhalt nicht anfassen.
 
 ### Aufnahme, Unterdrückung, Widerruf
 
