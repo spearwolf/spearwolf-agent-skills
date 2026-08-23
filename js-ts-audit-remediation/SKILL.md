@@ -351,7 +351,13 @@ mehr als die gesparte Zeit.
 > Arbeitsverzeichnis für Diffs und Logs: `<pfad>`
 > Du delegierst Implementierung und Review an eigene Subagenten und schreibst
 > selbst keinen Projektcode. Halte dich an das Rückgabeformat; alles andere
-> gehört in den Plan.
+> gehört in den Plan. Deine Rückgabe ist der einzige Kanal zwischen uns — ich
+> frage nicht nach, und du fragst nicht nach.
+
+Zwischen Dispatch und Rückgabe passiert nichts. Du fragst den Runner nicht nach
+seinem Stand — ein Paket mit Implementierer und Reviewer dauert, und das ist
+der Normalfall, kein Anlass. Eine Nachfrage eröffnet einen zweiten Kanal neben
+der Rückgabe, und danach warten beide Seiten in dem, in dem nichts ankommt.
 
 Modell: **stärkste Stufe**, auch vor einem Dreizeiler-Paket. Der Runner
 entscheidet über Schnitt und Reihenfolge des Restplans und darüber, ob eine

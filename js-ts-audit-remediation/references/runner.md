@@ -272,6 +272,11 @@ Dazu der Arbeitsauftrag, der in jedem Brief gleich lautet:
 - Du committest nicht. Die Änderungen bleiben im Arbeitsbaum.
 - Weichst du von der Empfehlung des Audits ab, schreibst du den Grund in den
   Report.
+- Dein Rückgabetext **ist** der Report. Einen Nachrichtenkanal zu mir gibt es
+  nicht, und eine Adresse, an die du ihn stattdessen schicken könntest, auch
+  nicht — wer eine sucht, verliert seinen Zug an die Suche. Fehlt dir etwas,
+  gibst du mit `KONTEXT_FEHLT` zurück, statt zu fragen und auf Antwort zu
+  warten.
 
 Das Modell wird explizit gesetzt, nach der Tabelle unten. Immer nur ein
 Implementierer gleichzeitig.
@@ -313,7 +318,8 @@ git diff -U10 -- . ':(exclude)remediation-plan.md' > "$ARBEITSDIR/paket-N.diff"
 
 Der Reviewer-Prompt besteht aus: Pfad zur Diff-Datei, Pfad zum Plan mit
 Paketnummer, das Verify-Ergebnis des Implementierers, der Rückgabevertrag.
-Mehr nicht.
+Mehr nicht. Der Satz zum Kanal aus Zug 1 steht auch hier — er gilt für jeden
+Brief, den du schreibst.
 
 Er liefert zwei Urteile:
 
@@ -545,6 +551,7 @@ Das Modell des Reviewers wählst du nach dem Diff, nicht nach dem Paket.
 | »Ich soll Aufträge nicht weiterreichen, also mache ich es selbst« | Diese Regel gilt für dich nicht. Delegieren ist dein Auftrag; selbst schreiben verbraucht genau den Kontext, für dessen Einsparung du existierst. |
 | »Das ist ein Einzeiler, das mache ich schnell selbst« | Eigene Fixes umgehen das Review. Der Subagent macht es. |
 | »Der Implementierer sagt, die Tests laufen« | Der Report ist eine Behauptung. Der Beleg ist dein eigener Verify-Lauf. |
+| »Der Subagent meldet sich nicht, ich frage mal nach« | Er antwortet mit seiner Rückgabe und mit nichts sonst. Eine Nachfrage eröffnet einen zweiten Kanal, und danach wartest du in dem, in dem nichts ankommt. Ein Paket, das lange braucht, braucht lange. |
 | »Kleines Paket, das Review kann entfallen« | Jedes Paket wird reviewt. Der Aufwand skaliert über die Modellstufe des Reviewers, nicht über das Weglassen. |
 | »Der Fix ist offensichtlich richtig, der Test kann nach« | Ein Test nach dem Fix läuft sofort grün und beweist nichts. Rot zuerst. |
 | »Noch eine Runde, dann konvergiert es« | Nach Runde 2 konvergiert es nicht mehr, es ist strukturell. Blockieren und berichten. |
