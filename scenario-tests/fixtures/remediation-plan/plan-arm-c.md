@@ -4,6 +4,7 @@ Quelle: ./audit.html vom 2026-08-20 · Branch: main · erstellt: 2026-08-23
 Baseline: `npm test` ✓
 Arbeitsverzeichnis: <ARBEITSDIR> (Diffs und Verify-Logs, außerhalb der Versionierung)
 Scope: 2 von 2 Findings (2 high) · ausgenommen: acknowledged
+Scope-Regel: alles ab medium aufwärts, jede Kategorie — gilt auch für Befunde, die erst im Lauf auffallen
 Stand (2026-08-23): alle Pakete committet · Arbeitsbaum sauber
 
 Diese Datei führt einen Lauf des Skills `js-ts-audit-remediation` und hält
@@ -33,14 +34,21 @@ Dokumentation, CHANGELOG, Migrations-Hinweise, Commit-Messages:
 
 ## Offene Befunde
 Nebenbefunde aus den Paketen: was auch ohne diesen Lauf falsch war. Jeder
-Eintrag wird beschlossen, bevor der Lauf endet — Paket oder begründete
-Rückgabe ins Audit. Ein leerer Abschnitt ist Abschlussbedingung, kein Zufall.
-- [ ] `src/cart.js:22` — `applyCoupon(percent)` zieht den Prozentwert als
+Eintrag wird beschlossen, bevor der Lauf endet — Paket oder Rückgabe ins Audit.
+Ein leerer Abschnitt ist Abschlussbedingung, kein Zufall. Das Urteil am Ende
+der Zeile misst den Eintrag an der Scope-Regel oben: `→ Scope`, `→ Audit`,
+`→ Rückfrage`.
+- [ ] `src/cart.js:22` (high) — `applyCoupon(percent)` zieht den Prozentwert als
   absoluten Centbetrag vom Preis ab; der Kommentar darüber sagt ausdrücklich
-  0–100. Nicht im Audit. (aus Paket 1)
-- [ ] `src/storage.js:9` — `loadCart` reicht ungeprüftes `JSON.parse` über den
-  Dateiinhalt durch; eine beschädigte Datei wirft statt zu heilen. Nicht im
-  Audit. (aus Paket 2)
+  0–100. Nicht im Audit. (aus Paket 1) → Scope
+- [ ] `src/storage.js:4` (low) — das Pfadmuster `.cart-${key}.json` steht in
+  `saveCart` und in `loadCart` doppelt; eine gemeinsame Stelle gibt es nicht.
+  Nicht im Audit. (aus Paket 2) → Audit
+- [ ] `src/storage.js:9` (medium) — `loadCart` reicht ungeprüftes `JSON.parse`
+  über den Dateiinhalt durch; eine beschädigte Datei wirft. Heilen statt Werfen
+  kehrt die Fehlerstrategie des Moduls um — `saveCart` lässt Schreibfehler
+  ebenfalls durchschlagen, und Paket 1 hat die Aufrufer gerade darauf
+  ausgerichtet. Nicht im Audit. (aus Paket 2) → Rückfrage
 
 ## Pakete
 

@@ -52,6 +52,13 @@ Fehlt der Abschnitt ganz, stammt der Plan aus einem Lauf vor dieser Regel. Dann
 sind die Nebenbefunde noch einzeln unter den Paketen verstreut: einmal
 einsammeln, in den Abschnitt schreiben, und ab da gilt die Queue.
 
+Dasselbe gilt für die Zeile `Scope-Regel:` im Kopf — der Satz, an dem jeder
+Nebenbefund gemessen wird. Fehlt sie, wird sie nicht aus der `Scope:`-Zeile
+erraten: dem Nutzer wird der Scope vorgelegt, und er sagt in einem Satz, was
+mit Befunden geschieht, die im Audit nicht stehen. Eine Auswahl von Findings
+lässt sich nicht rückwärts in eine Regel übersetzen, und was dabei danebengeht,
+merkt niemand, bis der Lauf zu viel oder zu wenig behoben hat.
+
 ## Baseline
 
 Der Kopf nennt die Verify-Kommandos wörtlich. Sie werden nicht neu aus

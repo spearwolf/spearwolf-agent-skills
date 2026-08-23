@@ -98,7 +98,7 @@ Jeder Eintrag bekommt eine von drei Einordnungen, jede mit Fundstelle:
 | --- | --- | --- |
 | **Symptom** | Dieselbe Ursache, andere Stelle. Prüffrage: Wäre der Eintrag nie entstanden, wenn das verursachende Paket seine Ursache zu Ende behoben hätte? | Kein eigenes Paket. Steht das Paket noch offen, wandert die Stelle in seinen Detailplan. Ist es committet, wird **ein** Nachtragspaket geschnitten, das die Ursache zu Ende bringt und alle bekannten Fundstellen aufzählt. |
 | **Echte Folge** | Eigene Ursache, durch die Änderung neu entstanden — der Umbau auf `async` hat eine Race geöffnet, die es vorher nicht gab. | Eigenes Paket, im Scope, mit `Folge von:`. Einsortiert nach den Phasen des Grobplans, nicht automatisch ans Ende. |
-| **Vorbestehend** | Der Sachverhalt gab es schon vor dem ersten Commit dieses Laufs. | Nebenbefund. In dein Paket bei gleicher Ursache, sonst in »Offene Befunde«. |
+| **Vorbestehend** | Der Sachverhalt gab es schon vor dem ersten Commit dieses Laufs. | Nebenbefund. In dein Paket bei gleicher Ursache, sonst in »Offene Befunde« — dort mit dem Urteil an der Scope-Regel (siehe unten). |
 
 Die dritte Zeile wird nachgesehen, nicht vermutet — `git show <basis>:<pfad>`
 mit dem Stand vor dem ersten Paket-Commit. »Sah schon immer so aus« ist kein
@@ -113,6 +113,28 @@ Die Unterscheidung Symptom/echte Folge trägt die Terminierung des ganzen Laufs.
 Drei Stellen, die aus derselben halb behobenen Ursache brechen, sind ein Paket
 — machst du drei daraus, behebst du dieselbe Ursache dreimal halb und erzeugst
 beim nächsten Durchgang die nächsten drei Stellen.
+
+**Das Urteil am Nebenbefund.** Im Kopf des Plans steht eine Zeile
+`Scope-Regel:` — der Auftrag des Nutzers in einem Satz, formuliert so, dass er
+auf ein Finding passt, das im Audit nicht steht: »ab medium aufwärts«, »alles
+aus BUG und SEC«, »nur was unter `src/net/` liegt«. Jeder Nebenbefund, den du
+in »Offene Befunde« schreibst, bekommt sein Urteil an dieser Regel ans
+Zeilenende:
+
+| Urteil | Wann |
+| --- | --- |
+| `→ Scope` | Die Regel greift. Der Befund wird in diesem Lauf behoben — in der Drain-Runde des Abschlusses, oder früher, wenn ein noch offenes Paket seine Ursache teilt. |
+| `→ Audit` | Die Regel greift nicht. Der Befund geht als neues, offenes Finding in die `./audit.html`, mit Fundstelle und Severity. Das ist kein Wegwerfen, sondern der reguläre zweite Ausgang. |
+| `→ Rückfrage` | Die Regel greift, aber der Fix kippt eine Architekturentscheidung, die das Projekt anderswo trägt, oder er sprengt den Umfang eines Pakets. Ein Satz dazu, wogegen er läuft. |
+
+Zielt die Regel auf die Severity, schätzt du die Severity und schreibst sie dazu;
+ohne sie ist das Urteil nicht nachvollziehbar und im Audit später nicht
+einsortierbar. Passt die Regel nicht eindeutig, ist das `→ Rückfrage` und keine
+stille Auslegung in die eine oder andere Richtung.
+
+Das Urteil sagt, *wohin* der Befund gehört, nicht *wann* er drankommt. `→ Scope`
+ist keine Erlaubnis, ihn nebenbei mitzunehmen — er läuft durch ein Paket wie
+alles andere.
 
 **Drittens den Detailplan schreiben**, direkt in den Abschnitt zu deinem Paket
 in `./remediation-plan.md`. Er ergänzt den Grobplan-Block, er ersetzt ihn nicht:
@@ -154,7 +176,9 @@ was davon ändert die Reihenfolge oder den Schnitt der noch offenen Pakete? Jede
 - Ein Finding als gegenstandslos streichen — mit Fundstelle und dem, was dort
   jetzt tatsächlich steht. Eine Vermutung reicht nicht.
 - Einen Nebenbefund in dein oder ein späteres Paket aufnehmen, wenn er
-  dieselbe Ursache hat oder ein späteres Paket sonst blockiert.
+  dieselbe Ursache hat oder ein späteres Paket sonst blockiert. Dass die
+  Scope-Regel ihn deckt, ist dafür kein Grund — sie beantwortet die Frage
+  »gehört er in diesen Lauf«, nicht »gehört er in dein Paket«.
 - Eine Folge einordnen und verteilen: als Symptom dem Paket zuschlagen, das
   ihre Ursache behandelt, oder für eine echte Folge ein neues Paket schneiden
   und einsortieren. Das ist keine Scope-Verschiebung, sondern deren Kehrseite —
@@ -422,7 +446,8 @@ Kontext verfällt, sobald du zurückgibst.
 
 `Nebenbefunde:` bleibt eine Zeile unter dem Paket, aber ihre Einträge werden
 **zusätzlich** in den Abschnitt »Offene Befunde« im Kopf des Plans geschrieben,
-jeder mit `[ ]`, Datei, Zeile, einem Satz und dem Paket, aus dem er stammt.
+jeder mit `[ ]`, Datei, Zeile, einem Satz, dem Paket, aus dem er stammt, und
+dem Urteil an der Scope-Regel aus Zug 0.
 Zwölf Pakete mit je einer eigenen Nebenbefund-Zeile sind zwölf Stellen, an
 denen jemand nachsehen müsste; ein Abschnitt ist eine. Diese Liste muss beim
 Abschluss auf null gehen, und deshalb steht sie dort, wo man sie ohne Suchen
@@ -463,7 +488,7 @@ Findings: LEAK-001 behoben · LEAK-003 behoben
 Verify: exit 0 · <pfad zum log>
 Runden: 2
 Plan: Paket 9 neu (Folge von 3) · Reihenfolge 5/6 getauscht
-Queue: +1 offener Befund
+Queue: +2 offene Befunde (1 → Scope · 1 → Audit)
 Für dich: —
 ```
 
@@ -486,7 +511,7 @@ braucht, wandert jetzt hinein. Der Rest verfällt mit dir, und zwar endgültig.
 | `Stand:` nennt das nächste Paket und den Zustand des Arbeitsbaums | Kopf |
 | Verlauf durch die `Ergebnis:`-Zeile ersetzt | beim Paket |
 | Folgen je mit Datei und Zeile, verteilt oder als Paket geschnitten | beim Paket |
-| Nebenbefunde je mit Datei und Zeile | »Offene Befunde« |
+| Nebenbefunde je mit Datei, Zeile und Urteil an der Scope-Regel | »Offene Befunde« |
 | Schnittstellen notiert, falls die Oberfläche sich bewegt hat | beim Paket |
 | Was der Nutzer während des Pakets entschieden hat, datiert | »Entscheidungen« |
 
@@ -525,6 +550,8 @@ Das Modell des Reviewers wählst du nach dem Diff, nicht nach dem Paket.
 | »Noch eine Runde, dann konvergiert es« | Nach Runde 2 konvergiert es nicht mehr, es ist strukturell. Blockieren und berichten. |
 | »Der Befund ist offensichtlich falsch, ich lasse ihn weg« | Dann steht die Begründung im Plan. Ein stilles Verschwinden gibt es nicht. |
 | »Das ist mir nicht aufgefallen« | In einer Datei, die du geändert hast, ist das keine Auskunft über deine Aufmerksamkeit, sondern darüber, dass du sie nicht gelesen hast. Der Nebenbefund vier Zeilen unter deinem Fix ist der billigste, den dieser Lauf je bekommt. |
+| »Der Nebenbefund fällt unter die Scope-Regel, also nehme ich ihn gleich mit« | Die Regel entscheidet, ob er in diesen Lauf gehört, nicht ob er in dein Paket gehört. Ohne gemeinsame Ursache bekommt er ein eigenes Paket, und das schneidet der Abschluss. |
+| »Die Regel passt nicht so recht, ich schiebe ihn ins Audit« | Genau dafür gibt es `→ Rückfrage`. Ein Befund, den du im Zweifel hinausbuchst, ist der einzige der drei Ausgänge, den niemand mehr nachprüft. |
 | »Das andere Problem fixe ich gleich mit« | War es auch ohne dich falsch, ist es ein Nebenbefund mit Datei und Zeile und geht in die Queue. Hat deine Änderung es erzeugt, ist es kein anderes Problem, sondern deins. |
 | »Das hat mein Fix ausgelöst, aber es ist ein eigenes Problem — ab ins nächste Audit« | Das nächste Audit sieht einen Defekt ohne Vorgeschichte und hält ihn für vorbestehend. Was dieser Lauf verursacht, schließt dieser Lauf. |
 | »Drei Stellen brechen, also drei Pakete« | Erst die Ursachen zählen, dann die Pakete. Drei Symptome einer Ursache sind ein Paket — drei daraus zu machen heißt, dieselbe Ursache dreimal halb zu beheben und beim nächsten Durchgang die nächsten drei Stellen zu erzeugen. |

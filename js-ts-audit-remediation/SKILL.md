@@ -52,9 +52,10 @@ Diese Regeln stehen über jeder Abwägung im Einzelfall:
   als schnelle Korrektur noch nachdem ein Runner gescheitert ist. Du hast
   genau einen Subagenten je Paket, und das ist der Runner.
 - **Gefixt wird nur, was im Plan steht.** Kein Implementierer behebt etwas
-  nebenbei; was ihm auffällt, meldet er. Wohin ein Nebenbefund geht, entscheidet
-  der Runner oder der Abschluss — aber einen Fix ohne Zeile im Plan gibt es
-  nicht.
+  nebenbei; was ihm auffällt, meldet er. Ob ein Nebenbefund in diesen Lauf
+  gehört, entscheidet die Scope-Regel aus Schritt 3, nicht das Gefühl des
+  Runners — aber einen Fix ohne Zeile im Plan gibt es in keinem der beiden
+  Fälle.
 - **Der Lauf ist nicht fertig, solange die Befund-Queue Einträge hat.** Offene
   Pakete und offene Befunde sind dieselbe Bedingung. Was während des Laufs
   auffiel, wird beschlossen, nicht vergessen.
@@ -115,9 +116,24 @@ ist ein Stopp mit Rückfrage: stashen, committen oder abbrechen. Fremde
 ### 3. Scope festlegen
 
 Vorschlag: alle Findings außer `info`. Anzahl je Severity nennen, bestätigen
-lassen. Der Nutzer kann eingrenzen, auf Severity-Stufen oder auf einzelne IDs.
-Was draußen bleibt, steht im Plan, damit später niemand rätselt, warum
-`PERF-007` nie auftauchte.
+lassen. Der Nutzer kann eingrenzen, auf Severity-Stufen, Kategorien, einzelne
+IDs oder einen Verzeichnisbaum. Was draußen bleibt, steht im Plan, damit später
+niemand rätselt, warum `PERF-007` nie auftauchte.
+
+Festgehalten wird nicht die Auswahl, sondern **die Regel, die sie erzeugt hat**.
+»Alles ab medium« und »diese 24 IDs« treffen heute dieselben Findings und
+morgen nicht mehr: sobald im Lauf ein Befund auffällt, den das Audit nicht
+kennt, entscheidet über ihn die Regel und nicht die Liste. Sie kommt als Satz
+in den Plan-Kopf (`Scope-Regel:`), formuliert in den Worten des Nutzers und so,
+dass sie auf ein Finding anwendbar ist, das es noch gar nicht gibt: »ab medium
+aufwärts, jede Kategorie«, »alles aus BUG und SEC, unabhängig von der
+Severity«, »nur was unter `src/net/` liegt«.
+
+Hat der Nutzer einzelne IDs gepickt, lässt sich daraus keine Regel ablesen.
+Dann wird genau das gefragt, mit Vorschlag und im selben Zug wie die
+Scope-Bestätigung: gilt für neu auffallende Befunde dasselbe Muster, oder gehen
+sie unbesehen ins Audit? Diese Frage später zu stellen heißt, sie zwölfmal zu
+stellen.
 
 Der Scope sind diese Findings **samt dem, was ihre Behebung nach sich zieht**.
 Ein Lauf, der zwölf Findings schließt und dabei fünf neue Defekte hinterlässt,
@@ -127,12 +143,27 @@ Dinge, die leicht verwechselt werden und verschieden behandelt werden:
 
 | | Was es ist | Wohin |
 | --- | --- | --- |
-| **Nebenbefund** | war auch ohne diesen Lauf falsch, fiel nur auf, weil jemand hinsah | in die Befund-Queue, und von dort in ein Paket oder mit Begründung ins Audit zurück |
+| **Nebenbefund** | war auch ohne diesen Lauf falsch, fiel nur auf, weil jemand hinsah | in die Befund-Queue, je mit dem Urteil an der Scope-Regel; von dort in ein Paket oder als neues Finding ins Audit |
 | **Folge** | hat eine Änderung dieses Laufs verursacht | in ein Paket dieses Laufs, ausnahmslos |
 
 Beide werden von den Runnern triagiert, keiner von beiden verdunstet. Der
-Unterschied entscheidet nur darüber, *ob* über den Verbleib noch zu reden ist:
-bei der Folge nicht, beim Nebenbefund schon.
+Unterschied entscheidet nur, *woran* der Verbleib hängt: die Folge gehört ohne
+Prüfung in diesen Lauf, der Nebenbefund wird an der Scope-Regel gemessen.
+Fällt er darunter, ist er Arbeit dieses Laufs — »ab medium« meint auch das
+medium-Problem, das erst ein Runner gesehen hat, und »alle BUG« auch den Bug,
+der im Audit fehlt. Fällt er nicht darunter, geht er als neues, offenes Finding
+ins Audit, mit Fundstelle und dem Vermerk, dass er in diesem Lauf auffiel.
+
+Zwei Fälle schlagen die Regel und kommen zum Nutzer, auch wenn der Befund klar
+im Scope liegt: seine Behebung kippt eine Architekturentscheidung, die das
+Projekt anderswo trägt, oder sie sprengt den Umfang eines Pakets. Dann steht
+nicht mehr der Fix zur Debatte, sondern ob dieser Lauf der richtige Ort dafür
+ist.
+
+Die Regel entscheidet über die Zuordnung, nicht über den Zeitpunkt. Ein
+Nebenbefund im Scope wird nicht sofort nebenbei behoben — er wandert mit seinem
+Urteil in die Queue und wird in der Drain-Runde zum Paket, es sei denn, er
+teilt die Ursache mit einem Paket, das ohnehin noch offen ist.
 
 ### 4. Offene Entscheidungen klären
 
@@ -203,6 +234,7 @@ Baseline: `npm run lint` ✓ · `npm run typecheck` ✓ · `npm test` 3 Fehler
 (vorbestehend, siehe unten) · `npm run build` ✓
 Arbeitsverzeichnis: <pfad> (Diffs und Verify-Logs, außerhalb der Versionierung)
 Scope: 24 von 31 Findings (3 critical, 8 high, 13 medium) · ausgenommen: info, acknowledged
+Scope-Regel: alles ab medium, jede Kategorie — gilt auch für Befunde, die erst im Lauf auffallen
 Stand (<Datum>): Paket 1 noch nicht begonnen · Arbeitsbaum sauber
 
 Diese Datei führt einen Lauf des Skills `js-ts-audit-remediation` und hält
@@ -234,9 +266,12 @@ Dokumentation, CHANGELOG, Migrations-Hinweise, Commit-Messages:
 
 ## Offene Befunde
 Nebenbefunde aus den Paketen: was auch ohne diesen Lauf falsch war. Jeder
-Eintrag wird beschlossen, bevor der Lauf endet — Paket oder begründete
-Rückgabe ins Audit. Ein leerer Abschnitt ist Abschlussbedingung, kein Zufall.
-- [ ] `src/net/pool.ts:120` — dieselbe Timer-Falle wie LEAK-001, nicht im Audit (aus Paket 3)
+Eintrag wird beschlossen, bevor der Lauf endet — Paket oder Rückgabe ins Audit.
+Ein leerer Abschnitt ist Abschlussbedingung, kein Zufall. Das Urteil am Ende
+der Zeile misst den Eintrag an der Scope-Regel oben: `→ Scope`, `→ Audit`,
+`→ Rückfrage`.
+- [ ] `src/net/pool.ts:120` (high) — dieselbe Timer-Falle wie LEAK-001, nicht im Audit (aus Paket 3) → Scope
+- [ ] `docs/api.md:40` (low) — Beispiel zeigt eine Option, die es nicht mehr gibt (aus Paket 3) → Audit
 
 ## Pakete
 
@@ -286,9 +321,11 @@ gegen den dann aktuellen Code detailliert wird, und dass eine Umplanung, die
 Zielsetzung oder Architektur berührt, zurück zum Nutzer kommt. Ebenso ein Satz
 zu den Folgen: zieht ein Fix anderswo etwas nach sich, wird das in diesem Lauf
 mit behoben, notfalls in zusätzlichen Paketen — die Paketzahl ist damit eine
-Untergrenze, keine Zusage. Und ein Satz zu den Nebenbefunden: was während des
-Laufs auffällt, sammelt sich in der Queue und wird vor dem Abschluss gebündelt
-entschieden, in einer Runde. Freigegeben werden Paketschnitt und Reihenfolge.
+Untergrenze, keine Zusage. Und ein Satz zu den Nebenbefunden, der die
+Scope-Regel wörtlich wiederholt: was während des Laufs auffällt und unter sie
+fällt, wird in diesem Lauf mit behoben, der Rest geht als neues Finding ins
+Audit — vorgelegt wird beides, vor dem Abschluss, in einer Runde. Freigegeben
+werden Paketschnitt und Reihenfolge.
 Ohne diese Freigabe beginnt die Umsetzung nicht.
 
 Im selben Aufwasch der Verbleib des Plans, als Ansage statt als Frage: »am Ende

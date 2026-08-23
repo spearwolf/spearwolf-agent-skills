@@ -4,6 +4,7 @@ Quelle: ./audit.html vom 2026-08-20 · Branch: main · erstellt: 2026-08-23
 Baseline: `npm test` ✓
 Arbeitsverzeichnis: <ARBEITSDIR> (Diffs und Verify-Logs, außerhalb der Versionierung)
 Scope: 2 von 2 Findings (2 high) · ausgenommen: acknowledged
+Scope-Regel: alles ab medium aufwärts, jede Kategorie — gilt auch für Befunde, die erst im Lauf auffallen
 Stand (2026-08-23): Paket 1 noch nicht begonnen · Arbeitsbaum sauber
 
 Diese Datei führt einen Lauf des Skills `js-ts-audit-remediation` und hält
@@ -35,8 +36,10 @@ Dokumentation, CHANGELOG, Migrations-Hinweise, Commit-Messages:
 
 ## Offene Befunde
 Nebenbefunde aus den Paketen: was auch ohne diesen Lauf falsch war. Jeder
-Eintrag wird beschlossen, bevor der Lauf endet — Paket oder begründete
-Rückgabe ins Audit. Ein leerer Abschnitt ist Abschlussbedingung, kein Zufall.
+Eintrag wird beschlossen, bevor der Lauf endet — Paket oder Rückgabe ins Audit.
+Ein leerer Abschnitt ist Abschlussbedingung, kein Zufall. Das Urteil am Ende
+der Zeile misst den Eintrag an der Scope-Regel oben: `→ Scope`, `→ Audit`,
+`→ Rückfrage`.
 - keine
 
 ## Pakete

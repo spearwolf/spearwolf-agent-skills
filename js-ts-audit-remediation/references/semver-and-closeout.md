@@ -20,20 +20,40 @@ laufen dann durch die normale Schleife aus Schritt 6, und erst danach geht es
 hier weiter.
 
 **Zweitens: die Befund-Queue.** Der Abschnitt »Offene Befunde« im Kopf des
-Plans muss auf null gehen. Das ist kein Automatismus, sondern eine
-Entscheidungsrunde, und sie gehört dem Nutzer.
+Plans muss auf null gehen. Die Entscheidung ist zum größten Teil schon
+gefallen: jeder Eintrag trägt sein Urteil an der `Scope-Regel:` aus dem
+Plan-Kopf, das ein Runner beim Notieren gesetzt hat. Was hier stattfindet, ist
+die Ausführung dieses Urteils plus eine Runde für das, was die Regel nicht
+entscheiden konnte.
 
-Die Liste wird ihm in einem Zug vorgelegt, je Eintrag eine Zeile mit Datei,
-Stelle, dem Satz aus der Queue und einem Vorschlag. Drei Ausgänge, mehr nicht:
+Drei Ausgänge, mehr nicht:
 
-| Ausgang | Was passiert |
-| --- | --- |
-| **jetzt beheben** | Neues Paket am Ende der Liste, `Nebenbefund` statt `Findings`. Es läuft durch die Schleife aus Schritt 6 wie jedes andere. Danach zurück hierher. |
-| **ins Audit zurück** | Der Eintrag wird beim Nachführen der `./audit.html` als neues Finding aufgenommen, mit Severity, Fundstelle und dem Vermerk, dass er in diesem Lauf auffiel. Details in `references/audit-report-update.md`. |
-| **verworfen** | Nur mit einem Satz Begründung des Nutzers. Der Eintrag bleibt im Plan stehen, auf `[x]`, mit Datum und Grund. |
+| Ausgang | Woher | Was passiert |
+| --- | --- | --- |
+| **jetzt beheben** | `→ Scope` | Neues Paket am Ende der Liste, `Nebenbefund` statt `Findings`. Es läuft durch die Schleife aus Schritt 6 wie jedes andere. Danach zurück hierher. |
+| **ins Audit** | `→ Audit` | Der Eintrag wird beim Nachführen der `./audit.html` als neues Finding aufgenommen, mit Severity, Fundstelle und dem Vermerk, dass er in diesem Lauf auffiel. Details in `references/audit-report-update.md`. |
+| **verworfen** | nur auf Ansage des Nutzers | Mit einem Satz Begründung. Der Eintrag bleibt im Plan stehen, auf `[x]`, mit Datum und Grund. |
 
-Gefragt wird gebündelt, mit Vorschlag je Zeile, nicht Eintrag für Eintrag. Bei
-einer langen Queue reicht ein Vorschlag pro Gruppe gleicher Ursache.
+Vorgelegt wird trotzdem alles, in einem Zug und in drei Blöcken: was nach der
+Regel jetzt behoben wird, was ins Audit geht, und die `→ Rückfrage`-Einträge.
+Die ersten beiden Blöcke sind Ansage, kein Fragebogen — sie stehen dort, damit
+der Nutzer widersprechen kann, nicht damit er bestätigt. Gefragt wird nur der
+dritte Block, je mit deinem Vorschlag und dem Satz, wogegen der Fix läuft. Bei
+einer langen Queue reicht ein Block-Eintrag pro Gruppe gleicher Ursache.
+
+**Vorlegen heißt anhalten.** Nach der Vorlage startet kein Runner, bevor die
+Antwort da ist — auch nicht für einen `→ Scope`-Eintrag, dessen Ausgang
+feststeht. Ein Widerspruchsrecht, das erst nach dem Commit greift, ist keins,
+und die Pakete dieser Runde stehen in keinem Grobplan, den der Nutzer je
+freigegeben hat: für sie gilt dieselbe Grenze wie in Schritt 5, nur eine Runde
+später. Der Unterschied zwischen den Blöcken liegt darin, *was* der Nutzer
+beantwortet — bei den ersten beiden reicht ein Ja oder ein Widerspruch, der
+dritte braucht eine Entscheidung —, nicht darin, *ob* auf ihn gewartet wird.
+
+Fehlt einem Eintrag das Urteil — ein älterer Plan, ein Runner, der es
+vergessen hat —, fällst du es hier nach derselben Regel und schreibst es dazu.
+Fehlt die `Scope-Regel:`-Zeile selbst, wandert die ganze Liste in den
+Fragen-Block; geraten wird sie nicht.
 
 Ein Paket, das aus dieser Runde entsteht, läuft durch Schritt 6 wie jedes
 andere — und kann dabei selbst einen Nebenbefund erzeugen. Dann ist die Queue

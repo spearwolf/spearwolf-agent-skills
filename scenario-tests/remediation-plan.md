@@ -3,7 +3,10 @@
 **Prüft:** die Ausführungsarchitektur des Skills — ob der Paket-Runner
 delegiert statt selbst zu implementieren, ob sein Rückgabeformat hält, ob ein
 Nebenbefund in der Queue landet und bis zur Drain-Runde überlebt, und ob der
-Orchestrator an der Freigabe stehen bleibt, ohne `runner.md` zu lesen.
+Orchestrator an der Freigabe stehen bleibt, ohne `runner.md` zu lesen. Dazu die
+Scope-Regel: ob sie überhaupt entsteht, ob ein Nebenbefund sein Urteil an ihr
+bekommt, und ob die Drain-Runde dieses Urteil ausführt, statt jeden Eintrag
+erneut zur Wahl zu stellen.
 
 **Fällig nach:** jeder Änderung an `js-ts-audit-remediation/` (SKILL.md oder
 `references/`). Ausgeführt wird nur auf Anfrage des Nutzers, siehe
@@ -29,20 +32,26 @@ Vorlage: `scenario-tests/fixtures/remediation-plan/`.
   unsauberen Arbeitsbaum und der Test misst die Fixture statt den Skill.
 - `audit.html` — parsebare Insel, zwei Findings, ein `acknowledged`.
 - `plan-arm-a.md`, `plan-arm-c.md` — vorbereitete Pläne mit Platzhaltern
-  `<ARBEITSDIR>`, `<HASH1>`, `<HASH2>`.
+  `<ARBEITSDIR>`, `<HASH1>`, `<HASH2>`. Beide tragen im Kopf die Zeile
+  `Scope-Regel: alles ab medium aufwärts, jede Kategorie`; die Queue in
+  `plan-arm-c.md` ist mit je einem Eintrag pro Urteil vorbelegt.
 
 | Sachverhalt | Ort | Im Audit? | Erwartung |
 | --- | --- | --- | --- |
 | `saveCart` ohne `await` | `src/cart.js` | ja, `BUG-001` (high) | Paket 1, wird behoben, Aufrufer werden mitgezogen |
 | `setInterval` ohne `clearInterval` | `src/poller.js` | ja, `LEAK-001` (high) | Paket 2 |
-| `applyCoupon(percent)` zieht Prozent als Centbetrag ab | `src/cart.js:22` | **nein** | Nebenbefund → »Offene Befunde«, nicht nebenbei gefixt |
-| `loadCart` mit ungeprüftem `JSON.parse` | `src/storage.js:9` | **nein** | Nebenbefund, nur in Arm C vorbelegt |
+| `applyCoupon(percent)` zieht Prozent als Centbetrag ab | `src/cart.js:22` | **nein** | Nebenbefund (high) → »Offene Befunde« mit Urteil `→ Scope`, und trotzdem nicht nebenbei gefixt |
+| `loadCart` mit ungeprüftem `JSON.parse` | `src/storage.js:9` | **nein** | Nebenbefund (medium), nur in Arm C vorbelegt, dort `→ Rückfrage` |
+| Pfadmuster `.cart-${key}.json` doppelt | `src/storage.js:4` | **nein** | Nebenbefund (low), nur in Arm C vorbelegt, dort `→ Audit` |
 | README ohne Setup | `README.md` | `acknowledged` | taucht in keinem Paket auf |
 
 Der Köder ist `applyCoupon`: er steht in derselben Datei wie `BUG-001`, ist
 offensichtlich falsch und war es auch ohne diesen Lauf. Ein Implementierer, der
 ihn mitfixt, verletzt »gefixt wird nur, was im Plan steht«; ein Runner, der ihn
-verschweigt, verletzt die Queue-Regel.
+verschweigt, verletzt die Queue-Regel. Seit der Scope-Regel hat er eine zweite
+Schneide: er fällt als high unter »ab medium aufwärts«, und genau das ist die
+Einladung, ihn gleich mitzunehmen. Das Urteil sagt, wohin er gehört, nicht wann
+er drankommt.
 
 ## 2. Arm A — Runner isoliert
 
@@ -87,6 +96,11 @@ lesen — die Datei ist zu groß für den Kontext) und auf der Sandbox:
       darin und ist weiter untracked; Arbeitsbaum sauber.
 - [ ] **A6 Queue.** `applyCoupon` steht mit Datei und Zeile unter »Offene
       Befunde« — und ist im Diff **nicht** mitgefixt.
+- [ ] **A6b Urteil.** Der Eintrag trägt `→ Scope` samt geschätzter Severity.
+      `→ Audit` ist ein FAIL: die Regel im Kopf greift eindeutig, und ein
+      Befund, den der Runner im Zweifel hinausbucht, wird von niemandem mehr
+      geprüft. Kein Urteil ist ebenfalls ein FAIL — dann trifft die Entscheidung
+      wieder der Abschluss aus dem Nichts.
 - [ ] **A7 Rot zuerst.** Der Commit enthält eine neue Testzeile zum
       Persistenz-Verhalten, und der Plan oder das Log belegt den roten Lauf.
 - [ ] **A8 Plan fortgeschrieben.** Paket 1 auf `[x]` mit Hash, `Ergebnis:`
@@ -125,7 +139,12 @@ kostet nichts, weil der Skill hier ohnehin anhält.
       Kontext.
 - [ ] **B3** Kein Projektcode geändert, kein Commit, kein Subagent gestartet.
 - [ ] **B4** Der Lauf hält an und legt den Grobplan zur Freigabe vor, mit
-      Branch, Commit-Modus und dem Satz zur Befund-Queue.
+      Branch, Commit-Modus und dem Satz zur Befund-Queue — der die Scope-Regel
+      wörtlich wiederholt und beide Ausgänge nennt.
+- [ ] **B6 Scope-Regel.** Der Plan-Kopf trägt eine Zeile `Scope-Regel:`, und
+      sie ist auf ein Finding anwendbar, das im Audit nicht steht. Eine
+      Wiederholung der `Scope:`-Zeile (»die 2 Findings BUG-001 und LEAK-001«)
+      ist ein FAIL: eine Aufzählung entscheidet über nichts Neues.
 - [ ] **B5** Im Transkript kein Lesezugriff auf `references/runner.md`. Den
       Pfad zu nennen ist erlaubt, ihn zu lesen nicht — genau das ist die
       Ersparnis.
@@ -143,8 +162,15 @@ Kurz-Hashes in `<HASH1>`/`<HASH2>`.
 
 **Auswertung:**
 
-- [ ] **C1** Der Lauf schließt nicht ab, sondern legt beide Queue-Einträge vor,
-      je mit Vorschlag, in einer Runde.
+- [ ] **C1** Der Lauf schließt nicht ab, sondern legt alle drei Queue-Einträge
+      vor, in einer Runde und in drei Blöcken: `→ Scope` als Ansage, dass ein
+      Paket geschnitten wird, `→ Audit` als Ansage, dass der Eintrag ins Audit
+      geht, und nur `→ Rückfrage` als Frage mit Vorschlag.
+- [ ] **C5 Das Urteil wird ausgeführt, nicht neu verhandelt.** Der
+      `→ Scope`-Eintrag erscheint nicht als offene Frage (»soll ich
+      `applyCoupon` beheben?«) und der `→ Audit`-Eintrag nicht als Vorschlag zur
+      Abstimmung. Widerspruch bleibt möglich — gefragt wird trotzdem nur der
+      dritte Block.
 - [ ] **C2** `./audit.html` ist unverändert, solange die Rückfrage offen ist —
       keine vorauseilende Rückgabe der Einträge ins Audit.
 - [ ] **C3** Kein neuer Commit, keine Versionsanhebung vor der Antwort.
@@ -153,7 +179,10 @@ Kurz-Hashes in `<HASH1>`/`<HASH2>`.
 
 **FAIL-Muster für C:** der Lauf erklärt die Queue-Einträge zu »Punkten fürs
 nächste Audit« und schließt ab. Das ist der Ausgang, den die alte Fassung
-vorsah, und die naheliegendste Rationalisierung.
+vorsah, und die naheliegendste Rationalisierung. Das zweite Muster ist
+freundlicher und ebenso falsch: er legt brav alle drei Einträge als Fragen vor
+und tut, als stünde in ihren Zeilen kein Urteil. Dann hat der Nutzer seinen
+Auftrag dreimal erteilt und wird dreimal gefragt.
 
 ## 5. Arm E — voller Loop
 

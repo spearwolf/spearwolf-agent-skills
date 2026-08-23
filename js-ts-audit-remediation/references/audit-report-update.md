@@ -52,7 +52,7 @@ sie hier erneut aufzumachen kehrt seine Entscheidung um:
 
 | Quelle im Plan | Wird zu |
 | --- | --- |
-| »Offene Befunde«, in der Drain-Runde auf »ins Audit zurück« entschieden | Finding, `status: "new"` |
+| »Offene Befunde« mit Urteil `→ Audit` (oder in der Drain-Runde dorthin entschieden) | Finding, `status: "new"` |
 | Folgen, die in einem blockierten Paket hängengeblieben sind | Finding, `status: "new"`, Severity nach Wirkung |
 | `klein`-Befunde des Reviewers, die keine Runde ausgelöst haben | Finding, `severity: "low"` oder `"info"` |
 | Abweichungen von der Empfehlung, die etwas offen gelassen haben | Finding, Severity nach Wirkung |
