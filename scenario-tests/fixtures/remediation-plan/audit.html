@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit — pixel-cart</title>
+<style>
+:root { color-scheme: dark; --bg:#14161a; --fg:#e6e8ec; --mut:#9aa3b2; --line:#2a2f38; --high:#e2a33c; }
+body { margin:0; padding:2rem clamp(1rem,4vw,4rem); background:var(--bg); color:var(--fg);
+       font:16px/1.6 ui-sans-serif, system-ui, sans-serif; }
+h1,h2 { line-height:1.2; }
+.score { font-size:3rem; font-weight:700; }
+table { width:100%; border-collapse:collapse; margin:1rem 0; }
+th,td { text-align:left; padding:.5rem .75rem; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--mut); font-weight:600; font-size:.85rem; text-transform:uppercase; letter-spacing:.04em; }
+code { background:#1d212a; padding:.1em .35em; border-radius:3px; }
+.sev-high { color:var(--high); font-weight:600; }
+.meta { color:var(--mut); font-size:.9rem; }
+</style>
+</head>
+<body>
+<h1>pixel-cart</h1>
+<p class="meta">Node.js (ESM), node:test · Audit vom 2026-08-20</p>
+<p class="score">74</p>
+
+<h2>Backlog</h2>
+<table>
+<thead><tr><th>ID</th><th>Schwere</th><th>Titel</th><th>Ort</th><th>Empfehlung</th></tr></thead>
+<tbody>
+<tr>
+  <td>LEAK-001</td><td class="sev-high">high</td>
+  <td>PricePoller: setInterval wird nie gecleart</td>
+  <td><code>src/poller.js</code></td>
+  <td>Eine <code>stop()</code>-Methode mit <code>clearInterval</code> ergänzen und den Timer-Handle nullen.</td>
+</tr>
+<tr>
+  <td>BUG-001</td><td class="sev-high">high</td>
+  <td>Fehlendes await auf saveCart in Cart.add/remove</td>
+  <td><code>src/cart.js</code></td>
+  <td><code>add</code>/<code>remove</code> async machen und <code>saveCart</code> awaiten.</td>
+</tr>
+</tbody>
+</table>
+
+<h2>Zurückgestellt</h2>
+<p class="meta">DX-001 — README enthält keine Setup-Anleitung. Interne Mini-Lib, README bewusst minimal gehalten. (2026-08-20)</p>
+
+<script id="audit-data" type="application/json">
+{
+  "summary": {
+    "project": "pixel-cart",
+    "stack": "Node.js (ESM), node:test",
+    "date": "2026-08-20",
+    "score": 74,
+    "previousScore": null,
+    "theme": "dark",
+    "scoreHistory": [{ "date": "2026-08-20", "score": 74 }],
+    "findingsBySeverity": { "critical": 0, "high": 2, "medium": 0, "low": 0, "info": 0 },
+    "resolvedCount": 0
+  },
+  "findings": [
+    {
+      "id": "LEAK-001",
+      "category": "Memory Leaks & Ressourcen",
+      "severity": "high",
+      "title": "PricePoller: setInterval wird nie gecleart",
+      "location": "src/poller.js",
+      "description": "PricePoller.start() registriert ein setInterval, es gibt aber keinen Weg, den Timer je wieder zu stoppen. Jede Poller-Instanz laeuft bis zum Prozessende weiter und haelt ihre Closure am Leben.",
+      "recommendation": "Eine stop()-Methode mit clearInterval ergaenzen und den Timer-Handle nullen.",
+      "effort": "S",
+      "status": "new"
+    },
+    {
+      "id": "BUG-001",
+      "category": "Bugs & Korrektheitsrisiken",
+      "severity": "high",
+      "title": "Fehlendes await auf saveCart in Cart.add/remove",
+      "location": "src/cart.js",
+      "description": "saveCart ist async, wird aber ohne await aufgerufen. Schreibfehler gehen als unhandled rejection verloren, und Aufrufer koennen nicht auf Persistenz warten.",
+      "recommendation": "add/remove async machen und saveCart awaiten; Aufrufer entsprechend nachziehen.",
+      "effort": "S",
+      "status": "new"
+    }
+  ],
+  "acknowledged": [
+    {
+      "id": "DX-001",
+      "title": "README enthaelt keine Setup-Anleitung",
+      "category": "Developer Experience",
+      "location": "README.md",
+      "reason": "Interne Mini-Lib, README bewusst minimal gehalten.",
+      "acknowledgedDate": "2026-08-20"
+    }
+  ]
+}
+</script>
+</body>
+</html>

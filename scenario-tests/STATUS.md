@@ -27,7 +27,7 @@ Jede Zeile Ausgabe heißt: fällig.
 | `install-drift.md` | `global-behavior/INSTALL.md` | unbekannt (vor Einführung dieser Datei) | — |
 | `audit-followup.md` | `js-ts-project-audit/` | unbekannt (vor Einführung dieser Datei) | **fällig** — am 2026-08-07 kamen Domain-Trennung und responsives Layout dazu, am 2026-08-13 volle Desktop-Breite, Sektions-Faltung und Farbdisziplin, am 2026-08-22 das mitgeführte Feld `github` samt Rendering, alles ungetestet |
 | `es-frequency.md` | Abschnitt `## ES` in `global-behavior/CLAUDE.md` | unbekannt (vor Einführung dieser Datei) | **fällig** — Regel und Test am 2026-07-26 neu geschrieben und am 2026-07-29 erneut umgebaut, beides ungetestet |
-| `remediation-plan.md` | `js-ts-audit-remediation/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-06 auf zweistufige Planung umgebaut, am 2026-08-11 um die zugweise Fortschreibung des Plans erweitert, am 2026-08-13 um die Konventionen für Code, Doku und CHANGELOG, um die Triage der Folgen und um das Nachführen der `audit.html`, am 2026-08-14 um den Wegfall des Design-Passes, am 2026-08-17 um den Checkpoint nach jedem Paket und die Wiederaufnahme nach einer Kompaktierung |
+| `remediation-plan.md` | `js-ts-audit-remediation/` | 2026-08-23, unkommittierter Umbau auf Runner-Subagenten | **bestanden** — Arm B 5/5, Arm C 4/4, Arm E 6/6, Arm A im ersten Lauf 7/9 und nach zwei Nachschärfungen 9/9. Alle vier Arme gefahren. Drei Härtungen entstanden im Lauf (Datei ganz lesen, Regressionstest in der Ergebniszeile, Drain-Grenze ab der dritten Runde) und sind selbst ungetestet |
 | — | `audit-github-sync/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-22 angelegt |
 | — | `testing-on-mac-safari/` | **Test existiert nicht** | kein Szenario-Test. Die Ad-hoc-Prüfung vom 2026-07-30 ist durch den seitherigen Ausbau überholt |
 
@@ -127,6 +127,51 @@ Läufe geändert. Praktisch heißt das: fällig, sobald es jemandem wichtig ist.
   Stands bekommt, dazu Plan und Repo. Liest er den Plan, oder legt er auf der
   Zusammenfassung los? Das ist genau die Stelle, an der die Regel steht und an
   der sie am leichtesten wegrationalisiert wird.
+  Am 2026-08-23 ist die Ausführung auf einen Runner-Subagenten je Paket
+  umgestellt worden, und damit sind die Prüfpunkte des Checkpoints teilweise
+  gegenstandslos: die Compact-Meldung gibt es nicht mehr, der Wiedereinstieg
+  nach einer Kompaktierung auch nicht. An ihre Stelle treten drei neue, und der
+  erste ist der einzige, an dem der ganze Umbau hängt. Delegiert der Runner
+  wirklich? Subagenten tragen eine allgemeine Anweisung, Aufträge nicht
+  weiterzureichen, und `runner.md` setzt dagegen eine ausdrückliche Gegenregel —
+  greift sie nicht, schreibt der Runner den Code selbst, das Review entfällt
+  still, und der Kontext ist nur verschoben statt verkleinert. Testbar an einem
+  Paket, das in zwei Minuten selbst zu erledigen wäre; genau dort ist die
+  Versuchung am größten. Der zweite: hält die Rückgabe ihr Format, oder hängt
+  der Runner eine Zusammenfassung an, die der Orchestrator dann für den Rest
+  des Laufs mitschleppt? Der dritte ist die Befund-Queue: ein Fixture braucht
+  einen Nebenbefund, der zu keinem Paket passt — landet er in »Offene Befunde«,
+  überlebt er bis Schritt 7, und legt die Drain-Runde ihn dem Nutzer vor, statt
+  ihn mit »geht ins nächste Audit« abzuräumen? Der alte Ausgang steht im Skill
+  nicht mehr, aber er ist die naheliegendste Rationalisierung.
+- Der erste Lauf von `remediation-plan.md` am 2026-08-23 hat die
+  Architektur-Prüfpunkte bestätigt: der Runner delegiert wirklich, sein
+  Rückgabeformat hält, `runner.md` wird vom Orchestrator nie gelesen, und die
+  Drain-Runde legt die Queue vor, statt sie ins nächste Audit abzuschieben. Was
+  er nicht bestätigt hat, ist die Tiefe der Nebenbefund-Erkennung. Der Köder
+  `applyCoupon` stand vier Zeilen unter der geänderten Methode in derselben
+  Datei und wurde nicht gemeldet — kein Regelverstoß, denn die Instruktion
+  verlangte melden, nicht suchen. Genau dort steht seit demselben Tag die
+  Nachschärfung: eine geänderte Datei wird ganz gelesen, bevor der
+  Implementierer sie verlässt. Beim nächsten Lauf ist das der erste Prüfpunkt,
+  und der zweite ist die Gegenprobe dazu — meldet ein Implementierer jetzt
+  Belangloses, ist die Regel zu weit geraten und die Queue füllt sich mit
+  Rauschen. Der dritte betrifft A7: nennt die `Ergebnis:`-Zeile den
+  Regressionstest samt rotem Vorlauf, oder fällt der Nachweis weiterhin mit dem
+  Kontext des Runners weg?
+- Arm E ist am 2026-08-23 erstmals gelaufen und hat drei Dinge gezeigt, die
+  kein anderer Arm erreicht. Erstens hält die Kontextdisziplin unter Last: der
+  Orchestrator hat über drei Pakete, zwei Eskalationen und den Abschluss genau
+  fünf Dateien gelesen — `SKILL.md`, den Plan, die beiden Abschluss-Referenzen
+  und `package.json`. Kein Diff, kein `runner.md`. Zweitens iteriert die
+  Drain-Runde: ein Paket aus der Queue erzeugt seinen eigenen Nebenbefund, und
+  die Runde beginnt von vorn. Das ist richtig, hatte aber keine Bremse; die
+  Grenze ab der dritten Runde ist die Folge und beim nächsten Lauf zu prüfen.
+  Drittens fehlte der Fixture-`audit.html` eine Methodik-Sektion, womit der
+  Score nicht nachrechenbar war — der Lauf hat die Zahl korrekt stehen lassen,
+  statt eine zu erfinden, und der Ausweg steht seitdem in
+  `audit-report-update.md`. Ob die Fixture eine Formel bekommen soll, ist offen:
+  ohne sie bleibt der Score-Pfad in §3 ungetestet, mit ihr der Fallback.
 - `audit-github-sync` (angelegt 2026-08-22) hat keinen Test, und er ist der
   erste Skill im Repo, dessen Fehlverhalten außerhalb des Arbeitsbaums landet:
   ein falsch gelaufener Abgleich legt Issues in einem fremden Tracker an, und

@@ -4,20 +4,66 @@ Gilt ab Schritt 7, nachdem das letzte Paket committet oder blockiert ist.
 Während der Umsetzung war es gleichgültig, ob eine Änderung bricht. Jetzt
 wird das für den Lauf als Ganzes bewertet, einmal.
 
-**Vorher: steht unter dem letzten Paket noch eine Liste `Folgen:`, ist der Lauf
-nicht am Ende.** Diese Einträge hat der Lauf selbst verursacht, und für sie gibt
-es keinen Zug 0 mehr, der sie verteilen würde. Also läuft der Paket-Planer noch
-einmal, allein für die Triage aus `references/execution.md`; was er als Symptom
-oder echte Folge einordnet, wird als Paket abgearbeitet, und erst dann beginnt
-dieser Schritt. Ein Lauf, der seine eigenen Trümmer dem nächsten Audit übergibt,
-schließt nichts ab — er reicht weiter.
+## 0. Drain — der Lauf schließt seine eigenen Baustellen
+
+Bevor irgendetwas bewertet oder committet wird, müssen zwei Listen leer sein.
+Ein Lauf, der seine eigenen Trümmer dem nächsten Audit übergibt, schließt
+nichts ab; er reicht weiter, und das nächste Audit hält sie für vorbestehend.
+
+**Erstens: offene `Folgen:`.** Steht unter irgendeinem erledigten Paket noch
+eine Zeile `Folgen:` mit unverteilten Einträgen, ist der Lauf nicht am Ende.
+Diese Einträge hat er selbst verursacht, und für sie gibt es keinen Zug 0 mehr,
+der sie verteilen würde. Also startet ein letzter Runner mit dem Zusatz »nur
+Triage, kein Paket umsetzen«: er ordnet nach der Tabelle in
+`references/runner.md` ein, schneidet die nötigen Pakete und gibt zurück. Die
+laufen dann durch die normale Schleife aus Schritt 6, und erst danach geht es
+hier weiter.
+
+**Zweitens: die Befund-Queue.** Der Abschnitt »Offene Befunde« im Kopf des
+Plans muss auf null gehen. Das ist kein Automatismus, sondern eine
+Entscheidungsrunde, und sie gehört dem Nutzer.
+
+Die Liste wird ihm in einem Zug vorgelegt, je Eintrag eine Zeile mit Datei,
+Stelle, dem Satz aus der Queue und einem Vorschlag. Drei Ausgänge, mehr nicht:
+
+| Ausgang | Was passiert |
+| --- | --- |
+| **jetzt beheben** | Neues Paket am Ende der Liste, `Nebenbefund` statt `Findings`. Es läuft durch die Schleife aus Schritt 6 wie jedes andere. Danach zurück hierher. |
+| **ins Audit zurück** | Der Eintrag wird beim Nachführen der `./audit.html` als neues Finding aufgenommen, mit Severity, Fundstelle und dem Vermerk, dass er in diesem Lauf auffiel. Details in `references/audit-report-update.md`. |
+| **verworfen** | Nur mit einem Satz Begründung des Nutzers. Der Eintrag bleibt im Plan stehen, auf `[x]`, mit Datum und Grund. |
+
+Gefragt wird gebündelt, mit Vorschlag je Zeile, nicht Eintrag für Eintrag. Bei
+einer langen Queue reicht ein Vorschlag pro Gruppe gleicher Ursache.
+
+Ein Paket, das aus dieser Runde entsteht, läuft durch Schritt 6 wie jedes
+andere — und kann dabei selbst einen Nebenbefund erzeugen. Dann ist die Queue
+nicht mehr leer, und die Drain-Runde beginnt von vorn. Das ist der vorgesehene
+Fall, nicht die Ausnahme: die Abschlussbedingung ist die leere Liste, nicht die
+Zahl der Runden.
+
+Ab der dritten Runde legst du dem Nutzer aber nicht mehr den einzelnen Eintrag
+vor, sondern die Kette. Dieselbe Datei liefert nach, und dann ist nicht der
+dritte Befund die Frage, sondern ob der Abschluss der richtige Ort für diesen
+Bereich ist. Das ist dieselbe Überlegung wie die Generationsgrenze bei den
+Folgen, nur eine Ebene höher: ein Lauf, der sich im Abschluss immer neue
+Pakete schneidet, ist kein Abschluss mehr, sondern ein zweiter Lauf ohne
+eigene Planung. Der Vorschlag lautet dann: Rest ins Audit, und der Bereich
+bekommt einen eigenen Lauf.
+
+Was hier nicht entschieden wird, verschwindet — und zwar spurlos, weil der Plan
+danach committet wird und die Queue niemand mehr liest. Genau dagegen existiert
+dieser Schritt. Der Ausgang »ins Audit zurück« ist billig und immer verfügbar;
+es gibt keinen Grund, einen Eintrag stattdessen liegen zu lassen.
+
 
 ## 1. Voller Verify-Lauf
 
 Alle Kommandos aus der Baseline erneut ausführen, nicht nur die Verifies der
 einzelnen Pakete: Lint, Typecheck, Test, Build. Sie stehen wörtlich im Kopf des
 Plans — von dort nehmen, nicht aus `package.json` neu zusammensuchen und nicht
-aus dem Gedächtnis. Ausgabe lesen, gegen die Baseline halten.
+aus dem Gedächtnis. Wie in Schritt 2 in eine Logdatei umleiten und den Schwanz
+lesen; bei einem roten Lauf so viel vom Log, wie zur Einordnung nötig ist.
+Gegen die Baseline halten.
 
 Ist etwas rot, das vorher grün war, endet der Lauf hier. Das wird berichtet,
 nicht überschrieben. Vorbestehende Fehler bleiben vorbestehende Fehler.

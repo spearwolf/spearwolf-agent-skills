@@ -18,8 +18,9 @@ chaotisch, gelegentlich gefährlich, und der Bibliothekar sagt zu allem nur
     eigenständigen HTML-Report nach `./audit.html`.
   - [`js-ts-audit-remediation`](./js-ts-audit-remediation/) — arbeitet die
     Findings aus so einem Audit ab: Umsetzungsplan nach
-    `./remediation-plan.md`, ein Subagent pro Paket, ein Commit pro Paket,
-    am Ende die Semver-Bewertung.
+    `./remediation-plan.md`, ein eigener Runner-Agent pro Paket, der
+    Implementierung und Review selbst delegiert und zehn Zeilen zurückgibt,
+    ein Commit pro Paket, am Ende die Semver-Bewertung.
   - [`audit-github-sync`](./audit-github-sync/) — gleicht das Backlog aus
     so einem Audit mit den Issues eines GitHub-Repos ab, in beide Richtungen:
     Findings werden zu englischen, für sich stehenden Issues mit Labels, und

@@ -15,6 +15,7 @@ Stand je Test in `STATUS.md`.
 | [`install-drift.md`](./install-drift.md) | Drift-Check & Fremdinhalt-Schutz des Install-/Update-Pfads | `global-behavior/INSTALL.md` |
 | [`audit-followup.md`](./audit-followup.md) | Folgelauf-Logik des Audit-Skills (Merge, Köder, acknowledged, Theme, Historie) | `js-ts-project-audit/` |
 | [`es-frequency.md`](./es-frequency.md) | deterministische Anteile der ES-Regel (Sperre, Baseline, Grenzen, Logbuch) | ES-Regel in `global-behavior/` |
+| [`remediation-plan.md`](./remediation-plan.md) | Ausführungsarchitektur des Remediation-Skills (Delegation, Rückgabeformat, Befund-Queue, Drain) | `js-ts-audit-remediation/` |
 
 ## Grundregeln für alle Tests
 

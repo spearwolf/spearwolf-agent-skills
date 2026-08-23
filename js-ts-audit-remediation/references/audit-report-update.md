@@ -46,11 +46,13 @@ Audit die Ursache ist.
 ## 2. Was neu hineinkommt
 
 Vier Quellen, alle im Plan, alle mit Datei und Zeile. Was keine Fundstelle hat,
-wird nicht eingetragen:
+wird nicht eingetragen. Einträge, die der Nutzer in der Drain-Runde ausdrücklich
+verworfen hat, kommen nicht wieder herein — sie stehen begründet im Plan, und
+sie hier erneut aufzumachen kehrt seine Entscheidung um:
 
 | Quelle im Plan | Wird zu |
 | --- | --- |
-| Offene Nebenbefunde unter erledigten Paketen | Finding, `status: "new"` |
+| »Offene Befunde«, in der Drain-Runde auf »ins Audit zurück« entschieden | Finding, `status: "new"` |
 | Folgen, die in einem blockierten Paket hängengeblieben sind | Finding, `status: "new"`, Severity nach Wirkung |
 | `klein`-Befunde des Reviewers, die keine Runde ausgelöst haben | Finding, `severity: "low"` oder `"info"` |
 | Abweichungen von der Empfehlung, die etwas offen gelassen haben | Finding, Severity nach Wirkung |
@@ -83,6 +85,18 @@ Datei gelesen, nicht aus dem Gedächtnis rekonstruiert** — sie steht dort
 ausgewiesen, und eine still abweichende Rechnung macht den Score-Verlauf
 unbrauchbar.
 
+Steht die Formel nirgends — eine Datei ohne Methodik-Sektion, ein von Hand
+gepflegter Report, eine Insel mit nacktem `summary.score` —, dann wird sie
+**nicht** ersetzt. Alles Zählbare wird nachgetragen: Backlog,
+`findingsBySeverity`, `resolvedCount`, die neuen Findings. `summary.score`
+bleibt stehen, wie er steht, und ein Satz in der Methodik-Notiz sagt, dass er
+mangels dokumentierter Formel nicht neu gerechnet wurde und aus welchem Datum
+er stammt. `scoreHistory` bleibt dann ebenfalls unangetastet: ein Punkt im
+Verlauf ohne neue Messung ist eine Wiederholung, keine Beobachtung. Eine
+geschätzte Zahl sieht im Verlaufsdiagramm aus wie eine gemessene; der nächste
+Audit-Lauf liefert die erste, die wieder etwas bedeutet.
+Dasselbe gilt für `summary.domains`, wenn die Datei keine Domains führt.
+
 `scoreHistory` bekommt einen Eintrag `{date: <heute>, score: <neu>, source:
 "remediation"}` und bleibt bei 20 Einträgen (FIFO). Das Feld `source` ist der
 einzige Zusatz zum Datenmodell des Audits: es hält fest, dass diese Zahl aus
@@ -101,6 +115,7 @@ einzuordnen.
 
 | Ausrede | Wirklichkeit |
 | --- | --- |
+| »Ohne Formel schätze ich den Score grob, das ist besser als nichts« | Es ist schlechter als nichts. Eine geschätzte Zahl steht im Verlauf neben gemessenen und ist von ihnen nicht zu unterscheiden. Die alte stehen lassen und den Grund vermerken. |
 | »Das Paket ist committet, also ist das Finding behoben« | Der Commit belegt, dass etwas passiert ist. Der Reviewer belegt, dass es das Richtige war. Ohne sein Urteil samt Fundstelle bleibt das Finding stehen. |
 | »Die behobenen Findings zeige ich durchgestrichen, das ist doch sichtbarer« | Der nächste Audit-Lauf rendert die Datei neu und wirft die Archivzeilen weg. Sichtbar ist der Zähler, dauerhaft ist der Plan. |
 | »Den Score rechne ich nach Gefühl, ungefähr passt schon« | Der Verlauf wird über Läufe hinweg verglichen. Eine abweichende Rechnung erzeugt einen Sprung, den der nächste Lauf als Codeverfall liest. |
