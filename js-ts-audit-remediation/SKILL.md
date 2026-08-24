@@ -342,8 +342,10 @@ den Rechten, die ihr Permission-Modus ihnen gibt. Das ist ein Tausch, und er
 wird genannt, nicht vorausgesetzt.
 
 Im selben Aufwasch der Verbleib des Plans, als Ansage statt als Frage: »am Ende
-nimmt ein Commit `./remediation-plan.md` mit ins Repo — sag Bescheid, wenn er
-stattdessen ungetrackt bleiben soll«. Ohne Widerspruch wird committet;
+nimmt ein Commit `./remediation-plan.md` mit ins Repo, und ein zweiter räumt ihn
+aus dem Arbeitsbaum — die Historie behält ihn, der Projektroot bleibt leer. Sag
+Bescheid, wenn er stattdessen ungetrackt liegenbleiben soll«. Ohne Widerspruch
+wird committet;
 widerspricht der Nutzer, steht das datiert in »Entscheidungen«, weil der
 Abschluss danach greift. Während des Laufs bleibt die Datei in jedem Fall
 ungetrackt: sie trägt die Hashes der Commits, in denen sie deshalb nicht liegen
