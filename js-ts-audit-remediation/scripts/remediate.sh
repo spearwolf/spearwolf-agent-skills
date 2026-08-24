@@ -30,7 +30,7 @@ PLAN=${PLAN:-./remediation-plan.md}
 MODEL_A=${MODEL_A:-opus}        # Zug 0: Abgleich, Triage, Detailplan
 EFFORT_A=${EFFORT_A:-xhigh}
 MODEL_B=${MODEL_B:-opus}        # Zug 1-5: beauftragen, prüfen, verifizieren, committen
-EFFORT_B=${EFFORT_B:-medium}
+EFFORT_B=${EFFORT_B:-medium}   # nur der Vorgabewert; »- Effort:« im Detailplan schlägt ihn
 PERM=${PERM:-acceptEdits}
 BUDGET_USD=${BUDGET_USD:-15}    # harte Obergrenze je Runner-Prozess
 MAX_ITER=${MAX_ITER:-200}       # Reißleine gegen eine Schleife ohne Fortschritt
@@ -105,6 +105,15 @@ first_with_marker() { # $1 = Markenzeichen -> die erste Paketnummer damit, oder 
 
 count_with_marker() { # $1 = Markenzeichen
   sed -En "s/^### \[$1\] ([0-9]+[a-z]?)\..*/\1/p" "$PLAN" | wc -l | tr -d ' '
+}
+
+effort_for_package() { # $1 = Paketnummer -> die Zeile »- Effort:« aus dem Detailplan
+  local v
+  v=$(sed -n "/^### \[.\] $1\./,/^### /p" "$PLAN" | sed -n 's/^- Effort: *\([a-z]*\).*/\1/p' | head -1)
+  case "$v" in
+    low|medium|high|xhigh|max) printf '%s' "$v" ;;
+    *) printf '%s' "$EFFORT_B" ;;
+  esac
 }
 
 dirty_paths() { # Arbeitsbaum ohne den Plan, der während des Laufs ungetrackt bleibt
@@ -189,7 +198,7 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
 
   case "$role" in
     A) model=$MODEL_A; effort=$EFFORT_A ;;
-    B) model=$MODEL_B; effort=$EFFORT_B ;;
+    B) model=$MODEL_B; effort=$(effort_for_package "$pkg") ;;
     *) die $EX_PRE "unbekannte Rolle: $role" ;;
   esac
 

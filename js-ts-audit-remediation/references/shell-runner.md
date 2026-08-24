@@ -48,8 +48,9 @@ Ein Paket läuft in zwei Prozessen statt in einem. Die Trennung liegt zwischen
 Zug 0 und Zug 1:
 
 - **A** führt Zug 0 aus: Abgleich der Findings am aktuellen Code, Triage der
-  Folgen und der offenen Befunde, Detailplan, Restplan prüfen. Danach steht das
-  Paket auf `[~]`, und A hört auf. **A schreibt keine Zeile Projektcode und
+  Folgen und der offenen Befunde, Detailplan, Restplan prüfen. In den Detailplan
+  gehört auf diesem Weg eine Zeile mehr: `- Effort:`, siehe unten. Danach steht
+  das Paket auf `[~]`, und A hört auf. **A schreibt keine Zeile Projektcode und
   startet keinen Implementierer.**
 - **B** führt die Züge 1 bis 5 aus: Implementierer beauftragen, Report
   entgegennehmen, Review, Fehlerkette, Verify, Commit, Plan fortschreiben.
@@ -116,24 +117,49 @@ der Lauf geht weiter. Der nächste Diff enthält es dann mit.
 
 ## Modell und Effort
 
-Zwei Prozesse, zwei Paare von Stellschrauben. Beide über die Umgebung
-überschreibbar:
+Zwei Regler mit zwei verschiedenen Fragen. Das Modell entscheidet, wie viel
+Wissen und Urteilskraft im Raum ist; der Effort, wie lange darüber nachgedacht
+werden darf. Beide gelten je Prozess, und Prozesse gibt es hier genau zwei.
 
 | Rolle | Modell | Effort | Warum |
 | --- | --- | --- | --- |
-| **A** — Zug 0 | `MODEL_A=opus` | `EFFORT_A=xhigh` | Hier fällt jedes Urteil, das den Rest des Laufs trägt: ob ein Finding noch existiert, ob eine Folge ein Symptom ist, wie der Restplan geschnitten wird. Ein Fehler hier schlägt auf jedes weitere Paket durch. |
-| **B** — Züge 1–5 | `MODEL_B=opus` | `EFFORT_B=medium` | Beauftragen, Report lesen, Diff erzeugen, verifizieren, committen. Buchhaltung mit einer einzigen Urteilsstelle, der Fehlerkette. |
+| **A** — Zug 0 | `MODEL_A=opus` | `EFFORT_A=xhigh` | Existiert das Finding noch, ist die Folge ein Symptom oder ein eigenes Paket, muss der Restplan anders geschnitten werden. Die härtesten Entscheidungen des Laufs, einmal je Paket und ohne eine Zeile Code. |
+| **B** — Züge 1–5 | `MODEL_B=opus` | aus dem Detailplan, sonst `EFFORT_B=medium` | B beauftragt, liest zwei Reports, fährt Verify, committet. Die einzige echte Entscheidung ist die Fehlerkette, und die hat den Befund im Wortlaut vor sich. |
 
-Warum B nicht auf `low` läuft, obwohl es für sich genommen reichte: **die
-Subagenten erben den Effort.** Modelle setzt B je Subagent ausdrücklich, nach
-der Dreistufen-Tabelle in `runner.md`; für den Effort gibt es diesen Schalter
-nicht. `EFFORT_B=low` senkt damit still auch den Implementierer, der die
-eigentliche Arbeit macht. Wer hier spart, spart am falschen Ende, und es sieht
-nicht danach aus.
+**Der Effort von B ist der Effort seiner Subagenten.** Modelle setzt B je
+Subagent ausdrücklich, nach der Dreistufen-Tabelle in `runner.md`; für den Effort
+gibt es diesen Schalter nicht, die Subagenten erben ihn vom Prozess. Der Wert
+entscheidet damit nicht über B, sondern über Implementierer und Reviewer, also
+über die beiden Rollen mit den meisten Zügen und den meisten gelesenen Dateien.
 
-Sparen lässt sich woanders, gründlicher: die Gegenprobe kostet gar kein Modell
-mehr. Sie war ein Zug des Orchestrators auf der stärksten Stufe und ist jetzt
-ein `grep` und zwei Vergleiche. Das ist der billigste Effort, den es gibt.
+Deshalb setzt **A** ihn und nicht die Umgebung: A hat den Code gesehen und weiß,
+was dieses Paket verlangt. Eine Zeile im Detailplan, neben `- Modell:`:
+
+```markdown
+- Effort: low
+```
+
+| Wert | Wenn das Paket … |
+| --- | --- |
+| `low` | … ein exakter Auftrag ist. Signaturen, Werte und Schritte stehen im Detailplan; das ist näher an Transkription als an Entwurf. |
+| `medium` | … ein gewöhnlicher Bugfix mit Regressionstest ist, ein Modul umbaut, Typen schärft. Der Vorgabewert, wenn die Zeile fehlt. |
+| `high` | … Nebenläufigkeit, Sicherheit oder die öffentliche API berührt, oder der Blast Radius unklar ist. Auch dann, wenn der Reviewer der eigentliche Grund ist: Review ist Deliberation, und er erbt denselben Wert. |
+
+Für das Modell gilt weiterhin »im Zweifel eine Stufe höher«. Für den Effort gilt
+das ausdrücklich **nicht**. Bei einem exakten Auftrag ist mehr Nachdenken nicht
+besser, sondern teurer und planferner: hoher Effort auf einer Transkription
+erhöht die Neigung, Dinge zu verbessern, die nicht im Detailplan stehen, und
+genau das verbietet dieser Skill an mehreren Stellen. Ein Implementierer auf
+`low` ist nicht nur billiger, er ist folgsamer.
+
+Heruntergedreht wird A nicht. Ein Fehlurteil in Zug 0 multipliziert sich über
+jedes Folgepaket, und Zug 0 ist gemessen an seiner Wirkung der billigste Zug im
+ganzen Lauf.
+
+Der gründlichste Schnitt liegt ohnehin woanders: die Gegenprobe kostet gar kein
+Modell mehr. Sie war ein Zug des Orchestrators auf der stärksten Stufe und ist
+jetzt ein `grep` und zwei Vergleiche. Wer bei den einfachen Dingen sparen will,
+nimmt ihnen das Modell weg, statt ihnen ein schwächeres zu geben.
 
 Bleibt der Lauf trotzdem zu teuer, ist `MODEL_B=sonnet` die erste Schraube und
 `BUDGET_USD` die harte Grenze je Prozess. `MODEL_A` bleibt, wo es ist.
