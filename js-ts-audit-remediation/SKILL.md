@@ -357,8 +357,10 @@ mehr als die gesparte Zeit.
 prüft das Ergebnis gegen `git` und das Verify-Log. Zug 0 läuft dabei im Terminal
 des Nutzers und kann ihn fragen; die Züge 1 bis 5 laufen ohne ihn. Das ist der
 zweite Weg, nicht der erste: er kommt in Frage, wenn der Lauf viele Pakete hat
-oder der Nutzer ihn nennt. Dann `references/shell-runner.md` lesen, sonst nicht —
-der Rest dieses Schritts beschreibt den Agenten-Weg und gilt unverändert.
+oder der Nutzer ihn nennt. Gestartet wird er von dir, mit `--tmux`, und läuft
+danach unabhängig von deiner Session weiter — der Nutzer muss kein Terminal
+öffnen. Dann `references/shell-runner.md` lesen, sonst nicht — der Rest dieses
+Schritts beschreibt den Agenten-Weg und gilt unverändert.
 
 **Dispatch.** Der Prompt ist kurz und besteht aus Pfaden, nicht aus Inhalten:
 

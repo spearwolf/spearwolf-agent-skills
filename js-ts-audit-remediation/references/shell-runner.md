@@ -24,11 +24,62 @@ Skript die Paketschleife, und am Ende geht es für Schritt 7 zurück in eine
 Session.
 
 ```bash
-<skill>/scripts/remediate.sh            # bis kein Paket mehr offen ist
+<skill>/scripts/remediate.sh --tmux     # abgelöst starten und zurückkommen
+<skill>/scripts/remediate.sh            # im aktuellen Terminal
 <skill>/scripts/remediate.sh --once     # nach einem Runner anhalten
 <skill>/scripts/remediate.sh --dry-run  # zeigen, was beauftragt würde
 <skill>/scripts/remediate.sh --headless # Zug 0 ohne Terminal fahren
 ```
+
+### Wer das Skript startet
+
+**Du, der Agent aus Schritt 5, startest es mit `--tmux`**, sobald der Grobplan
+freigegeben ist. Der Nutzer muss dafür kein Terminal öffnen; du rufst es über
+Bash auf und bekommst sofort die Kontrolle zurück:
+
+```
+Läuft in tmux-Session »remediate-mein-projekt«.
+
+  tmux attach -t remediate-mein-projekt   ansehen und antworten
+  Ctrl-b d                                wieder ablösen, der Lauf läuft weiter
+  tmux capture-pane -p -t remediate-…     hineinsehen, ohne anzuhängen
+  tmux kill-session -t remediate-…        abbrechen
+
+Mitschrift: .git/remediation/remediate.pane.log
+Journal:    .git/remediation/remediate.log
+```
+
+Diese Zeilen gibst du dem Nutzer weiter, und damit ist deine Arbeit an der
+Schleife getan. Sie läuft unabhängig von deiner Session weiter — schließt du
+dich, läuft sie; stirbt dein Kontext, läuft sie.
+
+Der Grund für tmux ist nicht Bequemlichkeit: eine abgelöste tmux-Session hat ein
+echtes Pseudo-Terminal (gemessen: `stdin=ja stdout=ja tty=/dev/pts/0`). Ein
+gewöhnlicher Hintergrundprozess hat keines, und ohne Terminal kann Zug 0 nicht
+fragen. tmux ist damit das Einzige, was »abgelöst« und »fragt nach« gleichzeitig
+erlaubt.
+
+Fehlt tmux, sagt das Skript es und nennt die zwei Alternativen: in einer Shell
+starten, oder `nohup … --headless &` ohne Rückfragen. `TMUX_BIN` zeigt auf ein
+tmux an anderer Stelle, `SESSION` benennt die Session anders als nach dem
+Projektverzeichnis.
+
+**Vorbedingungen werden vor dem Ablösen geprüft.** Ein falscher Branch, ein
+schmutziger Arbeitsbaum, ein fehlender Plan — das fällt sofort auf und nicht
+erst in einer Session, in die niemand hineinsieht.
+
+### Nachsehen, ohne anzuhängen
+
+Drei Wege, alle ohne den Lauf zu stören:
+
+| Wozu | Kommando |
+| --- | --- |
+| Was steht gerade im Pane | `tmux capture-pane -p -t <session>` |
+| Was ist bisher passiert | `cat .git/remediation/remediate.log` |
+| Die ganze Ausgabe | `cat .git/remediation/remediate.pane.log` |
+
+Das Journal endet mit `ende exit=N`, sobald der Lauf durch ist. Solange die Zeile
+fehlt, läuft er noch oder wartet auf eine Antwort.
 
 ### Zwei Modi für Zug 0
 
@@ -57,7 +108,8 @@ kein Nachfragen: was der Planer nicht entscheiden kann, kommt als Status
 niemand begleiten soll, und er kostet genau das, was er spart.
 
 Ohne Terminal startet der interaktive Modus gar nicht erst — die Meldung nennt
-den Schalter. Wer das Skript in eine `until`-Schleife steckt, will `--headless`.
+den Schalter. Mit `--tmux` stellt sich die Frage nicht: die Session bringt ihr
+Terminal mit. Wer das Skript in eine `until`-Schleife steckt, will `--headless`.
 
 ### Vorbedingungen
 

@@ -848,14 +848,21 @@ done</code></pre>
     <h2>Wie ein Lauf aussieht</h2>
     <div class="prose">
       <p>Er beginnt nicht im Skript. Er beginnt wie immer in einer offenen Session im Projekt, und dort laufen die Schritte 1 bis 5: Findings laden, Baseline messen, Scope klären, offene Entscheidungen abfragen, Grobplan schreiben, Freigabe. Erst danach übernimmt die Schleife, und für Schritt 7 geht es zurück in eine Session.</p>
+      <p>Gestartet wird die Schleife vom Agenten selbst, mit <code>--tmux</code>. Niemand muss ein Terminal öffnen: der Lauf hängt sich in eine abgelöste tmux-Session und läuft dort unabhängig weiter, auch wenn die Session, die ihn gestartet hat, längst zu ist.</p>
     </div>
 
     <pre><code><span class="c-cmt"># in einer Session, im Projekt</span>
 &gt; arbeite die Findings aus dem audit.html ab
   <span class="c-cmt">… Schritt 1–5, Grobplan nach ./remediation-plan.md, Freigabe …</span>
 
-<span class="c-cmt"># im Terminal</span>
-$ ~/.agents/skills/js-ts-audit-remediation/scripts/remediate.sh
+<span class="c-cmt"># der Agent startet die Schleife abgelöst</span>
+$ remediate.sh --tmux
+Läuft in tmux-Session »remediate-mein-projekt«.
+  tmux attach -t remediate-mein-projekt   ansehen und antworten
+  Ctrl-b d                                wieder ablösen
+Journal: .git/remediation/remediate.log
+
+<span class="c-cmt"># drinnen, wenn du dich anhängst</span>
 Zug 0:     interactive
 Pakete:    12 offen · 0 erledigt · 0 blockiert
 
@@ -869,7 +876,9 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
 → Runner A · Paket 3 · opus/xhigh · interaktiv</code></pre>
 
     <div class="prose">
-      <p>Du wirst am Anfang jedes Pakets gebraucht, meist ein paar Minuten. Die lange Strecke danach läuft ohne dich. <code>--headless</code> fährt auch Zug 0 ohne Terminal; dann wird aus einer Rückfrage ein Exit 10, und der Lauf hält an, statt zu fragen.</p>
+      <p>Du wirst am Anfang jedes Pakets gebraucht, meist ein paar Minuten — und nur dann, wenn du dich anhängst. Die lange Strecke danach läuft ohne dich. <code>--headless</code> fährt auch Zug 0 ohne Terminal; dann wird aus einer Rückfrage ein Exit 10, und der Lauf hält an, statt zu fragen.</p>
+      <p>Der Grund für tmux ist nicht Bequemlichkeit. Eine abgelöste tmux-Session hat ein echtes Pseudo-Terminal — gemessen <code>stdin=ja stdout=ja tty=/dev/pts/0</code> —, ein gewöhnlicher Hintergrundprozess hat keines, und ohne Terminal kann Zug 0 nicht fragen. tmux ist damit das Einzige, was »abgelöst« und »fragt nach« zugleich erlaubt. Fehlt es, nennt das Skript die zwei Alternativen: in einer Shell starten, oder <code>nohup … --headless &amp;</code> ohne Rückfragen.</p>
+      <p>Hineinsehen geht ohne anzuhängen: <code>tmux capture-pane -p</code> zeigt das Pane, <code>remediate.log</code> das Journal, <code>remediate.pane.log</code> die ganze Ausgabe. Das Journal endet mit <code>ende exit=N</code>, sobald der Lauf durch ist — fehlt die Zeile, läuft er noch oder wartet auf eine Antwort.</p>
 
       <h3>Was jede Rolle in die Hand bekommt</h3>
     </div>

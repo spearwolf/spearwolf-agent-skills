@@ -69,6 +69,9 @@ EXTRA_ARGS=${EXTRA_ARGS:-}
 
 ONCE=0
 DRY=0
+LAUNCH=0                        # --tmux: nur starten und zurückkommen
+SESSION=${SESSION:-}            # Name der tmux-Session
+TMUX_BIN=${TMUX_BIN:-tmux}      # falls tmux woanders liegt
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 SKILL_DIR=$(cd -- "$SCRIPT_DIR/.." && pwd)
@@ -103,11 +106,15 @@ usage() {
 Optionen:
   --once      nach dem ersten Runner anhalten. Für den ersten Probelauf.
   --headless  Zug 0 ohne Terminal fahren (wie PLAN_MODE=headless).
+  --tmux      den Lauf in einer abgelösten tmux-Session starten und sofort
+              zurückkommen. Die Session hat ein echtes Terminal, Zug 0 kann
+              also fragen; du hängst dich an, wenn du willst.
   --dry-run   nur zeigen, was beauftragt würde. Startet keinen Prozess.
   --help      diese Ausgabe.
 
 Umgebung:
   PLAN PLAN_MODE MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER
+  SESSION TMUX_BIN
   ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS
 EOF
 }
@@ -208,6 +215,54 @@ dirty_paths() { # Arbeitsbaum ohne den Plan, der während des Laufs ungetrackt b
   git status --porcelain | grep -v -F -e "$(basename "$PLAN")" || true
 }
 
+# --- Start in einer abgelösten tmux-Session ---------------------------------
+
+launch_tmux() { # $@ = die Argumente, mit denen der Lauf drinnen starten soll
+  local cmd v log
+  command -v "$TMUX_BIN" >/dev/null 2>&1 || die $EX_PRE \
+    "$(printf 'tmux nicht gefunden. Ohne tmux gibt es zwei Wege:\n%s\n%s' \
+      '  · das Skript in einer Shell starten (Zug 0 braucht ein Terminal), oder' \
+      '  · nohup <skript> --headless & — dann ohne Rückfragen, siehe PLAN_MODE.')"
+
+  [ -n "$SESSION" ] || SESSION="remediate-$(basename "$(pwd)")"
+
+  if "$TMUX_BIN" has-session -t "$SESSION" 2>/dev/null; then
+    die $EX_PRE "$(printf 'Es läuft schon eine Session »%s«.\n  tmux attach -t %s   ansehen\n  tmux kill-session -t %s   beenden' "$SESSION" "$SESSION" "$SESSION")"
+  fi
+
+  # Die Umgebung wandert ausdrücklich mit. Ein tmux-Server, der schon läuft,
+  # hat seine eigene, und die kennt keine dieser Stellschrauben.
+  cmd="env"
+  for v in PLAN PLAN_MODE MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD \
+           MAX_ITER ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS; do
+    eval "[ -n \"\${$v:-}\" ]" && cmd="$cmd $v=$(eval printf '%q' "\"\$$v\"")"
+  done
+  cmd="$cmd $(printf '%q' "$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")")"
+  for v in "$@"; do cmd="$cmd $(printf '%q' "$v")"; done
+
+  log="$WORK/remediate.pane.log"
+  "$TMUX_BIN" new-session -d -s "$SESSION" -c "$(pwd)" "$cmd" \
+    || die $EX_PRE "tmux konnte die Session nicht anlegen"
+  # Ohne das verschwindet die Ausgabe, sobald der Lauf endet.
+  "$TMUX_BIN" set-option -t "$SESSION" -w remain-on-exit on >/dev/null 2>&1 || true
+  "$TMUX_BIN" pipe-pane -o -t "$SESSION" "cat >> $(printf '%q' "$log")" >/dev/null 2>&1 || true
+
+  say "Läuft in tmux-Session »$SESSION«."
+  say ""
+  printf '  %-38s %s\n' "tmux attach -t $SESSION"           "ansehen und antworten"
+  printf '  %-38s %s\n' "Ctrl-b d"                          "wieder ablösen, der Lauf läuft weiter"
+  printf '  %-38s %s\n' "tmux capture-pane -p -t $SESSION"  "hineinsehen, ohne anzuhängen"
+  printf '  %-38s %s\n' "tmux kill-session -t $SESSION"     "abbrechen"
+  say ""
+  say "Mitschrift: $log"
+  say "Journal:    $WORK/remediate.log"
+  if [ "$PLAN_MODE" = interactive ]; then
+    say ""
+    say "Zug 0 wartet dort auf dich, sobald das erste Paket drankommt."
+  fi
+  exit $EX_OK
+}
+
 # --- Vorbedingungen ---------------------------------------------------------
 
 preflight() {
@@ -239,14 +294,14 @@ preflight() {
 
   # Zwei Schleifen auf einem Arbeitsbaum ist genau der Konflikt, den die
   # Sequenzialität vermeiden soll.
-  if [ "$DRY" = 0 ] && ! mkdir "$WORK/.remediate.lock" 2>/dev/null; then
+  if [ "$DRY" = 0 ] && [ "$LAUNCH" = 0 ] && ! mkdir "$WORK/.remediate.lock" 2>/dev/null; then
     die $EX_PRE "hier läuft schon eine Schleife ($WORK/.remediate.lock). Läuft keine mehr, das Verzeichnis von Hand entfernen."
   fi
-  if [ "$DRY" = 0 ]; then
-    trap 'rmdir "$WORK/.remediate.lock" 2>/dev/null || true' EXIT
+  if [ "$DRY" = 0 ] && [ "$LAUNCH" = 0 ]; then
+    trap 'ec=$?; journal "ende exit=$ec"; rmdir "$WORK/.remediate.lock" 2>/dev/null || true' EXIT
   fi
 
-  if [ "$PLAN_MODE" = interactive ] && [ "$DRY" = 0 ]; then
+  if [ "$PLAN_MODE" = interactive ] && [ "$DRY" = 0 ] && [ "$LAUNCH" = 0 ]; then
     if [ ! -t 0 ] || [ ! -t 1 ]; then
       die $EX_PRE "$(printf 'Zug 0 läuft interaktiv und braucht ein Terminal, hier ist keines.\n%s' \
         'Entweder das Skript in einer Shell starten, oder PLAN_MODE=headless setzen — dann wird aus einer Rückfrage Exit 10.')"
@@ -573,18 +628,25 @@ run_b() { # $1 = Paketnummer
 }
 
 main() {
+  local pass_on=()
   while [ $# -gt 0 ]; do
     case "$1" in
-      --once) ONCE=1 ;;
-      --headless) PLAN_MODE=headless ;;
-      --dry-run) DRY=1 ;;
+      --once) ONCE=1; pass_on[${#pass_on[@]}]=$1 ;;
+      --headless) PLAN_MODE=headless; pass_on[${#pass_on[@]}]=$1 ;;
+      --dry-run) DRY=1; pass_on[${#pass_on[@]}]=$1 ;;
+      --tmux) LAUNCH=1 ;;
       --help|-h) usage; exit 0 ;;
       *) die $EX_PRE "unbekannte Option: $1" ;;
     esac
     shift
   done
 
+  # Erst prüfen, dann starten: ein falscher Branch soll hier auffallen und
+  # nicht in einer abgelösten Session, in die niemand hineinsieht.
   preflight
+  if [ "$LAUNCH" = 1 ]; then
+    launch_tmux ${pass_on[@]+"${pass_on[@]}"}
+  fi
 
   say "Plan:      $PLAN"
   say "Branch:    $BRANCH"
