@@ -109,22 +109,43 @@ umgesetztes Paket auf einer überlasteten API repariert kein Neuversuch.
 Zwei verschiedene Dinge, die leicht in einen Topf geraten: **welche Werkzeuge es
 gibt** und **welche Aufrufe eine Freigabe brauchen**.
 
-**Die Werkzeugfläche** schränkt die Schleife ein. Sie entzieht jedem Runner per
-`--disallowedTools` die Werkzeuge, die einen zweiten Kanal aufmachen oder den
-Prozess überdauern würden:
+**Die Werkzeugfläche** bleibt weitgehend die der Maschine. Was der Nutzer dort
+eingestellt hat, steht dem Runner und seinen Subagenten offen; die Schleife nimmt
+nur zweierlei weg.
 
-```
-AskUserQuestion · SendMessage · SendUserFile · PushNotification
-ScheduleWakeup · CronCreate · Artifact
-```
+Erstens Werkzeuge, mit denen ein Prozess **auf eine Antwort warten oder sich
+selbst überleben** kann. Beides bräche die einzige Zusage, auf der die Schleife
+ruht: dass ein beendeter Prozess ein fertiges Paket bedeutet.
 
-Der Grund steht schon im Brief, aber im Text hat er sich als nicht haltbar
-erwiesen: die Rückgabe ist der einzige Kanal, und ein Runner, der sich selbst
-einen Weckruf legt, überlebt seinen Prozess — womit die Terminierung wieder eine
-Ermessensfrage wäre. `AskUserQuestion` ist der wichtigste Eintrag: in einem
-`-p`-Prozess sitzt niemand, der antworten könnte, und der vorgesehene Weg für
-»hier muss jemand entscheiden« ist der Status `question`, aus dem die Schleife
-Exit 10 macht. Über `DENY_TOOLS` lässt sich die Liste ändern.
+| Entzogen | Weil |
+| --- | --- |
+| `AskUserQuestion` | wartet auf eine Antwort, die in einem Prozess ohne Terminal nie kommt |
+| `SendMessage` | dito, sobald ein Runner auf eine Erwiderung wartet — Arm E ist genau daran stehengeblieben |
+| `ScheduleWakeup`, `CronCreate` | legen Arbeit an, die den Prozess überlebt. Danach heißt »beendet« nicht mehr »fertig« |
+
+Zweitens die Kommandos, die der Lauf laut `SKILL.md` ohnehin nicht kennt:
+`git push`, `git tag`, `npm publish` und die Geschwister. »Der Lauf endet mit
+lokalen Commits« ist damit keine Bitte mehr.
+
+**Alles andere bleibt.** Kein `PushNotification`, kein `SendUserFile`, kein
+`Artifact` in der Liste: die reichen etwas hinaus, ohne zu warten und ohne den
+Prozess zu überdauern, und wenn die Maschine sie hat, sollen die Runner sie
+haben. `DENY_TOOLS=""` schaltet auch den Rest ab.
+
+**Fragen kann ein Runner trotzdem nicht**, und das ist keine Frage der Rechte.
+Gemessen, ohne jede Verbotsliste: `AskUserQuestion` existiert in einem
+`-p`-Prozess gar nicht. Die Prozessgrenze verhindert das Fragen, nicht die
+Liste — der Eintrag oben ist nur der Gürtel zum Hosenträger, für einen Host, der
+es anders hält. Wer eine Rückfrage mitten im Paket braucht, will den
+Agenten-Weg; er bleibt der Standard und ist dafür da.
+
+Zwei Eigenschaften der Liste, gemessen und nicht vermutet:
+
+- Ein Name, den es in dieser Umgebung gar nicht gibt, stört nicht. Die Liste darf
+  deshalb Werkzeuge nennen, die nur mancher Host anbietet.
+- Ein entzogenes Werkzeug ist **keine** abgelehnte Berechtigung: `permission_denials`
+  bleibt leer. Eine zu strenge Liste läuft also nicht in Exit 21, sondern in einen
+  Runner, der `blocked` oder `KONTEXT_FEHLT` meldet.
 
 ### Was ein Implementierer erreicht
 
@@ -200,10 +221,6 @@ Zeile Code.
 Weil die Frage den Prozess überleben muss, gehört sie außerdem in den Plan.
 Terminal und Journal reichen für einen beaufsichtigten Lauf; wer über Nacht
 laufen lässt, findet am Morgen den Plan vor und nicht die Bildschirmausgabe.
-
-### Drei Eigenschaften der Verbotsliste
-
-Gemessen und nicht vermutet:
 
 - Ein Name, den es in dieser Umgebung gar nicht gibt, stört nicht. Die Liste darf
   deshalb Werkzeuge nennen, die nur mancher Host anbietet.

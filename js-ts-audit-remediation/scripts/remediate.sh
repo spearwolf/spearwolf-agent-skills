@@ -45,17 +45,20 @@ FALLBACK_MODEL=${FALLBACK_MODEL:-}  # leer lassen: lieber warten als still schw�
 # gehören hier ergänzt, wenn es nicht npm, pnpm oder yarn ist.
 ALLOW_TOOLS=${ALLOW_TOOLS:-Bash(git *),Bash(npm *),Bash(pnpm *),Bash(yarn *),Bash(node *)}
 
-# Was ein Runner nicht bekommt. Erstens Werkzeuge, die einen zweiten Kanal
-# aufmachen oder den Prozess überdauern: die Rückgabe ist der einzige Kanal,
-# und wer sich selbst einen Weckruf legt, überlebt seinen Prozess. Zweitens die
-# Kommandos, die der Lauf laut SKILL.md ohnehin nicht kennt — kein Push, kein
-# Tag, kein Publish. Namen ohne Entsprechung stören nicht.
+# Was ein Runner nicht bekommt, und zwar nur zweierlei. Erstens Werkzeuge, mit
+# denen ein Prozess auf eine Antwort warten oder sich selbst überleben kann:
+# beides bräche die Zusage, dass ein beendeter Prozess ein fertiges Paket
+# bedeutet. Zweitens die Kommandos, die der Lauf laut SKILL.md ohnehin nicht
+# kennt — kein Push, kein Tag, kein Publish.
+#
+# Alles andere bleibt: was auf dieser Maschine eingestellt ist, steht dem Runner
+# und seinen Subagenten offen. DENY_TOOLS="" schaltet auch diesen Rest ab.
+DENY_TOOLS=${DENY_TOOLS:-AskUserQuestion,SendMessage,ScheduleWakeup,CronCreate,Bash(git push*),Bash(git tag*),Bash(npm publish*),Bash(pnpm publish*),Bash(yarn publish*)}
+
 # Was sonst noch an jeden Runner durchgereicht werden soll, an Kommas getrennt:
 # --mcp-config <datei>, --add-dir <pfad>, --plugin-dir <pfad>. Braucht ein Paket
 # einen MCP-Server, ist das der Ort dafür.
 EXTRA_ARGS=${EXTRA_ARGS:-}
-
-DENY_TOOLS=${DENY_TOOLS:-AskUserQuestion,SendMessage,SendUserFile,PushNotification,ScheduleWakeup,CronCreate,Artifact,Bash(git push*),Bash(git tag*),Bash(npm publish*),Bash(pnpm publish*),Bash(yarn publish*)}
 
 ONCE=0
 DRY=0
