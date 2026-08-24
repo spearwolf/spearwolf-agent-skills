@@ -39,12 +39,18 @@ ATTEMPTS=${ATTEMPTS:-3}         # Versuche je Runner, wenn die API überlastet i
 BACKOFF=${BACKOFF:-60,300,900}  # Wartezeiten dazwischen, in Sekunden
 FALLBACK_MODEL=${FALLBACK_MODEL:-}  # leer lassen: lieber warten als still schwächer werden
 
-# Werkzeuge, die einen zweiten Kanal aufmachen oder den Prozess überdauern.
-# Die Rückgabe ist der einzige Kanal, und ein Runner, der sich selbst einen
-# Weckruf legt, überlebt seinen Prozess — beides Regeln, die damit nicht mehr
-# nur im Text stehen. Namen, die es in einer Umgebung gar nicht gibt, stören
-# nicht.
-DENY_TOOLS=${DENY_TOOLS:-AskUserQuestion,SendMessage,SendUserFile,PushNotification,ScheduleWakeup,CronCreate,Artifact}
+# Was ein Runner braucht. --permission-mode acceptEdits deckt Dateiänderungen
+# ab, Bash aber nicht: ohne diese Liste wird »git add« abgefragt, und ein
+# Prozess ohne Terminal kann nicht antworten. Die Verify-Kommandos des Projekts
+# gehören hier ergänzt, wenn es nicht npm, pnpm oder yarn ist.
+ALLOW_TOOLS=${ALLOW_TOOLS:-Bash(git *),Bash(npm *),Bash(pnpm *),Bash(yarn *),Bash(node *)}
+
+# Was ein Runner nicht bekommt. Erstens Werkzeuge, die einen zweiten Kanal
+# aufmachen oder den Prozess überdauern: die Rückgabe ist der einzige Kanal,
+# und wer sich selbst einen Weckruf legt, überlebt seinen Prozess. Zweitens die
+# Kommandos, die der Lauf laut SKILL.md ohnehin nicht kennt — kein Push, kein
+# Tag, kein Publish. Namen ohne Entsprechung stören nicht.
+DENY_TOOLS=${DENY_TOOLS:-AskUserQuestion,SendMessage,SendUserFile,PushNotification,ScheduleWakeup,CronCreate,Artifact,Bash(git push*),Bash(git tag*),Bash(npm publish*),Bash(pnpm publish*),Bash(yarn publish*)}
 
 ONCE=0
 DRY=0
@@ -86,7 +92,7 @@ Optionen:
 
 Umgebung:
   PLAN MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER
-  ATTEMPTS BACKOFF FALLBACK_MODEL DENY_TOOLS
+  ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS
 EOF
 }
 
@@ -127,6 +133,20 @@ effort_for_package() { # $1 = Paketnummer -> die Zeile »- Effort:« aus dem Det
     low|medium|high|xhigh|max) printf '%s' "$v" ;;
     *) printf '%s' "$EFFORT_B" ;;
   esac
+}
+
+tool_args() { # füllt TOOL_ARGS; die Muster enthalten Leerzeichen und dürfen
+              # deshalb nicht als ein Komma-String durchgereicht werden
+  local t old=$IFS
+  TOOL_ARGS=()
+  if [ -n "$ALLOW_TOOLS" ]; then
+    TOOL_ARGS[${#TOOL_ARGS[@]}]=--allowedTools
+    IFS=','; for t in $ALLOW_TOOLS; do TOOL_ARGS[${#TOOL_ARGS[@]}]=$t; done; IFS=$old
+  fi
+  if [ -n "$DENY_TOOLS" ]; then
+    TOOL_ARGS[${#TOOL_ARGS[@]}]=--disallowedTools
+    IFS=','; for t in $DENY_TOOLS; do TOOL_ARGS[${#TOOL_ARGS[@]}]=$t; done; IFS=$old
+  fi
 }
 
 snapshot() { # alles, was ein Runner bleibend verändern könnte, in einer Zeile
@@ -247,6 +267,7 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
 
   if [ "$DRY" = 1 ]; then
     say "--- Runner $role · Paket $pkg · $model/$effort · Budget \$$BUDGET_USD"
+    say "    mit:  ${ALLOW_TOOLS:-—}"
     say "    ohne: ${DENY_TOOLS:-—}"
     printf '%s\n\n' "$brief"
     RES=''; RAW=''
@@ -258,6 +279,7 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
   say "→ Runner $role · Paket $pkg · $model/$effort"
 
   local before attempt pause
+  tool_args
   before=$(snapshot)
   attempt=1
   while :; do
@@ -266,12 +288,12 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
       --model "$model" \
       --effort "$effort" \
       ${FALLBACK_MODEL:+--fallback-model "$FALLBACK_MODEL"} \
-      ${DENY_TOOLS:+--disallowedTools "$DENY_TOOLS"} \
       --session-id "$(uuid)" \
       --output-format json \
       --json-schema "$SCHEMA" \
       --permission-mode "$PERM" \
       --max-budget-usd "$BUDGET_USD" \
+      ${TOOL_ARGS[@]+"${TOOL_ARGS[@]}"} \
       > "$RAW" 2> "$ERR" || rc=$?
 
     if [ "$rc" -eq 0 ] && jq -e '.is_error == false' "$RAW" >/dev/null 2>&1; then

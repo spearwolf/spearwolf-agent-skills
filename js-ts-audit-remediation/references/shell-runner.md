@@ -136,19 +136,54 @@ Drei Eigenschaften dieser Liste, gemessen und nicht vermutet:
 - Es ist ein Boden, kein Zaun. Eine Verbotsliste kennt nur, was es beim Schreiben
   gab; für alles Weitere gilt weiterhin der Satz im Brief.
 
-**Die Berechtigungen** sind davon unabhängig. Die Schleife startet mit
-`--permission-mode acceptEdits`; ob daneben `git commit` und `npm test` eine
-eigene Freigabe brauchen, entscheidet die Einstellung des Hosts. Ein Prozess ohne
-Terminal kann keine Rückfrage beantworten, also wird aus einer fehlenden Freigabe
-eine Absage — und die sieht die Schleife: Exit 21, mit der Ansage, dass die
-Allowlist zu eng ist und nicht das Paket zu schwer. Wer das vorher klären will,
-nimmt `--allowedTools` in die Einstellungen auf, etwa `Bash(git *)` und
-`Bash(npm *)`.
+**Die Berechtigungen** sind davon unabhängig, und hier liegt die Falle:
+`--permission-mode acceptEdits` deckt Dateiänderungen ab, **Bash aber nicht**.
+Gemessen: unter `acceptEdits` allein wurden `git add` und `git commit`
+abgefragt, und ein Prozess ohne Terminal kann nicht antworten — der Runner käme
+nie bis zum Commit. Deshalb reicht die Schleife eine Allowlist mit:
+
+```
+Bash(git *) · Bash(npm *) · Bash(pnpm *) · Bash(yarn *) · Bash(node *)
+```
+
+Fährt das Zielprojekt seine Verify-Kommandos anders — `make`, `cargo`, ein
+eigenes Skript —, gehört das über `ALLOW_TOOLS` ergänzt. Merkt man sonst beim
+ersten Paket, an Exit 21.
+
+`Bash(git *)` schließt Kommandos ein, die dieser Lauf nicht kennt. Sie stehen
+deshalb in der Verbotsliste, die Vorrang hat: `git push`, `git tag`,
+`npm publish` und die Geschwister. »Kein Push, kein Tag, kein Publish« aus den
+Grenzen des Laufs ist damit keine Bitte mehr.
+
+### Welcher Permission-Modus
+
+| Modus | Gemessen | Taugt für die Schleife |
+| --- | --- | --- |
+| `acceptEdits` | Änderungen laufen durch, Bash nicht — mit der Allowlist oben vollständig | **ja**, die Voreinstellung |
+| `auto` | Lesende Aufrufe laufen durch, ein gewöhnlicher `Edit` wurde abgelehnt | nein |
+| `bypassPermissions` | fragt nichts | nur wenn man auf jede Schranke verzichten will |
+
+`auto` ist ein Klassifikator: er urteilt über jeden Aufruf anhand von Regeln,
+die `claude auto-mode defaults` ausgibt. Der Modus ist als Wert gültig und
+`PERM=auto` läuft, nur trägt er keinen unbeaufsichtigten Lauf — was er nicht von
+sich aus erlaubt, will er freigegeben haben, und dafür ist niemand da. Im
+Versuch endete das damit, dass ein Runner höflich um Erlaubnis bat und nichts
+committete.
+
+Als Leitplanke ist er trotzdem bemerkenswert nah an diesem Skill: seine
+Verbotsliste nennt Force-Push, das Umschreiben entfernter Historie und das
+Entfernen von Sicherheitstests — alles Dinge, die `runner.md` ohnehin untersagt.
+Er kann nur nicht gewähren, und Gewähren ist hier die Aufgabe.
+
+`bypassPermissions` würde laufen, aber dann feuert Exit 21 nie, und ein Kommando,
+das aus dem Ruder läuft, hat nichts mehr vor sich. Wer den Lauf unbeaufsichtigt
+über Nacht stellt, will die Schranke behalten, die ihn am nächsten Morgen
+erklärt.
 
 **Was in der eigenen Umgebung tatsächlich anliegt**, findet man nicht dadurch
 heraus, dass man ein Modell nach seinen Werkzeugen fragt: zwei Läufe derselben
 Frage haben hier zwei verschiedene Listen genannt. Verlässlich ist nur das
-Verhalten — einen Aufruf versuchen lassen und nachsehen, was zurückkommt.
+Verhalten — `--once` auf dem ersten Paket sagt es in einem Zug.
 
 ## Deine Rolle, wenn du beauftragt wurdest
 
