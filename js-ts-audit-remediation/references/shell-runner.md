@@ -49,10 +49,60 @@ sauber ist, wenn ein Paket auf `[~]` steht oder wenn schon eine Schleife läuft.
 | 20 | Die Rückgabe passt nicht zum Repo | Plan und `git log` ansehen. Nicht blind wiederholen |
 | 21 | Ein Runner hing an einer Rechteschranke | Die Allowlist ist zu eng, nicht das Paket zu schwer |
 | 30 | Der Runner-Prozess selbst ist gescheitert | `paket-N.*.stderr` im Arbeitsverzeichnis |
+| 31 | Die API blieb überlastet | Nichts ist kaputt, nichts hat sich bewegt: später erneut starten |
 | 40 | Eine Vorbedingung stimmt nicht | Die Meldung sagt, welche |
 
 Entstehen im Abschluss neue Pakete — die Drain-Runde schneidet welche —, läuft
 das Skript danach noch einmal. Es fasst den Abschluss selbst nie an.
+
+## Wenn die API überlastet ist
+
+Ein langer Lauf trifft irgendwann auf ein `529`. Drei Ebenen liegen dagegen
+übereinander, und nur die dritte gehört diesem Skript.
+
+Die CLI fängt vorübergehende Fehler selbst ab; was hier ankommt, hat das bereits
+überlebt. `--fallback-model` wäre die zweite Ebene, ist aber nicht voreingestellt:
+ein Runner, der still auf ein schwächeres Modell wechselt, liefert weiterhin ein
+Ergebnis, und bei A wäre das ein Urteil über Paketschnitt und Triage, auf dem
+jedes Folgepaket aufbaut. Lieber warten als unbemerkt schwächer werden. Wer es
+anders will, setzt `FALLBACK_MODEL`.
+
+Die dritte Ebene ist die Schleife. Scheitert ein Runner, wartet sie und startet
+ihn neu — `ATTEMPTS=3` Versuche, `BACKOFF=60,300,900` Sekunden dazwischen, also
+gut zwanzig Minuten Geduld. Beides über die Umgebung einstellbar.
+
+**Wiederholt wird nur, was nichts hinterlassen hat.** Vor jedem Start nimmt die
+Schleife einen Fingerabdruck aus drei Werten: `HEAD`, der Zustand des
+Arbeitsbaums und der Plan. Ist ein Runner an der überlasteten API gescheitert,
+ohne einen davon zu bewegen, gibt es nichts, worin ein Neuversuch aufsetzen
+könnte — er ist ein Neustart und kein Fortsetzen. Hat sich einer bewegt, wird
+nicht wiederholt, sondern angehalten: das ist der `[~]`-Fall mit halber Arbeit im
+Baum, und darüber entscheidet nach `references/resume.md` der Nutzer.
+
+**Was als Überlastung zählt**, entscheidet das Feld `api_error_status` im
+Ergebnis-JSON (`429`, `500`, `502`, `503`, `529`). Nur wenn der Prozess gar kein
+lesbares JSON hinterlassen hat, sieht die Schleife in seine Fehlerausgabe, und
+das Muster dort ist bewusst eng: eines, das auf das bloße Wort anspringt,
+wiederholt auch Fehler, die keine sind. Ein erschöpftes Budget ist keine
+Überlastung und wird nie wiederholt — der nächste Versuch liefe in dieselbe
+Grenze und zahlte sie noch einmal.
+
+**Exit 31 heißt: warte länger, nicht: repariere etwas.** Weil der Plan den Stand
+trägt, ist ein Neustart des Skripts identisch mit einem Fortsetzen. Für einen
+unbeaufsichtigten Lauf reicht deshalb:
+
+```bash
+until <skill>/scripts/remediate.sh; do
+  [ $? -eq 31 ] || break     # alles andere braucht einen Menschen
+  sleep 600
+done
+```
+
+Die Grenze dieses Netzes: es umspannt den Runner-Prozess, nicht die Subagenten
+darin. Stirbt ein Implementierer an derselben Überlastung, sieht das B und
+behandelt es über die Fehlerkette; kommt es damit nicht durch, gibt es
+`blocked` zurück und die Schleife hält an. Das ist richtig so — ein halb
+umgesetztes Paket auf einer überlasteten API repariert kein Neuversuch.
 
 ## Deine Rolle, wenn du beauftragt wurdest
 

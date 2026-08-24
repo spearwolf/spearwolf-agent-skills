@@ -23,6 +23,7 @@ EX_RESUME=11   # ein Paket steht auf [~], ein früherer Lauf ist mittendrin gest
 EX_CONTRACT=20 # die Rückgabe passt nicht zu dem, was im Repo steht
 EX_PERM=21     # ein Runner hing an einer Rechteschranke
 EX_AGENT=30    # der Runner-Prozess selbst ist gescheitert
+EX_BUSY=31     # die API blieb überlastet, nichts ist kaputt, später erneut starten
 EX_PRE=40      # eine Vorbedingung stimmt nicht
 
 # --- Stellschrauben, alle über die Umgebung überschreibbar ------------------
@@ -34,6 +35,9 @@ EFFORT_B=${EFFORT_B:-medium}   # nur der Vorgabewert; »- Effort:« im Detailpla
 PERM=${PERM:-acceptEdits}
 BUDGET_USD=${BUDGET_USD:-15}    # harte Obergrenze je Runner-Prozess
 MAX_ITER=${MAX_ITER:-200}       # Reißleine gegen eine Schleife ohne Fortschritt
+ATTEMPTS=${ATTEMPTS:-3}         # Versuche je Runner, wenn die API überlastet ist
+BACKOFF=${BACKOFF:-60,300,900}  # Wartezeiten dazwischen, in Sekunden
+FALLBACK_MODEL=${FALLBACK_MODEL:-}  # leer lassen: lieber warten als still schwächer werden
 
 ONCE=0
 DRY=0
@@ -46,6 +50,7 @@ TOTAL_COST=0
 PACKAGES_DONE=0
 RES=""   # die geprüfte Rückgabe des zuletzt gelaufenen Runners
 RAW=""   # der Pfad zu seinem vollständigen Ergebnis-JSON
+ERR=""   # der Pfad zu seiner Standardfehlerausgabe
 
 # --- Ausgabe ----------------------------------------------------------------
 
@@ -74,6 +79,7 @@ Optionen:
 
 Umgebung:
   PLAN MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER
+  ATTEMPTS BACKOFF FALLBACK_MODEL
 EOF
 }
 
@@ -114,6 +120,34 @@ effort_for_package() { # $1 = Paketnummer -> die Zeile »- Effort:« aus dem Det
     low|medium|high|xhigh|max) printf '%s' "$v" ;;
     *) printf '%s' "$EFFORT_B" ;;
   esac
+}
+
+snapshot() { # alles, was ein Runner bleibend verändern könnte, in einer Zeile
+  printf '%s|%s|%s' \
+    "$(git rev-parse HEAD)" \
+    "$(git status --porcelain | cksum)" \
+    "$(cksum < "$PLAN")"
+}
+
+nth_backoff() { # $1 = Versuchsnummer -> Wartezeit in Sekunden
+  printf '%s' "$BACKOFF" | tr ',' '\n' | sed -n "$1p" | tr -d ' '
+}
+
+transient_failure() { # 0 = die API war überlastet, ein späterer Versuch lohnt
+  # Erstens das strukturierte Signal. Wenn es da ist, entscheidet es allein:
+  # ein erschöpftes Budget und eine abgelehnte Anfrage sehen im Text ähnlich
+  # aus wie eine Überlastung, und nur eine davon wird durch Warten besser.
+  if [ -s "$RAW" ] && jq -e . "$RAW" >/dev/null 2>&1; then
+    case "$(jq -r '(.api_error_status // "")' "$RAW")" in
+      429|500|502|503|529) return 0 ;;
+      *) return 1 ;;
+    esac
+  fi
+
+  # Zweitens, und nur wenn der Prozess gar kein lesbares JSON hinterlassen hat:
+  # der Text, den er ins Leere geschrieben hat. Bewusst eng gefasst — ein Muster,
+  # das auf das bloße Wort anspringt, wiederholt auch Fehler, die keine sind.
+  grep -qE '(^|[^0-9])(429|503|529)([^0-9]|$)|overloaded_error|Overloaded|rate.?limit' "$ERR" 2>/dev/null
 }
 
 dirty_paths() { # Arbeitsbaum ohne den Plan, der während des Laufs ungetrackt bleibt
@@ -212,23 +246,48 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
   fi
 
   RAW="$WORK/paket-$pkg.$role.json"
+  ERR="$WORK/paket-$pkg.$role.stderr"
   say "→ Runner $role · Paket $pkg · $model/$effort"
 
-  rc=0
-  claude -p "$brief" \
-    --model "$model" \
-    --effort "$effort" \
-    --session-id "$(uuid)" \
-    --output-format json \
-    --json-schema "$SCHEMA" \
-    --permission-mode "$PERM" \
-    --max-budget-usd "$BUDGET_USD" \
-    > "$RAW" 2> "$WORK/paket-$pkg.$role.stderr" || rc=$?
+  local before attempt pause
+  before=$(snapshot)
+  attempt=1
+  while :; do
+    rc=0
+    claude -p "$brief" \
+      --model "$model" \
+      --effort "$effort" \
+      ${FALLBACK_MODEL:+--fallback-model "$FALLBACK_MODEL"} \
+      --session-id "$(uuid)" \
+      --output-format json \
+      --json-schema "$SCHEMA" \
+      --permission-mode "$PERM" \
+      --max-budget-usd "$BUDGET_USD" \
+      > "$RAW" 2> "$ERR" || rc=$?
 
-  [ "$rc" -eq 0 ] || die $EX_AGENT "Runner $role für Paket $pkg endete mit Exit $rc — siehe $RAW und $WORK/paket-$pkg.$role.stderr"
+    if [ "$rc" -eq 0 ] && jq -e '.is_error == false' "$RAW" >/dev/null 2>&1; then
+      break
+    fi
 
-  jq -e '.is_error == false' "$RAW" >/dev/null 2>&1 \
-    || die $EX_AGENT "Runner $role für Paket $pkg meldet is_error — siehe $RAW"
+    transient_failure \
+      || die $EX_AGENT "Runner $role für Paket $pkg ist gescheitert (Exit $rc) — siehe $RAW und $ERR"
+
+    # Ein Neuversuch ist nur dann ein Neuversuch, wenn der gescheiterte Lauf
+    # nichts hinterlassen hat. Sonst setzte er auf halber Arbeit auf, und das
+    # entscheidet nicht dieses Skript, sondern der Nutzer nach resume.md.
+    [ "$(snapshot)" = "$before" ] || die $EX_AGENT \
+      "Runner $role für Paket $pkg ist an der überlasteten API gescheitert, hat vorher aber schon etwas verändert. Kein Neuversuch — der Stand gehört angesehen, siehe references/resume.md."
+
+    [ "$attempt" -lt "$ATTEMPTS" ] || die $EX_BUSY \
+      "Die API blieb über $ATTEMPTS Versuche überlastet. Nichts ist kaputt und nichts hat sich bewegt: dasselbe Kommando später erneut starten."
+
+    pause=$(nth_backoff "$attempt")
+    [ -n "$pause" ] || pause=300
+    say "  API überlastet, Versuch $attempt von $ATTEMPTS. Warte ${pause}s."
+    journal "paket=$pkg rolle=$role ueberlastet versuch=$attempt warte=${pause}s"
+    sleep "$pause"
+    attempt=$((attempt + 1))
+  done
 
   cost=$(jq -r '.total_cost_usd // 0' "$RAW")
   TOTAL_COST=$(awk -v a="$TOTAL_COST" -v b="$cost" 'BEGIN { printf "%.4f", a + b }')
