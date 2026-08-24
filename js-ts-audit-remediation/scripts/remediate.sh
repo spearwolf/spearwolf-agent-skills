@@ -200,9 +200,11 @@ transient_failure() { # 0 = die API war überlastet, ein späterer Versuch lohnt
   fi
 
   # Zweitens, und nur wenn der Prozess gar kein lesbares JSON hinterlassen hat:
-  # der Text, den er ins Leere geschrieben hat. Bewusst eng gefasst — ein Muster,
-  # das auf das bloße Wort anspringt, wiederholt auch Fehler, die keine sind.
-  grep -qE '(^|[^0-9])(429|503|529)([^0-9]|$)|overloaded_error|Overloaded|rate.?limit' "$ERR" 2>/dev/null
+  # der Text, den er ins Leere geschrieben hat. Dieselben fünf Codes wie oben —
+  # eine kürzere Liste hier hieße, dass ein 500 je nach Sterbezeitpunkt des
+  # Prozesses mal wiederholt wird und mal nicht. Die Ziffern müssen allein
+  # stehen, sonst springt das Muster auf jede Zahl an, die zufällig so aussieht.
+  grep -qE '(^|[^0-9])(429|500|502|503|529)([^0-9]|$)|overloaded_error|Overloaded|rate.?limit' "$ERR" 2>/dev/null
 }
 
 dirty_paths() { # Arbeitsbaum ohne den Plan, der während des Laufs ungetrackt bleibt
@@ -453,6 +455,12 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
   local got
   got=$(jq -r '.package' <<<"$RES")
   [ "$got" = "$pkg" ] || die $EX_CONTRACT "Runner $role sollte Paket $pkg bearbeiten, gibt aber Paket $got zurück"
+
+  # Die Rolle steuert im Skript nichts — es weiß ja, wen es gestartet hat. Sie
+  # zu prüfen kostet nichts und fängt den Fall, in dem ein Runner seinen Auftrag
+  # falsch gelesen hat: wer sich für A hält, hat womöglich Zug 0 gefahren.
+  got=$(jq -r '(.role // "")' <<<"$RES")
+  [ "$got" = "$role" ] || die $EX_CONTRACT "Runner $role für Paket $pkg gibt sich in der Rückgabe als '$got' aus"
 }
 
 field() { jq -r "(.$1 // \"\")" <<<"$RES"; }

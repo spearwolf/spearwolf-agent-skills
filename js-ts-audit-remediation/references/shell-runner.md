@@ -149,9 +149,11 @@ Baum, und darüber entscheidet nach `references/resume.md` der Nutzer.
 
 **Was als Überlastung zählt**, entscheidet das Feld `api_error_status` im
 Ergebnis-JSON (`429`, `500`, `502`, `503`, `529`). Nur wenn der Prozess gar kein
-lesbares JSON hinterlassen hat, sieht die Schleife in seine Fehlerausgabe, und
-das Muster dort ist bewusst eng: eines, das auf das bloße Wort anspringt,
-wiederholt auch Fehler, die keine sind. Ein erschöpftes Budget ist keine
+lesbares JSON hinterlassen hat, sieht die Schleife in seine Fehlerausgabe — nach
+denselben fünf Codes und nach den Namen der Fehlertypen. Eine kürzere Liste dort
+hieße, dass ein `500` je nach Sterbezeitpunkt des Prozesses mal wiederholt wird
+und mal nicht. Die Ziffern müssen allein stehen, sonst springt das Muster auf
+jede Zahl an, die zufällig so aussieht. Ein erschöpftes Budget ist keine
 Überlastung und wird nie wiederholt — der nächste Versuch liefe in dieselbe
 Grenze und zahlte sie noch einmal.
 
@@ -363,7 +365,9 @@ sind. Fällt eine dieser Proben, endet der Lauf mit Exit 20:
 - Bei `committed`: im Arbeitsverzeichnis liegt je ein Report von Implementierer
   und Reviewer. Ein Runner schreibt keinen Projektcode selbst, und das wird
   belegt, nicht geglaubt.
-- Die Paketnummer in deiner Rückgabe ist die aus deinem Auftrag.
+- Die Paketnummer in deiner Rückgabe ist die aus deinem Auftrag, und das Feld
+  `role` nennt die Rolle, in der du beauftragt wurdest. Wer sich für die andere
+  hält, hat womöglich den falschen Zug gefahren.
 - Kein Aufruf ist an einer Rechteschranke gescheitert.
 
 Bleibt nach deinem Commit etwas im Arbeitsbaum liegen, gibt es eine Warnung und
