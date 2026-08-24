@@ -214,11 +214,34 @@ namentlich nennen.
 
 Der Plan geht mit hinein, sofern »Entscheidungen« nichts anderes sagt — das ist
 die Ansage aus der Freigabe in Schritt 5 der `SKILL.md`. Steht dort, dass er
-draußen bleibt,
-wird er weder geaddet noch gelöscht noch in `.gitignore` eingetragen: er liegt
-im Arbeitsbaum, gehört dem Nutzer, und was damit geschieht, entscheidet er.
-Erwähne die Datei dann im Bericht namentlich, sonst steht am Ende eine
-ungetrackte Datei im Projektroot, deren Herkunft niemand mehr kennt.
+draußen bleibt, wird er weder geaddet noch gelöscht noch in `.gitignore`
+eingetragen: er liegt im Arbeitsbaum, gehört dem Nutzer, und was damit geschieht,
+entscheidet er. Erwähne die Datei dann im Bericht namentlich, sonst steht am Ende
+eine ungetrackte Datei im Projektroot, deren Herkunft niemand mehr kennt.
+
+### Und danach aus dem Arbeitsbaum
+
+Ist der Plan committet und der Lauf **sauber geschlossen**, entfernt ein zweiter,
+winziger Commit ihn aus dem Arbeitsbaum:
+
+```bash
+git rm remediation-plan.md
+git commit --no-gpg-sign -m "<im Stil des Projekts: Remediation-Plan archiviert>"
+```
+
+Der Projektroot ist damit wieder so leer wie vorher, und die Historie behält
+alles: `git log --oneline -- remediation-plan.md` zeigt beide Commits, `git show
+<hash>:remediation-plan.md` den vollen Stand.
+
+**Sauber geschlossen heißt: kein Paket auf `[!]`, »Offene Befunde« leer, keine
+unverteilte `Folgen:`-Zeile.** Trifft eines davon nicht zu, bleibt der Plan im
+Arbeitsbaum stehen, und der Bericht sagt warum. Der Grund ist nicht Ordnungssinn:
+ein blockiertes Paket hat seinen Arbeitsbaum im Stash, und der Stash-Name steht
+nur im Plan. Wer den Plan wegräumt, während dort noch etwas liegt, hat einen
+Stash ohne Vorgeschichte hinterlassen.
+
+Bleibt der Plan draußen — weil »Entscheidungen« es so sagt —, wird er auch nicht
+gelöscht. Er gehört dann dem Nutzer, und das schließt das Aufräumen ein.
 
 Danach ist Schluss. Kein Tag, kein Push, kein Pull Request, kein `npm
 publish` — auch dann nicht, wenn das Projekt ein Release-Skript mitbringt und
@@ -247,6 +270,9 @@ Fünf bis acht Zeilen, nicht mehr:
   hier nur, wenn ein Paket blockiert liegenblieb — dann mit Paketnummer und
   Grund, benannt als das, was sie sind: Schaden, den dieser Lauf angerichtet
   und nicht wieder eingeholt hat
+- wo der Plan geblieben ist: archiviert und aus dem Arbeitsbaum entfernt, oder
+  stehengeblieben und warum. Eine halbe Zeile — aber ohne sie sucht jemand eine
+  Datei, die es nicht mehr gibt, oder übersieht eine, die noch etwas offen hat
 - der neue Stand der `./audit.html`, sofern es eine gibt: alter und neuer
   Score, wie viele Findings geschlossen und wie viele neu eingetragen wurden —
   eine Zeile

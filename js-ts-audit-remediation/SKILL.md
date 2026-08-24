@@ -5,9 +5,10 @@ description: Use when the user wants the findings of an existing project audit a
 
 # Audit-Remediation
 
-Aus den Findings eines Audits werden Pakete. Für jedes Paket startet ein
-eigener Runner-Subagent, der es allein vom Abgleich bis zum Commit bringt und
-zehn Zeilen zurückgibt. Du planst, du fragst den Nutzer, du schließt ab — den
+Aus den Findings eines Audits werden Pakete. Die Pakete fährt ein Skript, nicht
+du: `scripts/remediate.sh` bringt jedes einzeln vom Abgleich bis zum Commit, in
+einer abgelösten tmux-Session, mit einer Planung, die den Nutzer fragen kann.
+Du planst, du fragst den Nutzer, du startest das Skript, du schließt ab — den
 Rest siehst du nicht.
 
 ## Ablauf-Übersicht
@@ -15,7 +16,7 @@ Rest siehst du nicht.
 1. Findings laden (1), Baseline messen (2), Scope festlegen (3).
 2. Offene Entscheidungen gebündelt klären (4).
 3. Pakete schnüren, ordnen, Grobplan schreiben, Freigabe holen (5).
-4. Die Schleife: je Paket ein Runner, bis Paketliste und Befund-Queue leer sind (6).
+4. `scripts/remediate.sh` starten und laufen lassen, bis kein Paket mehr offen ist (6).
 5. Semver bewerten, `./audit.html` nachführen, abschließen, Folgeaudit anbieten (7).
 
 Geplant wird zweistufig. Schritt 5 legt fest, **was** in welcher Reihenfolge
@@ -25,14 +26,14 @@ entsteht im Runner, gegen den Code, der dann tatsächlich dasteht.
 | Datei | Wann |
 | --- | --- |
 | `references/resume.md` | vor Schritt 1 — nur wenn schon ein `./remediation-plan.md` existiert |
-| `references/runner.md` | **nie von dir.** Du gibst dem Runner in Schritt 6 nur den Pfad |
+| `references/runner.md` | **nie von dir.** Den Pfad kennt das Skript |
+| `references/shell-runner.md` | vor Schritt 6 — einmal, bevor du das Skript startest |
 | `references/semver-and-closeout.md` | Schritt 7 — nach dem letzten Paket |
 | `references/audit-report-update.md` | Schritt 7 — nur wenn eine `./audit.html` im Projekt liegt |
 
 Dass du `runner.md` nicht liest, ist keine Sparsamkeit am falschen Ende. Der
 Text steht im Kontext jedes Runners und verfällt mit ihm; in deinem bliebe er
-bis zum Ende des Laufs stehen und würde bei jedem weiteren Paket erneut
-gelesen.
+bis zum Ende des Laufs stehen, ohne dass du je etwas damit anfingest.
 
 ## Grenzen des Laufs
 
@@ -48,9 +49,9 @@ Diese Regeln stehen über jeder Abwägung im Einzelfall:
   Lauf endet mit lokalen Commits.
 - **Kein Worktree, kein neuer Branch von sich aus.** Gearbeitet wird auf dem
   Branch, den Schritt 5 benennt und der Nutzer freigibt.
-- **Du schreibst keinen Projektcode und startest keinen Implementierer.** Weder
-  als schnelle Korrektur noch nachdem ein Runner gescheitert ist. Du hast
-  genau einen Subagenten je Paket, und das ist der Runner.
+- **Du schreibst keinen Projektcode und startest keinen Runner.** Weder als
+  schnelle Korrektur noch nachdem das Skript abgebrochen ist. Die Pakete fährt
+  `scripts/remediate.sh`, und sonst niemand.
 - **Gefixt wird nur, was im Plan steht.** Kein Implementierer behebt etwas
   nebenbei; was ihm auffällt, meldet er. Ob ein Nebenbefund in diesen Lauf
   gehört, entscheidet die Scope-Regel aus Schritt 3, nicht das Gefühl des
@@ -101,13 +102,16 @@ lesen:
 
 ```bash
 set -o pipefail
-<kommando> > "$ARBEITSDIR/baseline-<name>.log" 2>&1; echo "exit=$?"
+<kommando> > "$ARBEITSDIR/baseline-<name>.log" 2>&1; echo "exit=$?" | tee -a "$ARBEITSDIR/baseline-<name>.log"
 tail -n 15 "$ARBEITSDIR/baseline-<name>.log"
 ```
 
-`$ARBEITSDIR` ist das Scratchpad-Verzeichnis des Hosts; gibt es keines,
-`.git/remediation/`. Beides liegt außerhalb der Versionierung. Der Pfad kommt
-in den Kopf des Plans, weil jeder Runner ihn braucht.
+`$ARBEITSDIR` ist das Scratchpad-Verzeichnis des Hosts; gibt es keines, ein
+eigenes Verzeichnis unter dem Temp-Verzeichnis des Systems. Beides liegt
+außerhalb der Versionierung. **Nicht unterhalb von `.git/`:** dorthin lässt die
+CLI keinen Runner schreiben, und ein Lauf, dessen Runner ihre Diffs und
+Verify-Logs nicht ablegen können, kommt nicht bis zum Commit. Der Pfad kommt in
+den Kopf des Plans, weil jeder Runner ihn braucht.
 
 Dazu `git status` und `git branch --show-current`. Ein unsauberer Arbeitsbaum
 ist ein Stopp mit Rückfrage: stashen, committen oder abbrechen. Fremde
@@ -304,6 +308,11 @@ Modulgrenze aus Paket 2 —, denn genau daran entscheidet sich später, was
 umgestellt werden darf und was nicht. Steht dort nichts, ist das Paket
 verschiebbar.
 
+Die Überschrift eines Pakets ist ein Format und keine Formulierung:
+`### [Marke] <Nummer>. <Titel>`, die Marke genau ein Zeichen, die Nummer Ziffern
+mit optionalem Kleinbuchstaben. Der Skript-Weg aus Schritt 6 liest die Marken mit
+`sed`; was von dieser Form abweicht, ist für ihn kein Paket.
+
 Der Absatz mit Einstieg und Statuslegende steht wörtlich so in der Datei und
 wird nicht als Redundanz zum Skill-Text weggekürzt. Er ist der Grund, warum
 jemand die Datei einordnen kann, der sie als Erstes findet und nicht diesen
@@ -328,9 +337,18 @@ Audit — vorgelegt wird beides, vor dem Abschluss, in einer Runde. Freigegeben
 werden Paketschnitt und Reihenfolge.
 Ohne diese Freigabe beginnt die Umsetzung nicht.
 
+In dieselbe Ansage gehört, wie es danach weitergeht: die Pakete fährt
+`scripts/remediate.sh` in einer abgelösten tmux-Session. Die Planung jedes
+Pakets läuft dort im Terminal und kann den Nutzer fragen — er wird also
+gebraucht, aber nur am Anfang jedes Pakets. Die Umsetzung läuft ohne ihn, mit
+den Rechten, die ihr Permission-Modus ihnen gibt. Das ist ein Tausch, und er
+wird genannt, nicht vorausgesetzt.
+
 Im selben Aufwasch der Verbleib des Plans, als Ansage statt als Frage: »am Ende
-nimmt ein Commit `./remediation-plan.md` mit ins Repo — sag Bescheid, wenn er
-stattdessen ungetrackt bleiben soll«. Ohne Widerspruch wird committet;
+nimmt ein Commit `./remediation-plan.md` mit ins Repo, und ein zweiter räumt ihn
+aus dem Arbeitsbaum — die Historie behält ihn, der Projektroot bleibt leer. Sag
+Bescheid, wenn er stattdessen ungetrackt liegenbleiben soll«. Ohne Widerspruch
+wird committet;
 widerspricht der Nutzer, steht das datiert in »Entscheidungen«, weil der
 Abschluss danach greift. Während des Laufs bleibt die Datei in jedem Fall
 ungetrackt: sie trägt die Hashes der Commits, in denen sie deshalb nicht liegen
@@ -338,67 +356,37 @@ kann.
 
 ### 6. Die Schleife
 
-Für jedes offene Paket, in der Reihenfolge des Plans, genau ein Runner. Nie
-zwei gleichzeitig: sie teilen sich einen Arbeitsbaum, und der Konflikt kostet
-mehr als die gesparte Zeit.
-
-**Dispatch.** Der Prompt ist kurz und besteht aus Pfaden, nicht aus Inhalten:
-
-> Du bist der Paket-Runner für Paket **N** eines Remediation-Laufs.
-> Lies zuerst `<absoluter Pfad>/references/runner.md` — das ist dein
-> vollständiger Auftrag, einschließlich Rückgabeformat.
-> Plan: `./remediation-plan.md` · Branch: `<name>` ·
-> Arbeitsverzeichnis für Diffs und Logs: `<pfad>`
-> Du delegierst Implementierung und Review an eigene Subagenten und schreibst
-> selbst keinen Projektcode. Halte dich an das Rückgabeformat; alles andere
-> gehört in den Plan. Deine Rückgabe ist der einzige Kanal zwischen uns — ich
-> frage nicht nach, und du fragst nicht nach.
-
-Zwischen Dispatch und Rückgabe passiert nichts. Du fragst den Runner nicht nach
-seinem Stand — ein Paket mit Implementierer und Reviewer dauert, und das ist
-der Normalfall, kein Anlass. Eine Nachfrage eröffnet einen zweiten Kanal neben
-der Rückgabe, und danach warten beide Seiten in dem, in dem nichts ankommt.
-
-Modell: **stärkste Stufe**, auch vor einem Dreizeiler-Paket. Der Runner
-entscheidet über Schnitt und Reihenfolge des Restplans und darüber, ob eine
-Folge Symptom oder eigenes Issue ist. Ein Fehlurteil dort schlägt auf jedes
-folgende Paket durch. Die Stufen für Implementierer und Reviewer setzt er
-selbst, nach der Tabelle in `runner.md`.
-
-**Gegenprobe.** Kommt er mit Status `committet` zurück, prüfst du zwei Dinge und
-sonst nichts:
+Du drehst sie nicht selbst. Sobald der Grobplan freigegeben ist, startest du
+`scripts/remediate.sh` — ungefragt, das ist die Freigabe:
 
 ```bash
-tail -n 15 "<pfad aus der Verify-Zeile>"
-git log --oneline -1
+<skill>/scripts/remediate.sh
 ```
 
-Der Exit-Code aus seiner Rückgabe muss zu dem passen, was im Log steht, und der
-Hash muss zu dem passen, was er in den Plan geschrieben hat. Stimmt eins von
-beiden nicht, ist das Paket nicht committet, sondern kaputt: zurück zum Nutzer,
-nicht selbst reparieren.
+Das Skript hängt sich in eine abgelöste tmux-Session und kommt sofort zurück.
+Ab da läuft es unabhängig von dir: es liest die Marken im Plan, fährt je Paket
+Zug 0 im Terminal der Session und die Züge 1 bis 5 als eigenen Prozess, prüft
+jedes Ergebnis gegen `git` und das Verify-Log und hört auf, wenn kein Paket mehr
+offen ist.
 
-**Was du mit der Rückgabe machst:**
+Deine Arbeit an der Schleife ist damit getan. Was du tust:
 
-| Status | Was folgt |
-| --- | --- |
-| `committet` | Gegenprobe, eine Statuszeile an den Nutzer, nächstes Paket. Ohne Rückfrage, ohne Warten. |
-| `entfallen` | Wie oben, nur ohne Gegenprobe. |
-| `rückfrage` | Der Inhalt von `Für dich:` geht mit dem Vorschlag des Runners an den Nutzer. Die Antwort kommt datiert in »Entscheidungen« und dann ein neuer Runner fürs selbe Paket. |
-| `blockiert` | Das Paket steht auf `[!]`, sein Arbeitsbaum liegt im Stash. Bauen spätere Pakete darauf auf, hältst du an und berichtest. Sonst weiter mit dem nächsten. |
+1. Die Startausgabe wörtlich an den Nutzer weitergeben — sie nennt die
+   tmux-Session, wie er sich anhängt und wo Journal und Mitschrift liegen.
+2. Ihm sagen, dass Zug 0 des ersten Pakets dort auf ihn wartet.
+3. Auf den Exit-Code reagieren, sobald du ihn siehst. Die Tabelle steht in
+   `references/shell-runner.md`; nur `0` führt weiter zu Schritt 7.
 
-Deine Statuszeile an den Nutzer ist eine Zeile: Paketnummer, Hash, was behoben
-wurde. Du kopierst nichts aus der Rückgabe des Runners, was dort nicht steht.
+**Vor dem ersten Start** `references/shell-runner.md` lesen. Danach nicht mehr:
+der Inhalt gehört den Runnern, nicht dir.
 
-**Terminierung.** Die Schleife endet, wenn kein Paket mehr auf `[ ]` steht.
-Neue Pakete kommen während des Laufs dazu — Folgen, Nachträge, Teilungen —, und
-das ist der vorgesehene Fall, nicht die Ausnahme. Die Befund-Queue steht ihr
-nicht entgegen; sie wird in Schritt 7 abgeräumt, weil sie dort in einer Runde
-entschieden werden kann statt in zwölf.
+Was du **nicht** tust: keinen Runner selbst starten, keinen Subagenten für ein
+Paket, keine eigene Schleife. Auch nicht, wenn das Skript abbricht — ein Abbruch
+ist eine Meldung an den Nutzer, keine Einladung, es von Hand zu machen.
 
-Läuft eine Kette in die dritte Generation (`Folge von:` dreimal hintereinander),
-legt der Runner sie dir vor. Das geht an den Nutzer, nicht in ein weiteres
-Paket.
+Läuft der Lauf gerade und der Nutzer fragt nach dem Stand, sieh nach, ohne zu
+stören: `tmux capture-pane -p -t <session>` zeigt das Pane, das Journal zeigt
+die Zeilen. Häng dich nicht selbst an die Session — dort sitzt der Nutzer.
 
 ### 7. Abschluss
 

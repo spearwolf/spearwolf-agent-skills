@@ -34,8 +34,11 @@ zum Arbeitsverzeichnis für Diffs und Logs. Alles Weitere holst du selbst:
    bereits verändert hat.
 
 Diff-Dateien und Verify-Logs gehören nicht ins Projekt. Sie liegen im
-Arbeitsverzeichnis, das der Orchestrator nennt; fehlt eins, in
-`.git/remediation/` — das liegt außerhalb der Versionierung.
+Arbeitsverzeichnis, das der Orchestrator nennt — außerhalb der Versionierung
+und außerhalb von `.git/`, wohin die CLI keinen Runner schreiben lässt. Fehlt
+eins, legst du eines unter dem Temp-Verzeichnis des Systems an und trägst es in
+den Kopf des Plans ein. Ins Projekt ausweichen ist keine Lösung: dort stehen
+deine Diffs anschließend als fremde Änderungen im Arbeitsbaum.
 
 ## Der Plan trägt den Stand
 
@@ -360,11 +363,33 @@ Nicht erfüllte Findings sowie kritische und wichtige Befunde lösen eine aus:
 2. **Runde 2** — ein frischer Implementierer eine Modellstufe höher, mit dem
    Rahmen: »Ein Vorgänger hat dieses Paket versucht, hier sind die offenen
    Befunde und was bereits probiert wurde.«
+3. **Runde 3** — ein frischer Implementierer auf der stärksten Stufe, und diesmal
+   mit der ganzen Kette: was in Runde 1 und 2 versucht wurde und woran es lag.
+   Ohne diese Vorgeschichte probiert der dritte, was der erste schon probiert hat.
+4. **Runde 4 und 5** — nur noch dasselbe Muster, ohne weitere Eskalation. Die
+   Stufen sind ausgereizt; was hier hilft, ist ein anderer Zuschnitt des
+   Auftrags, nicht ein anderes Modell.
+
+Die Obergrenze steht in deinem Auftrag (voreingestellt fünf). Sie ist aber nicht
+die eigentliche Bremse:
+
+> **Eine Runde, die die Zahl der offenen Befunde nicht senkt, ist die letzte.**
+
+Das ist die Regel, auf die es ankommt. Zwei Runden, die dieselben drei Befunde
+zurückbringen, sind kein Fortschritt, sondern dreimal derselbe Irrtum — und
+jede weitere kostet einen Implementierer, einen Reviewer und einen Verify-Lauf
+für nichts. Umgekehrt darf eine Kette, die sich von fünf auf drei auf einen
+Befund herunterarbeitet, ihre Runden ausschöpfen: dort passiert etwas.
+
+Gezählt wird stumpf: wie viele Befunde waren vor der Runde offen, wie viele
+danach. Weniger heißt weiter, gleich viel oder mehr heißt Schluss. Ein Befund,
+der durch einen anderen ersetzt wurde, ist kein Fortschritt.
 
 Nach jeder Runde neuen Diff erzeugen und den Reviewer gezielt auf die offenen
 Befunde ansetzen, nicht auf das ganze Paket.
 
-Bleibt nach Runde 2 etwas offen:
+Bleibt am Ende etwas offen — weil die Obergrenze erreicht ist oder weil eine
+Runde nichts gebracht hat:
 
 - Paket im Plan auf `[!]` setzen, mit den offenen Befunden in einer Zeile.
 - Arbeitsbaum sichern statt wegwerfen, und dabei den Plan draußen halten:
@@ -389,8 +414,9 @@ Widerspricht ein Befund dem, was der Plan ausdrücklich verlangt, entscheidest
 weder du noch der Reviewer. Beide Seiten in die Rückgabe, der Orchestrator
 fragt den Nutzer.
 
-Zwei Runden ohne Erklärung rot heißt: das Problem ist ein anderes als
-vermutet. Dann nicht weiterraten, sondern blockieren und berichten.
+Eine Kette ohne Fortschritt heißt: das Problem ist ein anderes als vermutet.
+Dann nicht weiterraten, sondern blockieren und berichten. Die Runden, die dir
+formal noch zustünden, sind kein Grund, sie zu verbrauchen.
 
 ## Zug 5 — Verify, Commit, Plan fortschreiben
 
@@ -404,9 +430,13 @@ wandert und der Orchestrator sie trotzdem nachlesen kann:
 
 ```bash
 set -o pipefail
-<verify-kommando> > "$ARBEITSDIR/paket-N.verify.log" 2>&1; echo "exit=$?"
+<verify-kommando> > "$ARBEITSDIR/paket-N.verify.log" 2>&1; echo "exit=$?" | tee -a "$ARBEITSDIR/paket-N.verify.log"
 tail -n 15 "$ARBEITSDIR/paket-N.verify.log"
 ```
+
+Der Exit-Code geht in dieselbe Datei und nicht nur ins Terminal. Er ist der eine
+Teil deines Verify-Laufs, den danach niemand mehr nachsehen kann, wenn er nur
+dort steht.
 
 Gegen die Baseline im Kopf des Plans halten: was dort schon rot war, blockiert
 nicht. Alles Neue schon. Bei einem grünen Lauf reicht der Tail; bei einem roten
@@ -485,6 +515,8 @@ Im Zweifel Folge — die Fehleinordnung nach oben kostet einen Blick in
 
 Genau dieses Format, keine Prosa daneben. Er sieht von deinem ganzen Paket nur
 diese Zeilen, und jede zusätzliche kostet ihn Kontext für alle folgenden Pakete.
+Nennt dein Auftrag stattdessen ein Rückgabeschema, gilt dieses — die Felder sind
+dieselben.
 
 ```
 Paket: 3
@@ -554,7 +586,7 @@ Das Modell des Reviewers wählst du nach dem Diff, nicht nach dem Paket.
 | »Der Subagent meldet sich nicht, ich frage mal nach« | Er antwortet mit seiner Rückgabe und mit nichts sonst. Eine Nachfrage eröffnet einen zweiten Kanal, und danach wartest du in dem, in dem nichts ankommt. Ein Paket, das lange braucht, braucht lange. |
 | »Kleines Paket, das Review kann entfallen« | Jedes Paket wird reviewt. Der Aufwand skaliert über die Modellstufe des Reviewers, nicht über das Weglassen. |
 | »Der Fix ist offensichtlich richtig, der Test kann nach« | Ein Test nach dem Fix läuft sofort grün und beweist nichts. Rot zuerst. |
-| »Noch eine Runde, dann konvergiert es« | Nach Runde 2 konvergiert es nicht mehr, es ist strukturell. Blockieren und berichten. |
+| »Noch eine Runde, dann konvergiert es« | Wenn die letzte Runde die Zahl der offenen Befunde nicht gesenkt hat, konvergiert es nicht, es ist strukturell. Blockieren und berichten — die Runden, die formal noch zustehen, sind kein Grund, sie zu verbrauchen. |
 | »Der Befund ist offensichtlich falsch, ich lasse ihn weg« | Dann steht die Begründung im Plan. Ein stilles Verschwinden gibt es nicht. |
 | »Das ist mir nicht aufgefallen« | In einer Datei, die du geändert hast, ist das keine Auskunft über deine Aufmerksamkeit, sondern darüber, dass du sie nicht gelesen hast. Der Nebenbefund vier Zeilen unter deinem Fix ist der billigste, den dieser Lauf je bekommt. |
 | »Der Nebenbefund fällt unter die Scope-Regel, also nehme ich ihn gleich mit« | Die Regel entscheidet, ob er in diesen Lauf gehört, nicht ob er in dein Paket gehört. Ohne gemeinsame Ursache bekommt er ein eigenes Paket, und das schneidet der Abschluss. |
