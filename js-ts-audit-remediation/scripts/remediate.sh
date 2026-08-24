@@ -29,9 +29,9 @@ EX_PRE=40      # eine Vorbedingung stimmt nicht
 # --- Stellschrauben, alle über die Umgebung überschreibbar ------------------
 PLAN=${PLAN:-./remediation-plan.md}
 
-# Zug 0 läuft immer im Terminal der tmux-Session: der Planer hat deine
-# Werkzeuge, deine MCP-Server und kann dich fragen. Ein Planer, der das nicht
-# kann, plant gegen einen Code-Stand, den er nur zur Hälfte versteht.
+# Zug 0 läuft immer in einem eigenen Fenster der tmux-Session: der Planer hat
+# deine Werkzeuge, deine MCP-Server und kann dich fragen. Ein Planer, der das
+# nicht kann, plant gegen einen Code-Stand, den er nur zur Hälfte versteht.
 MODEL_A=${MODEL_A:-opus}        # Zug 0: Abgleich, Triage, Detailplan
 EFFORT_A=${EFFORT_A:-xhigh}
 MODEL_B=${MODEL_B:-opus}        # Zug 1-5: beauftragen, prüfen, verifizieren, committen
@@ -69,6 +69,17 @@ DENY_TOOLS=${DENY_TOOLS:-AskUserQuestion,SendMessage,ScheduleWakeup,CronCreate,B
 # --mcp-config <datei>, --add-dir <pfad>, --plugin-dir <pfad>. Braucht ein Paket
 # einen MCP-Server, ist das der Ort dafür.
 EXTRA_ARGS=${EXTRA_ARGS:-}
+
+# Zug 0 läuft in einem eigenen tmux-Fenster und meldet sein Ende über eine
+# Datei, nicht über einen Menschen an der Tastatur. Diese vier Werte sagen, wie
+# geduldig die Schleife dabei ist. ZUG0_GRACE ist die Gnadenfrist zwischen dem
+# Feierabendzeichen und dem Schließen des Fensters; wer in dieser Zeit noch
+# etwas hineinschreibt, redet gegen eine Uhr. ZUG0_TIMEOUT=0 heißt: warten,
+# solange es dauert — Zug 0 wartet auch auf den Nutzer, und der schläft manchmal.
+ZUG0_POLL=${ZUG0_POLL:-5}        # Sekunden zwischen zwei Blicken auf die Datei
+ZUG0_GRACE=${ZUG0_GRACE:-20}     # Gnadenfrist, bevor das Fenster zugeht
+ZUG0_CLOSE=${ZUG0_CLOSE:-20}     # wie lange /exit Zeit bekommt, bevor kill-window folgt
+ZUG0_TIMEOUT=${ZUG0_TIMEOUT:-0}  # Obergrenze für einen ganzen Zug 0, 0 = keine
 
 ONCE=0
 DRY=0
@@ -115,7 +126,7 @@ Optionen:
 Umgebung:
   PLAN MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER MAX_ROUNDS
   ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS
-  SESSION TMUX_BIN
+  SESSION TMUX_BIN ZUG0_POLL ZUG0_GRACE ZUG0_CLOSE ZUG0_TIMEOUT
 EOF
 }
 
@@ -250,7 +261,7 @@ launch_tmux() { # $@ = die Argumente, mit denen der Lauf drinnen starten soll
   cmd="$cmd REMEDIATE_INSIDE=1"
   for v in PLAN SESSION MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD \
            MAX_ITER MAX_ROUNDS ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS \
-           DENY_TOOLS EXTRA_ARGS; do
+           DENY_TOOLS EXTRA_ARGS ZUG0_POLL ZUG0_GRACE ZUG0_CLOSE ZUG0_TIMEOUT; do
     eval "[ -n \"\${$v:-}\" ]" && cmd="$cmd $v=$(eval printf '%q' "\"\$$v\"")"
   done
   cmd="$cmd $(printf '%q' "$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")")"
@@ -273,8 +284,9 @@ launch_tmux() { # $@ = die Argumente, mit denen der Lauf drinnen starten soll
   say "Mitschrift: $log"
   say "Journal:    $WORK/remediate.log"
   say ""
-  say "Zug 0 wartet dort auf dich, sobald das erste Paket drankommt."
-  say "Wenn er fertig ist: /exit in der Session — erst dann läuft die Schleife weiter."
+  say "Zug 0 macht dafür ein eigenes Fenster »p<N>-plan« auf, sobald das erste"
+  say "Paket drankommt, und wartet dort auf dich. Schließen musst du es nicht:"
+  say "wenn der Planer fertig ist, macht die Schleife es zu und läuft weiter."
   exit $EX_OK
 }
 
@@ -326,7 +338,7 @@ preflight() {
   fi
 
   if [ "$INSIDE" = 1 ] && { [ ! -t 0 ] || [ ! -t 1 ]; }; then
-    die $EX_PRE "kein Terminal in der Session — Zug 0 könnte nicht fragen. Das sollte nicht vorkommen."
+    die $EX_PRE "kein Terminal in der Session — dann gibt es auch kein Fenster, in dem Zug 0 fragen könnte. Das sollte nicht vorkommen."
   fi
 
   [ "$(count_with_marker '.')" != "0" ] || die $EX_PRE "der Plan enthält kein einziges Paket"
@@ -340,9 +352,12 @@ brief_for() { # $1 = Rolle, $2 = Paketnummer
   # Der Rückkanal ist nicht derselbe. B gibt ein JSON-Objekt zurück, das die
   # Schleife prüft; A hat gar keins und hinterlässt seinen Stand im Plan.
   case "$role" in
-    A) rueckgabe="Wenn du fertig bist, sag dem Nutzer in einem Satz, dass er die Session jetzt mit /exit verlässt und die Schleife dann weiterläuft.
-Dein Ergebnis ist der Plan, nichts sonst: der Detailplan unter deinem Paket und die Marke davor. Du gibst kein JSON zurück, und niemand liest, was du am Ende in dieses Terminal schreibst. Was den Lauf überleben muss, steht in $PLAN, bevor du aufhörst.
-Der Nutzer sitzt in diesem Terminal und ist ansprechbar: was sich aus Audit und Code nicht ergibt, fragst du ihn, statt es zu setzen." ;;
+    A) rueckgabe="Dein Ergebnis ist der Plan, nichts sonst: der Detailplan unter deinem Paket und die Marke davor. Du gibst kein JSON zurück, und niemand liest, was du am Ende in dieses Terminal schreibst. Was den Lauf überleben muss, steht in $PLAN, bevor du aufhörst.
+Steht alles im Plan, tust du als allerletzte Handlung genau dies:
+  touch $WORK/paket-$pkg.zug0.done
+Das ist dein Feierabendzeichen, und es ist das Einzige, worauf die Schleife wartet. Sie schließt dieses Fenster ${ZUG0_GRACE} Sekunden später selbst und fährt fort; niemand muss dafür etwas tippen, und /exit brauchst du nicht. Vor dem touch sagst du dem Nutzer in einem Satz, dass du fertig bist und das Fenster gleich zugeht.
+Die Reihenfolge ist keine Förmlichkeit: nach dem touch läuft eine Uhr, und was danach noch in deinem Kontext steht statt im Plan, ist verloren.
+Der Nutzer sitzt in diesem Fenster und ist ansprechbar: was sich aus Audit und Code nicht ergibt, fragst du ihn, statt es zu setzen." ;;
     B) rueckgabe="Deine Rückgabe ist ein JSON-Objekt nach dem Schema, das dir mitgegeben wurde, und
 sie ist der einzige Kanal zwischen uns. Niemand fragt dich nach deinem Stand, und
 es gibt keine Adresse, an die du etwas anderes schicken könntest. Was den Lauf
@@ -374,36 +389,98 @@ EOF
 
 # --- Ein Runner -------------------------------------------------------------
 
-dispatch_zug0() { # $1 = Paketnummer; übergibt das Terminal an Zug 0
-  local pkg=$1 brief rc=0
+close_zug0_window() { # $1 = tmux-Fenster; erst höflich, dann bestimmt
+  local win=$1 i=0
+  # /exit ist der saubere Weg: die Session wird persistiert und lässt sich mit
+  # »claude --resume« wieder aufmachen. Gemessen beendet das eine wartende TUI
+  # zuverlässig. Es kann trotzdem danebengehen — ein Modell, das noch mitten im
+  # Zug ist, schiebt die Zeile in seine Warteschlange —, und deshalb steht
+  # dahinter kill-window. Die Zusage lautet: das Fenster geht zu.
+  "$TMUX_BIN" send-keys -t "$win" '/exit' Enter >/dev/null 2>&1 || true
+  while [ "$i" -lt "$ZUG0_CLOSE" ]; do
+    "$TMUX_BIN" list-panes -t "$win" >/dev/null 2>&1 || return 0
+    sleep 1; i=$((i + 1))
+  done
+  warn "Zug 0 ließ sich nicht mit /exit schließen — das Fenster wird beendet"
+  "$TMUX_BIN" kill-window -t "$win" >/dev/null 2>&1 || true
+}
+
+dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
+  local pkg=$1 brief win wname done_file brieffile starter a waited=0
   brief=$(brief_for A "$pkg")
   tool_args_zug0
 
   if [ "$DRY" = 1 ]; then
-    say "--- Runner A · Paket $pkg · $MODEL_A/$EFFORT_A · interaktiv, dein Terminal"
+    say "--- Runner A · Paket $pkg · $MODEL_A/$EFFORT_A · eigenes tmux-Fenster"
     printf '%s\n\n' "$brief"
     return 0
   fi
 
-  say "→ Runner A · Paket $pkg · $MODEL_A/$EFFORT_A · interaktiv"
-  say ""
-  say "  Das hier ist deine Session. Zug 0 fragt dich, wo der Code die Antwort"
-  say "  nicht hergibt. Wenn er fertig ist, verlässt du sie mit /exit — die"
-  say "  Schleife wartet auf das Ende dieses Prozesses, nicht auf das Ende"
-  say "  seines letzten Zuges. Ohne /exit geht es nicht weiter."
-  say "─────────────────────────────────────────────────────────────"
-  # Kein -p, kein Schema, keine Verbotsliste: das hier ist deine Session.
-  # Der Planer hat, was du eingestellt hast, und kann dich fragen.
-  # Remote Control macht die Session vom Account aus erreichbar, unter ihrem
-  # Namen — dieselbe Frage lässt sich dann auch vom Handy beantworten.
-  claude "$brief" \
-    --model "$MODEL_A" \
-    --effort "$EFFORT_A" \
-    --remote-control "$SESSION-p$pkg-plan" \
-    ${TOOL_ARGS[@]+"${TOOL_ARGS[@]}"} || rc=$?
-  say "─────────────────────────────────────────────────────────────"
+  wname="p$pkg-plan"
+  win="$SESSION:$wname"
+  done_file="$WORK/paket-$pkg.zug0.done"
+  brieffile="$WORK/paket-$pkg.zug0.brief.txt"
+  starter="$WORK/paket-$pkg.zug0.sh"
+  rm -f "$done_file"
 
-  [ "$rc" -eq 0 ] || warn "die Planungs-Session endete mit Exit $rc — der Plan entscheidet"
+  # Der Brief wandert über eine Datei und nicht über die Kommandozeile: tmux
+  # startet ein Fenster über die Shell, und ein mehrzeiliger Text mit
+  # Anführungszeichen überlebt diesen Weg nicht verlässlich. Nebenbei steht
+  # danach auf der Platte, womit gestartet wurde.
+  printf '%s\n' "$brief" > "$brieffile"
+  { printf '#!/usr/bin/env bash\nexec claude "$(cat %q)"' "$brieffile"
+    printf ' --model %q --effort %q --remote-control %q' \
+      "$MODEL_A" "$EFFORT_A" "$SESSION-p$pkg-plan"
+    for a in ${TOOL_ARGS[@]+"${TOOL_ARGS[@]}"}; do printf ' %q' "$a"; done
+    printf '\n'
+  } > "$starter"
+  chmod +x "$starter"
+
+  # Kein -p, kein Schema, keine Verbotsliste: das hier ist die Session des
+  # Nutzers. Der Planer hat, was er eingestellt hat, und kann ihn fragen.
+  # Remote Control macht sie vom Account aus erreichbar, unter ihrem Namen —
+  # dieselbe Frage lässt sich dann auch vom Handy beantworten.
+  "$TMUX_BIN" new-window -t "$SESSION" -n "$wname" -c "$(pwd)" "$starter" \
+    || die $EX_PRE "tmux konnte das Fenster für Zug 0 nicht anlegen"
+  # Ausdrücklich aus: steht die Option woanders an, bliebe das Fenster nach dem
+  # Ende des Planers als toter Pane stehen, und die Schleife wartete auf ein
+  # Verschwinden, das nie kommt. Die Mitschrift übernimmt das Nachsehen.
+  "$TMUX_BIN" set-option -t "$win" -w remain-on-exit off >/dev/null 2>&1 || true
+  "$TMUX_BIN" pipe-pane -o -t "$win" \
+    "cat >> $(printf '%q' "$WORK/paket-$pkg.zug0.pane.log")" >/dev/null 2>&1 || true
+
+  say "→ Runner A · Paket $pkg · $MODEL_A/$EFFORT_A · tmux-Fenster »$wname«"
+  say ""
+  say "  Dort sitzt der Planer. Häng dich an und beantworte seine Fragen:"
+  say "    tmux attach -t $SESSION"
+  say "  Schließen musst du nichts. Wenn er fertig ist, hinterlegt er ein"
+  say "  Zeichen, die Schleife macht das Fenster zu und läuft weiter."
+  say ""
+
+  while :; do
+    if [ -e "$done_file" ]; then
+      say "  Zug 0 ist fertig — das Fenster geht in ${ZUG0_GRACE}s zu."
+      sleep "$ZUG0_GRACE"
+      close_zug0_window "$win"
+      break
+    fi
+
+    # Der Nutzer darf das Fenster weiterhin selbst verlassen. Dann steht kein
+    # Zeichen da, und es gilt dasselbe wie sonst: die Marke entscheidet.
+    if ! "$TMUX_BIN" list-windows -t "$SESSION" -F '#{window_name}' 2>/dev/null \
+         | grep -qx "$wname"; then
+      break
+    fi
+
+    sleep "$ZUG0_POLL"
+    waited=$((waited + ZUG0_POLL))
+    if [ "$ZUG0_TIMEOUT" -gt 0 ] && [ "$waited" -ge "$ZUG0_TIMEOUT" ]; then
+      close_zug0_window "$win"
+      journal "paket=$pkg rolle=A abgebrochen nach ${waited}s"
+      die $EX_ASK "Zug 0 für Paket $pkg lief ${waited}s ohne Feierabendzeichen. Das Fenster ist zu, der Plan trägt, was der Planer geschrieben hat."
+    fi
+    [ $((waited % 600)) -ge "$ZUG0_POLL" ] || say "  … Zug 0 läuft seit $((waited / 60)) min"
+  done
 
   # Es gibt keine Rückgabe zum Parsen. Der Plan trägt den Stand, und die Marke
   # sagt, was passiert ist. Das ist keine Notlösung: die Marke ist ohnehin die
@@ -587,7 +664,7 @@ check_commit() { # $1 = Paketnummer, $2 = HEAD vor dem Runner
 # --- Die Schleife -----------------------------------------------------------
 
 
-run_a() { # $1 = Paketnummer; Zug 0 im Terminal, danach entscheidet die Marke
+run_a() { # $1 = Paketnummer; Zug 0 im eigenen Fenster, danach entscheidet die Marke
   local m
   dispatch_zug0 "$1"
   if [ "$DRY" = 1 ]; then return 0; fi
@@ -595,24 +672,24 @@ run_a() { # $1 = Paketnummer; Zug 0 im Terminal, danach entscheidet die Marke
   case "$m" in
     '~')
       say "  Detailplan steht"
-      journal "paket=$1 rolle=A interaktiv marke=[~]"
+      journal "paket=$1 rolle=A fenster marke=[~]"
       ;;
     'x')
       say "  entfallen oder ohne Commit erledigt"
       PACKAGES_DONE=$((PACKAGES_DONE + 1))
-      journal "paket=$1 rolle=A interaktiv marke=[x]"
+      journal "paket=$1 rolle=A fenster marke=[x]"
       ;;
     '!')
       say ""
       say "Paket $1 steht auf [!]. Was offen blieb, steht im Plan."
-      journal "paket=$1 rolle=A interaktiv marke=[!] -> Nutzer"
+      journal "paket=$1 rolle=A fenster marke=[!] -> Nutzer"
       exit $EX_ASK
       ;;
     *)
       say ""
       say "Paket $1 steht unverändert auf [${m:-nichts}] — Zug 0 ist nicht"
       say "durchgelaufen. Ein zweiter Anlauf käme an dieselbe Stelle."
-      journal "paket=$1 rolle=A interaktiv marke=[${m:-?}] abgebrochen"
+      journal "paket=$1 rolle=A fenster marke=[${m:-?}] abgebrochen"
       exit $EX_ASK
       ;;
   esac

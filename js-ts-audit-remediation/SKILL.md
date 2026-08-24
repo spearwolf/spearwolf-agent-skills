@@ -339,8 +339,8 @@ Ohne diese Freigabe beginnt die Umsetzung nicht.
 
 In dieselbe Ansage gehört, wie es danach weitergeht: die Pakete fährt
 `scripts/remediate.sh` in einer abgelösten tmux-Session. Die Planung jedes
-Pakets läuft dort im Terminal und kann den Nutzer fragen — er wird also
-gebraucht, aber nur am Anfang jedes Pakets. Die Umsetzung läuft ohne ihn, mit
+Pakets bekommt dort ein eigenes Fenster und kann den Nutzer fragen — er wird
+also gebraucht, aber nur am Anfang jedes Pakets, und schließen muss er nichts. Die Umsetzung läuft ohne ihn, mit
 den Rechten, die ihr Permission-Modus ihnen gibt. Das ist ein Tausch, und er
 wird genannt, nicht vorausgesetzt.
 
@@ -365,7 +365,8 @@ Du drehst sie nicht selbst. Sobald der Grobplan freigegeben ist, startest du
 
 Das Skript hängt sich in eine abgelöste tmux-Session und kommt sofort zurück.
 Ab da läuft es unabhängig von dir: es liest die Marken im Plan, fährt je Paket
-Zug 0 im Terminal der Session und die Züge 1 bis 5 als eigenen Prozess, prüft
+Zug 0 in einem eigenen Fenster der Session und die Züge 1 bis 5 als eigenen
+Prozess, prüft
 jedes Ergebnis gegen `git` und das Verify-Log und hört auf, wenn kein Paket mehr
 offen ist.
 
@@ -373,9 +374,17 @@ Deine Arbeit an der Schleife ist damit getan. Was du tust:
 
 1. Die Startausgabe wörtlich an den Nutzer weitergeben — sie nennt die
    tmux-Session, wie er sich anhängt und wo Journal und Mitschrift liegen.
-2. Ihm sagen, dass Zug 0 des ersten Pakets dort auf ihn wartet.
+2. Ihm sagen, dass Zug 0 des ersten Pakets dort in einem eigenen Fenster auf
+   ihn wartet und dass er es nicht zu schließen braucht.
 3. Auf den Exit-Code reagieren, sobald du ihn siehst. Die Tabelle steht in
    `references/shell-runner.md`; nur `0` führt weiter zu Schritt 7.
+
+**Du wartest nicht auf das Ende.** Kein blockierender Aufruf, keine
+Warteschleife über das Journal, kein Aufwachen im Minutentakt: ein Lauf dauert
+Stunden, und ein Kommando, das so lange läuft, macht deine Session für diese
+Stunden unbrauchbar — genau die Session, in der der Nutzer nebenher etwas
+anderes fragen wollte. Der Exit-Code kommt zu dir, wenn du das nächste Mal
+nachsiehst, und nachgesehen wird, wenn der Nutzer danach fragt.
 
 **Vor dem ersten Start** `references/shell-runner.md` lesen. Danach nicht mehr:
 der Inhalt gehört den Runnern, nicht dir.
@@ -385,8 +394,9 @@ Paket, keine eigene Schleife. Auch nicht, wenn das Skript abbricht — ein Abbru
 ist eine Meldung an den Nutzer, keine Einladung, es von Hand zu machen.
 
 Läuft der Lauf gerade und der Nutzer fragt nach dem Stand, sieh nach, ohne zu
-stören: `tmux capture-pane -p -t <session>` zeigt das Pane, das Journal zeigt
-die Zeilen. Häng dich nicht selbst an die Session — dort sitzt der Nutzer.
+stören: `tmux capture-pane -p -t <session>:0` zeigt das Pane der Schleife, das
+Journal zeigt die Zeilen. Beides ist ein Blick, kein Warten. Häng dich nicht
+selbst an die Session — dort sitzt der Nutzer.
 
 ### 7. Abschluss
 

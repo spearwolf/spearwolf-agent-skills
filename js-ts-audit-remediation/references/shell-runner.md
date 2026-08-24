@@ -34,13 +34,13 @@ Läuft in tmux-Session »remediate-mein-projekt«.
 Mitschrift: /tmp/remediation-mein-projekt/remediate.pane.log
 Journal:    /tmp/remediation-mein-projekt/remediate.log
 
-Zug 0 wartet dort auf dich, sobald das erste Paket drankommt.
-Wenn er fertig ist: /exit in der Session — erst dann läuft die Schleife weiter.
+Zug 0 macht dafür ein eigenes Fenster »p<N>-plan« auf, sobald das erste
+Paket drankommt, und wartet dort auf dich. Schließen musst du es nicht:
+wenn der Planer fertig ist, macht die Schleife es zu und läuft weiter.
 ```
 
-Dort anhängen, Zug 0 seine Fragen beantworten, und wenn er fertig ist, die
-Session mit `/exit` verlassen — erst das lässt die Schleife weiterlaufen.
-Warum das so ist, steht unter »Zug 0«.
+Dort anhängen und Zug 0 seine Fragen beantworten. Mehr ist nicht zu tun; das
+Fenster geht von selbst zu. Warum das so ist, steht unter »Zug 0«.
 
 Diese Zeilen gibt der Agent dem Nutzer weiter, und damit ist seine Arbeit an der
 Schleife getan. Sie läuft unabhängig von seiner Session — schließt sie sich,
@@ -72,18 +72,25 @@ ersten vollständigen Paket an, `--dry-run` zeigt im Vordergrund, was beauftragt
 würde, und startet nichts. `SESSION` benennt die tmux-Session anders als nach
 dem Projektverzeichnis, `TMUX_BIN` zeigt auf ein tmux an anderer Stelle.
 
+Vier Werte betreffen nur Zug 0. `ZUG0_GRACE` (20 s) ist die Frist zwischen dem
+Feierabendzeichen und dem Schließen des Fensters, `ZUG0_CLOSE` (20 s) die
+Geduld, die `/exit` bekommt, bevor das Fenster beendet wird, `ZUG0_POLL` (5 s)
+der Abstand zwischen zwei Blicken auf das Zeichen. `ZUG0_TIMEOUT` steht auf 0:
+ein Zug 0 darf beliebig lange dauern, weil er auf einen Menschen wartet. Wer den
+Lauf über Nacht allein lässt, setzt ihn auf eine Zahl und findet am Morgen einen
+Abbruch statt eines Fensters.
+
 ### So sieht ein Paket aus
 
 ```
-→ Runner A · Paket 2 · opus/xhigh · interaktiv
-─────────────────────────────────────────────────────────────
-  … eine gewöhnliche Claude-Session: deine MCP-Server, deine Skills,
-    dein Werkzeugkasten, und sie kann dich fragen …
-─────────────────────────────────────────────────────────────
+→ Runner A · Paket 2 · opus/xhigh · tmux-Fenster »p2-plan«
+  … dort eine gewöhnliche Claude-Session: deine MCP-Server, deine
+    Skills, dein Werkzeugkasten, und sie kann dich fragen …
+  Zug 0 ist fertig — das Fenster geht in 20s zu.
   Detailplan steht
 → Runner B · Paket 2 · opus/medium
-  a3f91c2 · LEAK-001 behoben · 1 Runde(n)
-→ Runner A · Paket 3 · opus/xhigh · interaktiv
+  a3f91c2 · Speicherleck im Cache behoben · 1 Runde(n)
+→ Runner A · Paket 3 · opus/xhigh · tmux-Fenster »p3-plan«
 ```
 
 Der Nutzer wird am Anfang jedes Pakets gebraucht, meist ein paar Minuten, und
@@ -94,9 +101,11 @@ Fehlerkette, Verify, Commit — läuft ohne ihn.
 
 | Wozu | Kommando |
 | --- | --- |
-| Was steht gerade im Pane | `tmux capture-pane -p -t <session>` |
+| Was steht gerade im Pane der Schleife | `tmux capture-pane -p -t <session>:0` |
+| Welche Fenster offen sind | `tmux list-windows -t <session>` |
 | Was ist bisher passiert | `cat <arbeitsdir>/remediate.log` |
-| Die ganze Ausgabe | `cat <arbeitsdir>/remediate.pane.log` |
+| Die ganze Ausgabe der Schleife | `cat <arbeitsdir>/remediate.pane.log` |
+| Was im Planungsfenster stand, nachdem es zu ist | `cat <arbeitsdir>/paket-N.zug0.pane.log` |
 
 Das Journal endet mit `ende exit=N`, sobald der Lauf durch ist. Solange die Zeile
 fehlt, läuft er noch oder wartet auf eine Antwort. Der Agent hängt sich nicht an
@@ -195,13 +204,23 @@ das Dokument, gegen das anschließend alles gebaut wird. Ein Fehlurteil dort
 schlägt auf jedes Folgepaket durch — das ist die teuerste Stelle im Lauf, um
 sparsam zu sein.
 
-**Die Session endet nicht von selbst.** Ein interaktives `claude` bleibt am
-Prompt stehen, wenn das Modell seinen Zug beendet hat — es wartet auf die
-nächste Eingabe. Die Schleife wartet auf das Ende des *Prozesses*, nicht auf das
-Ende seines letzten Zuges. Wer die Session nicht mit `/exit` verlässt, hält den
-ganzen Lauf an, ohne dass irgendwo ein Fehler steht. Das Skript sagt es vor der
-Übergabe, und Zug 0 sagt es am Ende noch einmal; hier steht es, weil es die
-einzige Stelle im Lauf ist, an der ein Mensch etwas tun *muss*.
+**Zug 0 läuft in einem eigenen Fenster und sagt selbst, wann er fertig ist.**
+Das Skript öffnet `<session>:p<N>-plan`, startet den Planer dort und sieht
+danach auf eine Datei: `<arbeitsdir>/paket-N.zug0.done`. Ein `touch` darauf ist
+das Letzte, was A tut, nachdem Detailplan und Marke im Plan stehen. Die Schleife
+lässt danach `ZUG0_GRACE` Sekunden verstreichen, schickt `/exit` ins Fenster und
+beendet es, falls das nicht zieht.
+
+Der Grund für diesen Umweg ist gemessen: eine interaktive `claude`-Session
+bleibt am Prompt stehen, wenn das Modell seinen Zug beendet hat, und das Ende
+des *Prozesses* ist das Einzige, worauf ein Vordergrundaufruf warten könnte.
+Vorher hing an dieser Stelle ein Mensch, der `/exit` tippen musste; in einem
+gemessenen Lauf stand der Planer so eine Stunde lang fertig im Pane, ohne dass
+irgendwo ein Fehler zu sehen war. Jetzt hängt dort eine Datei, und die
+schreibt der, der als Einziger weiß, wann er fertig ist.
+
+Wer das Fenster trotzdem selbst verlässt, stört nichts: fehlt das Zeichen und
+ist das Fenster weg, geht es weiter wie sonst auch. Die Marke entscheidet.
 
 Es gibt nichts zu parsen: **die Marke im Plan** sagt, wie es weitergeht.
 
@@ -346,9 +365,13 @@ Zug 0 und Zug 1:
   gehört auf diesem Weg eine Zeile mehr: `- Effort:`, siehe unten. Danach steht
   das Paket auf `[~]`, und A hört auf. **A schreibt keine Zeile Projektcode und
   startet keinen Implementierer.**
-  Im interaktiven Modus sitzt der Nutzer dabei: was der Code nicht hergibt,
-  fragst du. Nicht als Ausnahme, sondern als der Zweck dieses Zuges — ein
-  Detailplan auf halbem Verständnis kostet später mehr als jede Rückfrage.
+  Der Nutzer sitzt in deinem Fenster: was der Code nicht hergibt, fragst du.
+  Nicht als Ausnahme, sondern als der Zweck dieses Zuges — ein Detailplan auf
+  halbem Verständnis kostet später mehr als jede Rückfrage.
+  **Deine letzte Handlung ist `touch <arbeitsdir>/paket-N.zug0.done`**, und
+  zwar erst, wenn Detailplan und Marke im Plan stehen. Danach läuft eine Uhr:
+  die Schleife schließt dein Fenster. Was zu diesem Zeitpunkt nur in deinem
+  Kontext steht und nicht im Plan, hat es nie gegeben.
 - **B** führt die Züge 1 bis 5 aus: Implementierer beauftragen, Report
   entgegennehmen, Review, Fehlerkette, Verify, Commit, Plan fortschreiben.
   **B wiederholt Zug 0 nicht.** Der Detailplan steht unter dem Paket; er ist
@@ -365,7 +388,9 @@ Zug 0 je stattgefunden hat. Mit der Teilung sagt es die Marke im Plan.
 
 **Als A gibst du gar nichts zurück.** Es gibt keinen Kanal und keinen braucht
 es: du schreibst den Plan, setzt die Marke, und die Marke ist die Rückgabe. Die
-Tabelle oben unter »Zug 0« sagt, was die Schleife daraus liest.
+Tabelle oben unter »Zug 0« sagt, was die Schleife daraus liest. Das
+Feierabendzeichen ist keine Rückgabe, sondern ein Schalter: es sagt *dass* du
+fertig bist, nicht *was* dabei herauskam.
 
 **Als B** gibst du ein JSON-Objekt nach `assets/runner-return.schema.json`
 zurück, statt der neun Zeilen aus `runner.md`. Die Felder sind dieselben, die Statuswerte sind englisch, weil sie
@@ -440,8 +465,8 @@ Prozesse, und deren `--effort` setzt B selbst — nach dem Wert, den A in den
 Detailplan geschrieben hat. Der Vorgabewert `medium` gilt für B, das beauftragt,
 liest und committet; die Stufe, die zählt, steht im Paket.
 
-Deshalb setzt **A** ihn und nicht die Umgebung: A hat den Code gesehen, im
-interaktiven Modus auch mit dir darüber gesprochen, und weiß, was dieses Paket
+Deshalb setzt **A** ihn und nicht die Umgebung: A hat den Code gesehen, in
+seinem Fenster auch mit dir darüber gesprochen, und weiß, was dieses Paket
 verlangt. Eine Zeile im Detailplan, neben `- Modell:`:
 
 ```markdown

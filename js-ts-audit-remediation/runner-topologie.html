@@ -391,7 +391,7 @@
 
           <rect class="box-agent" x="200" y="286" width="230" height="66" rx="3" />
           <text class="t-strong" x="214" y="310">A · Zug 0</text>
-          <text class="t-sub" x="214" y="327">im Terminal der Session</text>
+          <text class="t-sub" x="214" y="327">eigenes Fenster der Session</text>
           <text class="t-sub" x="214" y="343">kann den Nutzer fragen</text>
 
           <rect class="box-agent" x="560" y="286" width="230" height="66" rx="3" />
@@ -505,7 +505,7 @@
           <rect class="bar-shell" x="262" y="92" width="580" height="22" rx="2" />
           <text class="t-sub" x="276" y="107">grep · dispatch · wait · parse · verify · printf</text>
 
-          <text class="t-lane" x="152" y="150" text-anchor="end">A im Terminal · B als Prozess</text>
+          <text class="t-lane" x="152" y="150" text-anchor="end">A im Fenster · B als Prozess</text>
           <rect class="bar-agent" x="176" y="136" width="32" height="22" rx="2" />
           <rect class="bar-agent" x="212" y="136" width="76" height="22" rx="2" />
           <rect class="bar-agent" x="298" y="136" width="32" height="22" rx="2" />
@@ -516,7 +516,7 @@
           <rect class="bar-agent" x="648" y="136" width="76" height="22" rx="2" />
           <rect class="bar-agent" x="734" y="136" width="28" height="22" rx="2" />
           <rect class="bar-agent" x="766" y="136" width="64" height="22" rx="2" />
-          <text class="t-sub" x="838" y="150">A: dein Terminal</text>
+          <text class="t-sub" x="838" y="150">A: eigenes Fenster</text>
 
           <text class="t-lane" x="152" y="190" text-anchor="end">Impl. + Review</text>
           <rect class="bar-agent-soft" x="190" y="178" width="46" height="14" rx="2" />
@@ -554,7 +554,7 @@
           <text class="t-sub" x="170" y="312">Gleiche Achse wie Abb. 2 · die rostige Spur ist ersetzt, alles darunter bleibt, wie es ist</text>
         </svg>
       </div>
-      <figcaption><b>Abb. 2 · Die Lebensdauern.</b> Dieselbe Zeitachse wie in Abb. 2: aus einem durchgehenden Kontext werden zwei kurze Sessions und eine Schleife ohne Kontext. Ein Paket zerfällt in zwei Prozesse — A führt Zug 0 in deinem Terminal und kann dich fragen, B fährt die Züge 1 bis 5 ohne dich. Implementierer und Reviewer sind darunter eigene Prozesse mit voller Werkzeugreichweite.</figcaption>
+      <figcaption><b>Abb. 2 · Die Lebensdauern.</b> Dieselbe Zeitachse wie in Abb. 2: aus einem durchgehenden Kontext werden zwei kurze Sessions und eine Schleife ohne Kontext. Ein Paket zerfällt in zwei Prozesse — A führt Zug 0 in einem eigenen Fenster und kann dich fragen, B fährt die Züge 1 bis 5 ohne dich. Implementierer und Reviewer sind darunter eigene Prozesse mit voller Werkzeugreichweite.</figcaption>
       <div class="legend">
         <span><i class="sw sw-agent"></i> Agentenprozess</span>
         <span><i class="sw sw-shell"></i> Shell, kein Kontext, kein Modell</span>
@@ -741,22 +741,21 @@ Läuft in tmux-Session »remediate-mein-projekt«.
 Journal: .git/remediation/remediate.log
 
 <span class="c-cmt"># drinnen, wenn du dich anhängst</span>
-Zug 0:     interactive
 Pakete:    12 offen · 0 erledigt · 0 blockiert
 
-→ Runner A · Paket 2 · opus/xhigh · interaktiv
-─────────────────────────────────────────────
-  <span class="c-cmt">… deine Session: deine MCP-Server, deine Skills, sie fragt dich …</span>
-─────────────────────────────────────────────
+→ Runner A · Paket 2 · opus/xhigh · tmux-Fenster »p2-plan«
+  <span class="c-cmt">… dort deine Session: deine MCP-Server, deine Skills, sie fragt dich …</span>
+  Zug 0 ist fertig — das Fenster geht in 20s zu.
   Detailplan steht
 → Runner B · Paket 2 · opus/medium
-  a3f91c2 · LEAK-001 behoben · 1 Runde(n)
-→ Runner A · Paket 3 · opus/xhigh · interaktiv</code></pre>
+  a3f91c2 · Speicherleck im Cache behoben · 1 Runde(n)
+→ Runner A · Paket 3 · opus/xhigh · tmux-Fenster »p3-plan«</code></pre>
 
     <div class="prose">
       <p>Du wirst am Anfang jedes Pakets gebraucht, meist ein paar Minuten — und nur dann, wenn du dich anhängst. Die lange Strecke danach läuft ohne dich. Kommt keine Frage auf, läuft ein Paket auch ohne dich durch.</p>
+      <p>Zug 0 bekommt dafür ein eigenes Fenster, und er sagt selbst, wann er fertig ist: seine letzte Handlung ist ein <code>touch</code> auf <code>paket-N.zug0.done</code> im Arbeitsverzeichnis. Die Schleife sieht im Sekundentakt danach, lässt eine Frist verstreichen, schickt <code>/exit</code> ins Fenster und beendet es, falls das nicht zieht. Das ist die Antwort auf einen gemessenen Fehlschlag: solange das Ende des Vordergrundprozesses das Signal war, musste ein Mensch es auslösen — und ein fertiger Planer stand einmal eine Stunde im Pane, ohne dass irgendwo ein Fehler zu sehen war. Ein Zeichen auf der Platte schreibt der, der als Einziger weiß, wann er fertig ist.</p>
       <p>Der Grund für tmux ist nicht Bequemlichkeit. Eine abgelöste tmux-Session hat ein echtes Pseudo-Terminal — gemessen <code>stdin=ja stdout=ja tty=/dev/pts/0</code> —, ein gewöhnlicher Hintergrundprozess hat keines, und ohne Terminal kann Zug 0 nicht fragen. tmux ist damit das Einzige, was »abgelöst« und »fragt nach« zugleich erlaubt. Fehlt tmux, bricht das Skript ab und der Lauf beginnt nicht — das ist die einzige Voraussetzung, die es selbst stellt.</p>
-      <p>Hineinsehen geht ohne anzuhängen: <code>tmux capture-pane -p</code> zeigt das Pane, <code>remediate.log</code> das Journal, <code>remediate.pane.log</code> die ganze Ausgabe. Das Journal endet mit <code>ende exit=N</code>, sobald der Lauf durch ist — fehlt die Zeile, läuft er noch oder wartet auf eine Antwort.</p>
+      <p>Hineinsehen geht ohne anzuhängen: <code>tmux capture-pane -p -t &lt;session&gt;:0</code> zeigt das Pane der Schleife, <code>remediate.log</code> das Journal, <code>remediate.pane.log</code> die ganze Ausgabe. Das Journal endet mit <code>ende exit=N</code>, sobald der Lauf durch ist — fehlt die Zeile, läuft er noch oder wartet auf eine Antwort.</p>
 
       <h3>Was jede Rolle in die Hand bekommt</h3>
     </div>
@@ -766,7 +765,7 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
         <thead><tr><th>Rolle</th><th>Läuft als</th><th>Werkzeuge</th><th>Kann fragen</th></tr></thead>
         <tbody>
           <tr><td class="who">Schritt 1–5</td><td>gewöhnliche Session</td><td>alles, was eingestellt ist</td><td>ja</td></tr>
-          <tr><td class="who">A · Zug 0</td><td>dein Terminal</td><td>alles, was eingestellt ist</td><td>ja</td></tr>
+          <tr><td class="who">A · Zug 0</td><td>eigenes tmux-Fenster</td><td>alles, was eingestellt ist</td><td>ja</td></tr>
           <tr><td class="who">B · Zug 1–5</td><td><code>claude -p</code></td><td>Allowlist erweitert, vier Werkzeuge entzogen</td><td>nein, Status <code>question</code></td></tr>
           <tr><td class="who">Implementierer</td><td><code>claude -p</code> von B</td><td>erbt die Konfiguration wie jede Session</td><td>nein, meldet an B</td></tr>
           <tr><td class="who">Reviewer</td><td><code>claude -p</code> von B</td><td>erbt die Konfiguration wie jede Session</td><td>nein, meldet an B</td></tr>
@@ -776,7 +775,7 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
     </div>
 
     <div class="prose">
-      <h3>Warum nur Zug 0 im Terminal läuft</h3>
+      <h3>Warum nur Zug 0 ein Terminal bekommt</h3>
       <p>Naheliegend wäre, Implementierer und Reviewer genauso interaktiv zu fahren. Für MCP bringt das nichts: das Problem war nie das Terminal, sondern der Subagent — als eigene Prozesse haben sie die Reichweite ohnehin. Für Rechte macht es die Lage schlechter, denn ein interaktiver Implementierer wartet bei einer fehlenden Freigabe in einem Pane, an dem niemand hängt; aus einem Abbruch nach zwei Sekunden, der das fehlende Werkzeug benennt, würde ein Lauf, der ohne sichtbaren Grund steht. Und die Züge 1–5 verlören ihre Zusicherungen: Wiederholung bei Überlast, Kostenobergrenze, Rückgabeschema und die Zählung abgelehnter Aufrufe hängen alle daran, dass ein Prozess ein Ergebnis-JSON und einen Exit-Code liefert.</p>
       <p>Die Trennung folgt der Frage, ob jemand antworten kann. Zug 0 fragt, weil der Nutzer beim Planen ohnehin gebraucht wird; alles danach arbeitet gegen einen Detailplan, in dem die Antworten schon stehen.</p>
 
@@ -957,7 +956,7 @@ first=1
       <p>Implementierer und Reviewer laufen als eigene Prozesse und erben die MCP-Konfiguration wie jede Session — das ist der Grund für den Umweg. Ob ein Server dort ankommt, hängt trotzdem daran, wo er konfiguriert ist; <code>EXTRA_ARGS=&quot;--mcp-config,…&quot;</code> gibt ihn ausdrücklich mit. Der verlässlichste Weg bleibt die CLI eines Dienstes statt seines Werkzeugs.</p>
 
       <h3>Die Planung braucht dich</h3>
-      <p>Zug 0 im Terminal heißt: ein Lauf über zwölf Pakete braucht zwölf kurze Momente deiner Aufmerksamkeit. Das ist der Preis dafür, dass der Planer fragen kann, und er wird bewusst bezahlt — ein Detailplan auf halbem Verständnis kostet später mehr. Über Nacht durchlaufen kann ein Lauf nur, solange keine Frage aufkommt.</p>
+      <p>Zug 0 im eigenen Fenster heißt: ein Lauf über zwölf Pakete braucht zwölf kurze Momente deiner Aufmerksamkeit. Das ist der Preis dafür, dass der Planer fragen kann, und er wird bewusst bezahlt — ein Detailplan auf halbem Verständnis kostet später mehr. Über Nacht durchlaufen kann ein Lauf nur, solange keine Frage aufkommt.</p>
 
       <h3>Portabilität</h3>
       <p>Der Skill setzt jetzt eine POSIX-Shell, tmux und die <code>claude</code>-CLI voraus. Auf einem Host ohne diese drei läuft er nicht — bewusst: ein zweiter Weg für den Ausnahmefall kostet mehr Verwirrung, als er Fälle rettet.</p>
@@ -970,8 +969,8 @@ first=1
   <div class="verdict">
     <p class="kicker">Stand</p>
     <h2>Ein Weg</h2>
-    <p>Nach der Freigabe startet der Agent <code>scripts/remediate.sh</code>, ungefragt. Der Lauf hängt sich in eine abgelöste tmux-Session, plant jedes Paket im Terminal — dort kann er fragen — und führt es ohne Terminal aus. Implementierer und Reviewer sind eigene Prozesse und erreichen alles, was auf der Maschine eingestellt ist. Der Agent gibt die Startausgabe weiter und wartet auf einen Exit-Code; eine zweite Betriebsart gibt es nicht, und ohne tmux beginnt der Lauf gar nicht erst.</p>
-    <p>Der Gewinn ist nicht, dass die Schleife klüger wird, sondern dass sie sich nicht herausreden kann: sie pollt nicht, sie sucht keinen Kanal, und sie erklärt keinen Prozess für beendet, der noch läuft. Was ein Prozess an Interaktivität kostet, holt Zug 0 im Terminal zurück — die eine Stelle im Lauf, an der ein Agent Dinge wissen muss, die im Code nicht stehen.</p>
+    <p>Nach der Freigabe startet der Agent <code>scripts/remediate.sh</code>, ungefragt. Der Lauf hängt sich in eine abgelöste tmux-Session, plant jedes Paket in einem eigenen Fenster — dort kann er fragen — und führt es ohne Terminal aus. Implementierer und Reviewer sind eigene Prozesse und erreichen alles, was auf der Maschine eingestellt ist. Der Agent gibt die Startausgabe weiter und wartet auf einen Exit-Code; eine zweite Betriebsart gibt es nicht, und ohne tmux beginnt der Lauf gar nicht erst.</p>
+    <p>Der Gewinn ist nicht, dass die Schleife klüger wird, sondern dass sie sich nicht herausreden kann: sie pollt nicht, sie sucht keinen Kanal, und sie erklärt keinen Prozess für beendet, der noch läuft. Was ein Prozess an Interaktivität kostet, holt Zug 0 in seinem Fenster zurück — die eine Stelle im Lauf, an der ein Agent Dinge wissen muss, die im Code nicht stehen.</p>
     <p>Die deterministischen Zusicherungen sind gegen einen <code>claude</code>-Stub über 36 Fälle geprüft: Marken, Hash gegen HEAD, <code>exit=0</code> im Verify-Log, Reports von Implementierer und Reviewer, Rechteschranke, unlesbare Rückgabe, falsches Paket, abgestürzter Prozess, Überlast in fünf Spielarten, der Start über tmux mit und ohne Session, der Abbruch ohne tmux, und acht Vorbedingungen. Was ein Modell entscheidet, prüft kein Stub — das steht unter »Grenzen«.</p>
   </div>
 
