@@ -104,14 +104,12 @@ usage() {
 Optionen:
   --once      nach dem ersten Paket anhalten. Für den ersten Probelauf.
   --dry-run   im Vordergrund zeigen, was beauftragt würde. Startet nichts.
-  --dry-run   nur zeigen, was beauftragt würde. Startet keinen Prozess.
   --help      diese Ausgabe.
 
 Umgebung:
   PLAN MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER
   ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS
   SESSION TMUX_BIN
-  ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS
 EOF
 }
 
@@ -220,8 +218,6 @@ launch_tmux() { # $@ = die Argumente, mit denen der Lauf drinnen starten soll
       'tmux wird gebraucht und ist nicht da. Der Lauf hängt sich in eine abgelöste' \
       'tmux-Session, weil nur die ein Terminal hat, in dem Zug 0 dich fragen kann.')"
 
-  [ -n "$SESSION" ] || SESSION="remediate-$(basename "$(pwd)")"
-
   if "$TMUX_BIN" has-session -t "$SESSION" 2>/dev/null; then
     die $EX_PRE "$(printf 'Es läuft schon eine Session »%s«.\n  tmux attach -t %s   ansehen\n  tmux kill-session -t %s   beenden' "$SESSION" "$SESSION" "$SESSION")"
   fi
@@ -230,7 +226,7 @@ launch_tmux() { # $@ = die Argumente, mit denen der Lauf drinnen starten soll
   # hat seine eigene, und die kennt keine dieser Stellschrauben.
   cmd="env"
   cmd="$cmd REMEDIATE_INSIDE=1"
-  for v in PLAN MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD \
+  for v in PLAN SESSION MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD \
            MAX_ITER ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS; do
     eval "[ -n \"\${$v:-}\" ]" && cmd="$cmd $v=$(eval printf '%q' "\"\$$v\"")"
   done
@@ -270,6 +266,8 @@ preflight() {
     || die $EX_PRE "kein git-Arbeitsbaum: $(pwd)"
   [ -f "$PLAN" ] || die $EX_PRE "kein Plan gefunden: $PLAN — Schritt 1-5 der SKILL.md laufen vor diesem Skript"
   [ -f "$SCHEMA" ] || die $EX_PRE "Rückgabeschema fehlt: $SCHEMA"
+
+  [ -n "$SESSION" ] || SESSION="remediate-$(basename "$(pwd)")"
 
   BRANCH=$(head_value 'Branch')
   [ -n "$BRANCH" ] || die $EX_PRE "der Kopf des Plans nennt keinen Branch"
@@ -350,9 +348,12 @@ dispatch_zug0() { # $1 = Paketnummer; übergibt das Terminal an Zug 0
   say "─────────────────────────────────────────────────────────────"
   # Kein -p, kein Schema, keine Verbotsliste: das hier ist deine Session.
   # Der Planer hat, was du eingestellt hast, und kann dich fragen.
+  # Remote Control macht die Session vom Account aus erreichbar, unter ihrem
+  # Namen — dieselbe Frage lässt sich dann auch vom Handy beantworten.
   claude "$brief" \
     --model "$MODEL_A" \
     --effort "$EFFORT_A" \
+    --remote-control "$SESSION-p$pkg-plan" \
     ${TOOL_ARGS[@]+"${TOOL_ARGS[@]}"} || rc=$?
   say "─────────────────────────────────────────────────────────────"
 
@@ -399,6 +400,7 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
     claude -p "$brief" \
       --model "$model" \
       --effort "$effort" \
+      --name "$SESSION-p$pkg-lauf" \
       ${FALLBACK_MODEL:+--fallback-model "$FALLBACK_MODEL"} \
       --session-id "$(uuid)" \
       --output-format json \
@@ -436,8 +438,13 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
   TOTAL_COST=$(awk -v a="$TOTAL_COST" -v b="$cost" 'BEGIN { printf "%.4f", a + b }')
 
   denials=$(jq -r '(.permission_denials // []) | length' "$RAW")
-  [ "$denials" = "0" ] || die $EX_PERM \
-    "Runner $role für Paket $pkg wurde $denials mal von der Rechteschranke gestoppt. Die Allowlist ist zu eng, nicht das Paket zu schwer — siehe $RAW."
+  if [ "$denials" != "0" ]; then
+    # Die abgelehnten Namen mitgeben: wer sie erst aus dem JSON suchen muss,
+    # rät beim Erweitern, und der nächste Lauf scheitert an der nächsten Regel.
+    local was
+    was=$(jq -r '[(.permission_denials // [])[] | .tool_name] | unique | join(", ")' "$RAW" 2>/dev/null || true)
+    die $EX_PERM "$(printf 'Runner %s fuer Paket %s wurde %s mal von der Rechteschranke gestoppt.\n  Abgelehnt: %s\n  Das gehoert in ALLOW_TOOLS. Die Allowlist ist zu eng, nicht das Paket zu schwer.\n  Vollstaendig in %s' "$role" "$pkg" "$denials" "${was:-siehe JSON}" "$RAW")"
+  fi
 
   # Die Form garantiert das Schema; leer heißt, dass sie es trotzdem nicht tut.
   RES=$(jq -c 'try (if (.result | type) == "string" then (.result | fromjson) else .result end) catch empty' "$RAW")

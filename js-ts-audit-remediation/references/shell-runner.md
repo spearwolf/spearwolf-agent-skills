@@ -48,6 +48,14 @@ ein gewöhnlicher Hintergrundprozess hat keines, und ohne Terminal kann Zug 0
 den Nutzer nicht fragen. tmux ist das Einzige, was »abgelöst« und »fragt nach«
 zugleich erlaubt.
 
+**Jede Session bekommt einen Namen.** Zug 0 startet mit
+`--remote-control "<session>-p<N>-plan"`: der Name macht sie in der Session-Liste
+auffindbar, und Remote Control macht sie vom Account aus erreichbar — dieselbe
+Rückfrage lässt sich dann auch vom Handy beantworten, statt sich per SSH an tmux
+zu hängen. Die Züge 1–5 laufen mit `--name "<session>-p<N>-lauf"`; sie sind
+nicht interaktiv, aber auffindbar. Der Sessionname kommt aus `SESSION`, sonst aus
+dem Projektverzeichnis.
+
 Zwei Argumente gibt es, beide für den Ausnahmefall: `--once` hält nach dem
 ersten vollständigen Paket an, `--dry-run` zeigt im Vordergrund, was beauftragt
 würde, und startet nichts. `SESSION` benennt die tmux-Session anders als nach
@@ -102,7 +110,7 @@ deshalb läuft nie einer parallel zum anderen.
 | 10 | Es braucht eine Entscheidung | Antwort datiert in »Entscheidungen«, dann erneut starten |
 | 11 | Ein Paket steht auf `[~]` | `references/resume.md`, nicht dieses Skript |
 | 20 | Die Rückgabe passt nicht zum Repo | Plan und `git log` ansehen. Nicht blind wiederholen |
-| 21 | Ein Runner hing an einer Rechteschranke | Die Allowlist ist zu eng, nicht das Paket zu schwer |
+| 21 | Ein Runner hing an einer Rechteschranke | Die Meldung nennt die abgelehnten Werkzeuge; sie gehören in `ALLOW_TOOLS` |
 | 30 | Der Runner-Prozess selbst ist gescheitert | `paket-N.*.stderr` im Arbeitsverzeichnis |
 | 31 | Die API blieb überlastet | Nichts ist kaputt, nichts hat sich bewegt: später erneut starten |
 | 40 | Eine Vorbedingung stimmt nicht | Die Meldung sagt, welche |
@@ -235,6 +243,32 @@ Runner, der `blocked` meldet.
 Verbotsliste nennt Force-Push, entfernte Historie, das Entfernen von
 Sicherheitstests. Gewähren kann er nur nicht, und Gewähren ist hier die Aufgabe.
 
+### Warum Implementierer und Reviewer nicht auch im Terminal laufen
+
+Die naheliegende Frage, und die Antwort ist nicht »geht nicht«, sondern »kostet
+mehr, als es bringt«.
+
+**Für MCP bringt es nichts.** Das Problem war nie das Terminal, sondern der
+Subagent: ein Prozess erbt die Konfiguration wie jede Session, ein Subagent
+nicht. Sobald Implementierer und Reviewer Prozesse sind — und das sind sie —,
+ist die Reichweite dieselbe, ob mit Terminal oder ohne.
+
+**Für Rechte macht es die Lage schlechter.** Ein interaktiver Implementierer
+fragt bei einer fehlenden Freigabe nach, und in einem Pane, an dem niemand
+hängt, wartet er dann. Aus einem Abbruch nach zwei Sekunden, der sagt, *welches*
+Werkzeug fehlt, würde ein Lauf, der ohne sichtbaren Grund steht. Der Abbruch ist
+einmaliger Aufwand — `ALLOW_TOOLS` erweitern —, das Warten wäre einer bei jedem
+Paket.
+
+**Und die Züge 1–5 verlören ihre Zusicherungen.** Der Wiederholungsversuch bei
+Überlast, die Kostenobergrenze je Prozess, das Rückgabeschema, die Zählung
+abgelehnter Aufrufe: alles hängt daran, dass ein Prozess ein Ergebnis-JSON
+liefert und einen Exit-Code hat. Eine Terminal-Session liefert beides nicht.
+
+Die Trennung folgt also nicht der Bequemlichkeit, sondern der Frage, ob jemand
+antworten kann. Zug 0 fragt, weil der Nutzer beim Planen ohnehin gebraucht wird;
+alles danach arbeitet gegen einen Detailplan, in dem die Antworten schon stehen.
+
 ### Implementierer und Reviewer: eigene Prozesse
 
 **Du startest sie als eigene `claude -p`-Prozesse, nicht als Subagenten.** Das
@@ -259,6 +293,9 @@ Was dabei zu tun ist:
 - Modelle setzt du weiter ausdrücklich, nach der Dreistufen-Tabelle in
   `runner.md`. Neu ist, dass du daneben auch den Effort setzen kannst: ein
   eigener Prozess nimmt `--effort`, ein Subagent nicht.
+- Gib jedem einen Namen mit: `--name "<session>-p<N>-impl-<runde>"`, für den
+  Reviewer entsprechend. In der Session-Liste steht dann, wozu ein Aufruf
+  gehörte, statt einer Uhrzeit.
 
 Die Reports sind zugleich der Beleg: die Schleife prüft, ob je einer für
 Implementierer und Reviewer im Arbeitsverzeichnis liegt, bevor sie einen Commit

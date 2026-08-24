@@ -776,6 +776,13 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
     </div>
 
     <div class="prose">
+      <h3>Warum nur Zug 0 im Terminal läuft</h3>
+      <p>Naheliegend wäre, Implementierer und Reviewer genauso interaktiv zu fahren. Für MCP bringt das nichts: das Problem war nie das Terminal, sondern der Subagent — als eigene Prozesse haben sie die Reichweite ohnehin. Für Rechte macht es die Lage schlechter, denn ein interaktiver Implementierer wartet bei einer fehlenden Freigabe in einem Pane, an dem niemand hängt; aus einem Abbruch nach zwei Sekunden, der das fehlende Werkzeug benennt, würde ein Lauf, der ohne sichtbaren Grund steht. Und die Züge 1–5 verlören ihre Zusicherungen: Wiederholung bei Überlast, Kostenobergrenze, Rückgabeschema und die Zählung abgelehnter Aufrufe hängen alle daran, dass ein Prozess ein Ergebnis-JSON und einen Exit-Code liefert.</p>
+      <p>Die Trennung folgt der Frage, ob jemand antworten kann. Zug 0 fragt, weil der Nutzer beim Planen ohnehin gebraucht wird; alles danach arbeitet gegen einen Detailplan, in dem die Antworten schon stehen.</p>
+
+      <h3>Jede Session hat einen Namen</h3>
+      <p>Zug 0 startet mit <code>--remote-control &quot;&lt;session&gt;-p&lt;N&gt;-plan&quot;</code>. Der Name macht sie in der Session-Liste auffindbar, Remote Control macht sie vom Account aus erreichbar — dieselbe Rückfrage lässt sich dann vom Handy beantworten, statt sich per SSH an tmux zu hängen. Die Züge 1–5 tragen <code>--name &quot;&lt;session&gt;-p&lt;N&gt;-lauf&quot;</code>: nicht interaktiv, aber auffindbar.</p>
+
       <p>Entzogen sind B genau vier Werkzeuge, und nur solche, mit denen ein Prozess auf eine Antwort warten (<code>AskUserQuestion</code>, <code>SendMessage</code>) oder sich selbst überleben könnte (<code>ScheduleWakeup</code>, <code>CronCreate</code>). Dazu die Kommandos, die der Lauf ohnehin nicht kennt: <code>git push</code>, <code>git tag</code>, <code>npm publish</code>. Die Allowlist daneben nimmt nichts weg, sie hebt an, was <code>acceptEdits</code> nicht abdeckt — gemessen liefen <code>echo</code> und <code>python3 --version</code>, obwohl nur <code>Bash(git *)</code> gelistet war.</p>
 
       <h3>Wo ein Lauf anhält</h3>
@@ -789,7 +796,7 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
           <tr><td class="who">10</td><td>ein Runner legt etwas vor</td><td>Antwort in »Entscheidungen«, neu starten</td></tr>
           <tr><td class="who">11</td><td>ein Paket steht auf <code>[~]</code></td><td><code>resume.md</code>, nicht das Skript</td></tr>
           <tr><td class="who">20</td><td>die Rückgabe passt nicht zum Repo</td><td>Plan und <code>git log</code> ansehen</td></tr>
-          <tr><td class="who">21</td><td>Rechteschranke</td><td>die Allowlist ist zu eng</td></tr>
+          <tr><td class="who">21</td><td>Rechteschranke</td><td>die Meldung nennt die abgelehnten Werkzeuge</td></tr>
           <tr><td class="who">30</td><td>der Prozess selbst ist gescheitert</td><td><code>paket-N.*.stderr</code></td></tr>
           <tr><td class="who">31</td><td>API blieb überlastet</td><td>später erneut starten, nichts ist kaputt</td></tr>
           <tr><td class="who">40</td><td>Vorbedingung</td><td>die Meldung sagt, welche</td></tr>
