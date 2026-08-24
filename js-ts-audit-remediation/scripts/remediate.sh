@@ -50,6 +50,11 @@ ALLOW_TOOLS=${ALLOW_TOOLS:-Bash(git *),Bash(npm *),Bash(pnpm *),Bash(yarn *),Bas
 # und wer sich selbst einen Weckruf legt, überlebt seinen Prozess. Zweitens die
 # Kommandos, die der Lauf laut SKILL.md ohnehin nicht kennt — kein Push, kein
 # Tag, kein Publish. Namen ohne Entsprechung stören nicht.
+# Was sonst noch an jeden Runner durchgereicht werden soll, an Kommas getrennt:
+# --mcp-config <datei>, --add-dir <pfad>, --plugin-dir <pfad>. Braucht ein Paket
+# einen MCP-Server, ist das der Ort dafür.
+EXTRA_ARGS=${EXTRA_ARGS:-}
+
 DENY_TOOLS=${DENY_TOOLS:-AskUserQuestion,SendMessage,SendUserFile,PushNotification,ScheduleWakeup,CronCreate,Artifact,Bash(git push*),Bash(git tag*),Bash(npm publish*),Bash(pnpm publish*),Bash(yarn publish*)}
 
 ONCE=0
@@ -92,7 +97,7 @@ Optionen:
 
 Umgebung:
   PLAN MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER
-  ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS
+  ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS
 EOF
 }
 
@@ -146,6 +151,9 @@ tool_args() { # füllt TOOL_ARGS; die Muster enthalten Leerzeichen und dürfen
   if [ -n "$DENY_TOOLS" ]; then
     TOOL_ARGS[${#TOOL_ARGS[@]}]=--disallowedTools
     IFS=','; for t in $DENY_TOOLS; do TOOL_ARGS[${#TOOL_ARGS[@]}]=$t; done; IFS=$old
+  fi
+  if [ -n "$EXTRA_ARGS" ]; then
+    IFS=','; for t in $EXTRA_ARGS; do TOOL_ARGS[${#TOOL_ARGS[@]}]=$t; done; IFS=$old
   fi
 }
 
@@ -269,6 +277,7 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
     say "--- Runner $role · Paket $pkg · $model/$effort · Budget \$$BUDGET_USD"
     say "    mit:  ${ALLOW_TOOLS:-—}"
     say "    ohne: ${DENY_TOOLS:-—}"
+    if [ -n "$EXTRA_ARGS" ]; then say "    dazu: $EXTRA_ARGS"; fi
     printf '%s\n\n' "$brief"
     RES=''; RAW=''
     return 0

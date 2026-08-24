@@ -126,6 +126,51 @@ Ermessensfrage wäre. `AskUserQuestion` ist der wichtigste Eintrag: in einem
 »hier muss jemand entscheiden« ist der Status `question`, aus dem die Schleife
 Exit 10 macht. Über `DENY_TOOLS` lässt sich die Liste ändern.
 
+### Was ein Implementierer erreicht
+
+Die Listen der Schleife gelten für den Runner-Prozess, und Implementierer und
+Reviewer erben sie. Was das praktisch heißt, in drei Schichten:
+
+**Bash ist nicht eingezäunt.** `--allowedTools` ist additiv, gemessen: mit
+`Bash(git *)` als einzigem Eintrag liefen `echo` und `python3 --version`
+trotzdem. Die Liste hebt gezielt die Kommandos an, die sonst abgefragt würden,
+und nimmt nichts weg. Was die Umgebung ohnehin erlaubt, bleibt erlaubt. Nur
+`DENY_TOOLS` nimmt etwas weg, und dort steht mit Absicht wenig.
+
+**Skills bleiben.** Die Schleife setzt weder `--bare` noch `--safe-mode` noch
+`--disable-slash-commands`; ein Runner löst Skills aus denselben Quellen auf wie
+eine interaktive Session.
+
+**MCP ist der wacklige Teil**, und zwar an zwei Stellen. Ob ein `-p`-Prozess die
+Server überhaupt erbt, hängt daran, wo sie konfiguriert sind — hier im Container
+kam keiner an. Und selbst wenn der Runner sie hat, gilt für die Ebene darunter,
+was `testing-on-mac-safari` längst notiert: **in einem Subagenten ist der
+MCP-Server in der Regel nicht exponiert.** Der Implementierer ist ein Subagent.
+Ein Paket, dessen Arbeit an einem MCP-Server hängt, wird ihn dort also
+wahrscheinlich nicht finden.
+
+Zwei Wege daran vorbei, in dieser Reihenfolge:
+
+1. **Den Weg über Bash nehmen.** Was als CLI existiert, überlebt den Sprung in
+   den Subagenten: `npx playwright test` statt der Playwright-Werkzeuge. Genau
+   dieses Muster steht in diesem Repo schon einmal, als `scripts/mcp_safari.py`
+   — ein Skript, das den MCP-Server über SSH anspricht, weil der Subagent ihn
+   nicht sehen kann.
+2. **Den Server ausdrücklich mitgeben**, über `EXTRA_ARGS`. Der Inhalt wird an
+   Kommas getrennt und unverändert an jeden Runner durchgereicht:
+
+   ```bash
+   EXTRA_ARGS="--mcp-config,./mcp.json" <skill>/scripts/remediate.sh
+   ```
+
+   Damit hat der Runner-Prozess den Server. Ob seine Subagenten ihn sehen, ist
+   damit noch nicht gesagt — deshalb steht Weg 1 zuerst.
+
+Und die Regel darüber: braucht die Verifikation eines Pakets einen Browser oder
+einen anderen Dienst, gehört das in die `Verify:`-Zeile des Detailplans als
+Kommando. Das Kommando fährt **B** selbst in Zug 5, nicht ein Subagent — dort
+ist die Reichweite am größten und die Rechtefrage am klarsten.
+
 ### Wer darf den Nutzer noch fragen
 
 Die Liste betrifft ausschließlich die Runner, die dieses Skript startet. Der
