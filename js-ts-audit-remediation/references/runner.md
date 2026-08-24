@@ -34,8 +34,11 @@ zum Arbeitsverzeichnis für Diffs und Logs. Alles Weitere holst du selbst:
    bereits verändert hat.
 
 Diff-Dateien und Verify-Logs gehören nicht ins Projekt. Sie liegen im
-Arbeitsverzeichnis, das der Orchestrator nennt; fehlt eins, in
-`.git/remediation/` — das liegt außerhalb der Versionierung.
+Arbeitsverzeichnis, das der Orchestrator nennt — außerhalb der Versionierung
+und außerhalb von `.git/`, wohin die CLI keinen Runner schreiben lässt. Fehlt
+eins, legst du eines unter dem Temp-Verzeichnis des Systems an und trägst es in
+den Kopf des Plans ein. Ins Projekt ausweichen ist keine Lösung: dort stehen
+deine Diffs anschließend als fremde Änderungen im Arbeitsbaum.
 
 ## Der Plan trägt den Stand
 

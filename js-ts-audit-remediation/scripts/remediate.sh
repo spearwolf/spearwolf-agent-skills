@@ -45,10 +45,15 @@ BACKOFF=${BACKOFF:-60,300,900}  # Wartezeiten dazwischen, in Sekunden
 FALLBACK_MODEL=${FALLBACK_MODEL:-}  # leer lassen: lieber warten als still schwächer werden
 
 # Was ein Runner braucht. --permission-mode acceptEdits deckt Dateiänderungen
-# ab, Bash aber nicht: ohne diese Liste wird »git add« abgefragt, und ein
-# Prozess ohne Terminal kann nicht antworten. Die Verify-Kommandos des Projekts
-# gehören hier ergänzt, wenn es nicht npm, pnpm oder yarn ist.
-ALLOW_TOOLS=${ALLOW_TOOLS:-Bash(git *),Bash(npm *),Bash(pnpm *),Bash(yarn *),Bash(node *),Bash(claude *)}
+# ab, Bash aber nicht: ohne diese Zeile wird »git add« abgefragt, und ein
+# Prozess ohne Terminal kann nicht antworten.
+#
+# Es steht »Bash« da und keine Liste von Präfixen. Gemessen: ein Muster wie
+# Bash(claude *) greift an dem, was ein Runner wirklich absetzt, nicht mehr —
+# »claude -p "$(cat brief)" > report.json« wird abgelehnt, und der Runner fällt
+# auf Subagenten zurück, also genau auf das, wogegen der Prozess-Umbau gebaut
+# ist. Die Grenze zieht die Verbotsliste unten, nicht diese Zeile.
+ALLOW_TOOLS=${ALLOW_TOOLS:-Bash}
 
 # Was ein Runner nicht bekommt, und zwar nur zweierlei. Erstens Werkzeuge, mit
 # denen ein Prozess auf eine Antwort warten oder sich selbst überleben kann:
@@ -162,6 +167,11 @@ tool_args() { # füllt TOOL_ARGS; die Muster enthalten Leerzeichen und dürfen
   # der Rechteschranke, bevor er weiß, was seine Rolle ist.
   TOOL_ARGS[${#TOOL_ARGS[@]}]=--add-dir
   TOOL_ARGS[${#TOOL_ARGS[@]}]=$SKILL_DIR
+  # Und das Arbeitsverzeichnis: es liegt außerhalb der Versionierung und damit
+  # in der Regel außerhalb des Projekts. Ohne diese Zeile weicht ein Runner in
+  # den Arbeitsbaum aus, und die Diffs landen dort, wo sie nicht hingehören.
+  TOOL_ARGS[${#TOOL_ARGS[@]}]=--add-dir
+  TOOL_ARGS[${#TOOL_ARGS[@]}]=$WORK
   if [ -n "$ALLOW_TOOLS" ]; then
     TOOL_ARGS[${#TOOL_ARGS[@]}]=--allowedTools
     IFS=','; for t in $ALLOW_TOOLS; do TOOL_ARGS[${#TOOL_ARGS[@]}]=$t; done; IFS=$old
@@ -180,6 +190,8 @@ tool_args_zug0() { # für Zug 0 im Terminal: nichts entziehen, nichts erlauben
   TOOL_ARGS=()
   TOOL_ARGS[${#TOOL_ARGS[@]}]=--add-dir             # seine beiden Referenzdateien
   TOOL_ARGS[${#TOOL_ARGS[@]}]=$SKILL_DIR
+  TOOL_ARGS[${#TOOL_ARGS[@]}]=--add-dir             # und das Arbeitsverzeichnis
+  TOOL_ARGS[${#TOOL_ARGS[@]}]=$WORK
   if [ -n "$EXTRA_ARGS" ]; then
     IFS=','; for t in $EXTRA_ARGS; do TOOL_ARGS[${#TOOL_ARGS[@]}]=$t; done; IFS=$old
   fi
@@ -292,8 +304,11 @@ preflight() {
   [ "$current" = "$BRANCH" ] || die $EX_PRE \
     "der Plan gehört zu Branch '$BRANCH', ausgecheckt ist '$current'. Der Nutzer entscheidet, bevor irgendetwas läuft."
 
+  # Nicht unterhalb von .git/: dorthin lässt die CLI keinen Runner schreiben,
+  # gemessen auch mit »Bash« in der Allowlist. Ein Lauf, dessen Runner ihre
+  # Diffs und Verify-Logs nicht ablegen können, kommt nicht bis zum Commit.
   WORK=$(head_value 'Arbeitsverzeichnis')
-  [ -n "$WORK" ] || WORK=${ARBEITSDIR:-.git/remediation}
+  [ -n "$WORK" ] || WORK=${ARBEITSDIR:-${TMPDIR:-/tmp}/remediation-$(basename "$(pwd)")}
   mkdir -p "$WORK" || die $EX_PRE "Arbeitsverzeichnis nicht anlegbar: $WORK"
   WORK=$(cd -- "$WORK" && pwd)
 

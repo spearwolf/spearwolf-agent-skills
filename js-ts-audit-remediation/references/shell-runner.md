@@ -31,8 +31,8 @@ Läuft in tmux-Session »remediate-mein-projekt«.
   tmux capture-pane -p -t remediate-…     hineinsehen, ohne anzuhängen
   tmux kill-session -t remediate-…        abbrechen
 
-Mitschrift: .git/remediation/remediate.pane.log
-Journal:    .git/remediation/remediate.log
+Mitschrift: /tmp/remediation-mein-projekt/remediate.pane.log
+Journal:    /tmp/remediation-mein-projekt/remediate.log
 
 Zug 0 wartet dort auf dich, sobald das erste Paket drankommt.
 Wenn er fertig ist: /exit in der Session — erst dann läuft die Schleife weiter.
@@ -95,8 +95,8 @@ Fehlerkette, Verify, Commit — läuft ohne ihn.
 | Wozu | Kommando |
 | --- | --- |
 | Was steht gerade im Pane | `tmux capture-pane -p -t <session>` |
-| Was ist bisher passiert | `cat .git/remediation/remediate.log` |
-| Die ganze Ausgabe | `cat .git/remediation/remediate.pane.log` |
+| Was ist bisher passiert | `cat <arbeitsdir>/remediate.log` |
+| Die ganze Ausgabe | `cat <arbeitsdir>/remediate.pane.log` |
 
 Das Journal endet mit `ende exit=N`, sobald der Lauf durch ist. Solange die Zeile
 fehlt, läuft er noch oder wartet auf eine Antwort. Der Agent hängt sich nicht an
@@ -215,23 +215,36 @@ Es gibt nichts zu parsen: **die Marke im Plan** sagt, wie es weitergeht.
 Das ist keine Notlösung. Die Marke war ohnehin die Wahrheit, die Rückgabe war
 immer nur ihre Behauptung.
 
+**Beide bekommen zwei Verzeichnisse dazu.** `--add-dir` auf das Skill-Verzeichnis
+(dort liegen die beiden Dateien, die der Brief zu lesen aufgibt) und auf das
+Arbeitsverzeichnis (dort liegen Diffs und Verify-Logs, außerhalb der
+Versionierung und damit außerhalb des Projekts). Gemessen ohne sie: der Runner
+scheitert an der Rechteschranke, bevor er weiß, was seine Rolle ist, und weicht
+mit seinen Diffs in den Arbeitsbaum aus.
+
 ### Zug 1–5: der Prozess bekommt viel, es fehlt nur, was ihn aufhält
 
 B läuft ohne Terminal. Zwei Listen wirken dort, und beide zusammen sind kürzer, als
 sie klingen.
 
-**Die Allowlist erweitert**, sie zäunt nicht ein. Gemessen: mit `Bash(git *)` als
-einzigem Eintrag liefen `echo` und `python3 --version` trotzdem. Sie hebt gezielt
-an, was `--permission-mode acceptEdits` nicht abdeckt — Bash nämlich —, und nimmt
-nichts weg:
+**Die Allowlist hebt an**, was `--permission-mode acceptEdits` nicht abdeckt —
+Bash nämlich. Sie steht deshalb auf `Bash` und nicht auf einer Liste von
+Präfixen:
 
 ```
-Bash(git *) · Bash(npm *) · Bash(pnpm *) · Bash(yarn *) · Bash(node *) · Bash(claude *)
+ALLOW_TOOLS=Bash
 ```
 
-Fährt das Zielprojekt seine Verify-Kommandos anders — `make`, `cargo`, ein
-eigenes Skript —, gehört das über `ALLOW_TOOLS` ergänzt. Merkt man sonst beim
-ersten Paket, an Exit 21.
+Eine Präfixliste sah lange sauberer aus und trug nicht. Gemessen mit
+`Bash(claude *)` in der Liste: `claude -p "$(cat brief)" > report.json` wird
+abgelehnt, weil das Muster an einem Kommando mit Ersetzung und Umleitung nicht
+mehr greift. Der Runner sieht die Ablehnung, hält sie für eine Grenze und fällt
+auf Subagenten zurück — also auf genau das, wogegen der Prozess-Umbau gebaut
+ist. Der Lauf endet dann mit Exit 21, nachdem er schon committet hat.
+
+Die Grenze zieht die Verbotsliste, nicht die Allowlist. Wer sie enger will,
+setzt `ALLOW_TOOLS` selbst — und rechnet damit, dass jedes Kommando, das er
+nicht vorhergesehen hat, den Lauf an Exit 21 anhält.
 
 **Die Verbotsliste** nimmt nur, was die eine Zusage bräche, auf der die Schleife
 ruht: dass ein beendeter Prozess ein fertiges Paket bedeutet.

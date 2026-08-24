@@ -106,9 +106,12 @@ set -o pipefail
 tail -n 15 "$ARBEITSDIR/baseline-<name>.log"
 ```
 
-`$ARBEITSDIR` ist das Scratchpad-Verzeichnis des Hosts; gibt es keines,
-`.git/remediation/`. Beides liegt außerhalb der Versionierung. Der Pfad kommt
-in den Kopf des Plans, weil jeder Runner ihn braucht.
+`$ARBEITSDIR` ist das Scratchpad-Verzeichnis des Hosts; gibt es keines, ein
+eigenes Verzeichnis unter dem Temp-Verzeichnis des Systems. Beides liegt
+außerhalb der Versionierung. **Nicht unterhalb von `.git/`:** dorthin lässt die
+CLI keinen Runner schreiben, und ein Lauf, dessen Runner ihre Diffs und
+Verify-Logs nicht ablegen können, kommt nicht bis zum Commit. Der Pfad kommt in
+den Kopf des Plans, weil jeder Runner ihn braucht.
 
 Dazu `git status` und `git branch --show-current`. Ein unsauberer Arbeitsbaum
 ist ein Stopp mit Rückfrage: stashen, committen oder abbrechen. Fremde
