@@ -35,7 +35,12 @@ Mitschrift: .git/remediation/remediate.pane.log
 Journal:    .git/remediation/remediate.log
 
 Zug 0 wartet dort auf dich, sobald das erste Paket drankommt.
+Wenn er fertig ist: /exit in der Session — erst dann läuft die Schleife weiter.
 ```
+
+Dort anhängen, Zug 0 seine Fragen beantworten, und wenn er fertig ist, die
+Session mit `/exit` verlassen — erst das lässt die Schleife weiterlaufen.
+Warum das so ist, steht unter »Zug 0«.
 
 Diese Zeilen gibt der Agent dem Nutzer weiter, und damit ist seine Arbeit an der
 Schleife getan. Sie läuft unabhängig von seiner Session — schließt sie sich,
@@ -189,6 +194,14 @@ gegen einen Code-Stand, den er nur zur Hälfte versteht, und der Detailplan ist
 das Dokument, gegen das anschließend alles gebaut wird. Ein Fehlurteil dort
 schlägt auf jedes Folgepaket durch — das ist die teuerste Stelle im Lauf, um
 sparsam zu sein.
+
+**Die Session endet nicht von selbst.** Ein interaktives `claude` bleibt am
+Prompt stehen, wenn das Modell seinen Zug beendet hat — es wartet auf die
+nächste Eingabe. Die Schleife wartet auf das Ende des *Prozesses*, nicht auf das
+Ende seines letzten Zuges. Wer die Session nicht mit `/exit` verlässt, hält den
+ganzen Lauf an, ohne dass irgendwo ein Fehler steht. Das Skript sagt es vor der
+Übergabe, und Zug 0 sagt es am Ende noch einmal; hier steht es, weil es die
+einzige Stelle im Lauf ist, an der ein Mensch etwas tun *muss*.
 
 Es gibt nichts zu parsen: **die Marke im Plan** sagt, wie es weitergeht.
 

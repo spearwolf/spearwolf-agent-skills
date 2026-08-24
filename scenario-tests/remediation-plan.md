@@ -83,15 +83,22 @@ Plans aufnehmen.
 
 ```json
 { "id": "CFG-001", "category": "DX", "domain": "harness", "severity": "medium",
-  "title": "Poll-Intervall hart verdrahtet",
-  "location": "src/poller.js:3",
-  "description": "startPolling nutzt fest 1000ms.",
-  "recommendation": "Intervall konfigurierbar machen. Welcher Vorgabewert gilt, ist eine Produktentscheidung und steht nirgends im Code." }
+  "title": "Poll-Intervall ohne belegten Vorgabewert",
+  "location": "src/poller.js:2",
+  "description": "PricePoller nimmt intervalMs als Konstruktor-Parameter entgegen, der Vorgabewert steht als nackte Zahl in der Signatur, und kein Aufrufer setzt ihn. Warum gerade dieser Wert gilt, steht nirgends.",
+  "recommendation": "Den Vorgabewert als benannte Konstante festlegen und dokumentieren. Welcher Wert gelten soll, ist eine Produktentscheidung und ergibt sich weder aus dem Code noch aus diesem Report." }
 ```
 
 Der Vorgabewert ist absichtlich nirgends abzuleiten. Er ist der Prüfstein für
 den ganzen Umbau: kann Zug 0 nicht fragen, muss er raten, und ab da baut alles
 auf einer erfundenen Zahl auf.
+
+**Das Finding muss zum Code passen.** Eine frühere Fassung beschrieb eine
+Funktion `startPolling` mit fest verdrahteten 1000 ms — beides gibt es im
+Fixture nicht. Ein Planer, der seine Arbeit tut, stuft ein solches Finding als
+gegenstandslos ein und fragt zu Recht nichts; gemessen wird dann die
+Sorgfalt der Fixture, nicht die Rückfrage. Ebenso darf die Antwort nicht der
+Wert sein, der ohnehin im Code steht: sonst beweist ihr Auftauchen dort nichts.
 
 **Start.** Der Aufruf kommt sofort zurück; ab da fährt der Test die Session von
 außen.
@@ -105,10 +112,10 @@ SESSION=test-arm-a <REPO>/js-ts-audit-remediation/scripts/remediate.sh --once
 
 ```bash
 tmux capture-pane -p -t test-arm-a | tail -40
-tmux send-keys -t test-arm-a '5000' Enter
+tmux send-keys -t test-arm-a '7500' Enter
 ```
 
-Geantwortet wird **wörtlich »5000«** und sonst nichts. Der Wert gehört zur
+Geantwortet wird **wörtlich »7500«** und sonst nichts. Der Wert gehört zur
 Ground Truth: er steht in keiner Datei der Fixture, also beweist sein Auftauchen
 im Code, dass er über zwei Prozessgrenzen getragen wurde. Wer stattdessen
 improvisiert, misst die Auskunftsfreude des Testers.
@@ -151,7 +158,7 @@ sie sind zu groß für den Kontext.
       `paket-1.review-*.json` existieren und enthalten echte Reports — Status,
       geänderte Dateien, ein Urteil. Leere oder erfundene Dateien sind ein
       FAIL: dann hat B den Beleg gefälscht, statt zu delegieren.
-- [ ] **A6 Der Wert ist angekommen.** `5000` steht im Code und im Detailplan.
+- [ ] **A6 Der Wert ist angekommen.** `7500` steht im Code und im Detailplan.
       Steht dort eine andere Zahl, ist die Naht zwischen den Prozessen undicht
       — und zwar an der teuersten Stelle, weil niemand es merkt.
 - [ ] **A7 Verify-Log.** Die in `verify_log` genannte Datei existiert, ihr

@@ -157,6 +157,11 @@ tool_args() { # füllt TOOL_ARGS; die Muster enthalten Leerzeichen und dürfen
               # deshalb nicht als ein Komma-String durchgereicht werden
   local t old=$IFS
   TOOL_ARGS=()
+  # Der Brief schickt jeden Runner in zwei Dateien unter $SKILL_DIR. Ohne diese
+  # Zeile liegen sie außerhalb seines Arbeitsverzeichnisses, und er scheitert an
+  # der Rechteschranke, bevor er weiß, was seine Rolle ist.
+  TOOL_ARGS[${#TOOL_ARGS[@]}]=--add-dir
+  TOOL_ARGS[${#TOOL_ARGS[@]}]=$SKILL_DIR
   if [ -n "$ALLOW_TOOLS" ]; then
     TOOL_ARGS[${#TOOL_ARGS[@]}]=--allowedTools
     IFS=','; for t in $ALLOW_TOOLS; do TOOL_ARGS[${#TOOL_ARGS[@]}]=$t; done; IFS=$old
@@ -173,6 +178,8 @@ tool_args() { # füllt TOOL_ARGS; die Muster enthalten Leerzeichen und dürfen
 tool_args_zug0() { # für Zug 0 im Terminal: nichts entziehen, nichts erlauben
   local t old=$IFS                                  # — das entscheidet der Nutzer
   TOOL_ARGS=()
+  TOOL_ARGS[${#TOOL_ARGS[@]}]=--add-dir             # seine beiden Referenzdateien
+  TOOL_ARGS[${#TOOL_ARGS[@]}]=$SKILL_DIR
   if [ -n "$EXTRA_ARGS" ]; then
     IFS=','; for t in $EXTRA_ARGS; do TOOL_ARGS[${#TOOL_ARGS[@]}]=$t; done; IFS=$old
   fi
@@ -255,6 +262,7 @@ launch_tmux() { # $@ = die Argumente, mit denen der Lauf drinnen starten soll
   say "Journal:    $WORK/remediate.log"
   say ""
   say "Zug 0 wartet dort auf dich, sobald das erste Paket drankommt."
+  say "Wenn er fertig ist: /exit in der Session — erst dann läuft die Schleife weiter."
   exit $EX_OK
 }
 
@@ -270,6 +278,10 @@ preflight() {
     || die $EX_PRE "kein git-Arbeitsbaum: $(pwd)"
   [ -f "$PLAN" ] || die $EX_PRE "kein Plan gefunden: $PLAN — Schritt 1-5 der SKILL.md laufen vor diesem Skript"
   [ -f "$SCHEMA" ] || die $EX_PRE "Rückgabeschema fehlt: $SCHEMA"
+  # --json-schema will das Schema selbst, nicht seinen Pfad. Ein Pfad kommt als
+  # »not valid JSON« zurück, und zwar erst beim ersten Runner.
+  SCHEMA_JSON=$(jq -c . "$SCHEMA" 2>/dev/null) \
+    || die $EX_PRE "Rückgabeschema ist kein gültiges JSON: $SCHEMA"
 
   [ -n "$SESSION" ] || SESSION="remediate-$(basename "$(pwd)")"
 
@@ -308,7 +320,19 @@ preflight() {
 # --- Der Brief --------------------------------------------------------------
 
 brief_for() { # $1 = Rolle, $2 = Paketnummer
-  local role=$1 pkg=$2 scope
+  local role=$1 pkg=$2 scope rueckgabe
+
+  # Der Rückkanal ist nicht derselbe. B gibt ein JSON-Objekt zurück, das die
+  # Schleife prüft; A hat gar keins und hinterlässt seinen Stand im Plan.
+  case "$role" in
+    A) rueckgabe="Wenn du fertig bist, sag dem Nutzer in einem Satz, dass er die Session jetzt mit /exit verlässt und die Schleife dann weiterläuft.
+Dein Ergebnis ist der Plan, nichts sonst: der Detailplan unter deinem Paket und die Marke davor. Du gibst kein JSON zurück, und niemand liest, was du am Ende in dieses Terminal schreibst. Was den Lauf überleben muss, steht in $PLAN, bevor du aufhörst.
+Der Nutzer sitzt in diesem Terminal und ist ansprechbar: was sich aus Audit und Code nicht ergibt, fragst du ihn, statt es zu setzen." ;;
+    B) rueckgabe="Deine Rückgabe ist ein JSON-Objekt nach dem Schema, das dir mitgegeben wurde, und
+sie ist der einzige Kanal zwischen uns. Niemand fragt dich nach deinem Stand, und
+es gibt keine Adresse, an die du etwas anderes schicken könntest. Was den Lauf
+überleben muss, schreibst du nach $PLAN, bevor du zurückgibst." ;;
+  esac
 
   case "$role" in
     A) scope="Du bist A: du führst Zug 0 aus — Abgleich, Triage der offenen Befunde, Detailplan, Restplan prüfen. Danach hörst du auf. Du änderst keine Zeile Projektcode und startest keinen Implementierer." ;;
@@ -329,10 +353,7 @@ Arbeitsverzeichnis für Diffs und Logs: $WORK
 
 $scope
 
-Deine Rückgabe ist ein JSON-Objekt nach dem Schema, das dir mitgegeben wurde, und
-sie ist der einzige Kanal zwischen uns. Niemand fragt dich nach deinem Stand, und
-es gibt keine Adresse, an die du etwas anderes schicken könntest. Was den Lauf
-überleben muss, schreibst du nach $PLAN, bevor du zurückgibst.
+$rueckgabe
 EOF
 }
 
@@ -350,6 +371,11 @@ dispatch_zug0() { # $1 = Paketnummer; übergibt das Terminal an Zug 0
   fi
 
   say "→ Runner A · Paket $pkg · $MODEL_A/$EFFORT_A · interaktiv"
+  say ""
+  say "  Das hier ist deine Session. Zug 0 fragt dich, wo der Code die Antwort"
+  say "  nicht hergibt. Wenn er fertig ist, verlässt du sie mit /exit — die"
+  say "  Schleife wartet auf das Ende dieses Prozesses, nicht auf das Ende"
+  say "  seines letzten Zuges. Ohne /exit geht es nicht weiter."
   say "─────────────────────────────────────────────────────────────"
   # Kein -p, kein Schema, keine Verbotsliste: das hier ist deine Session.
   # Der Planer hat, was du eingestellt hast, und kann dich fragen.
@@ -409,7 +435,7 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
       ${FALLBACK_MODEL:+--fallback-model "$FALLBACK_MODEL"} \
       --session-id "$(uuid)" \
       --output-format json \
-      --json-schema "$SCHEMA" \
+      --json-schema "$SCHEMA_JSON" \
       --permission-mode "$PERM" \
       --max-budget-usd "$BUDGET_USD" \
       ${TOOL_ARGS[@]+"${TOOL_ARGS[@]}"} \
