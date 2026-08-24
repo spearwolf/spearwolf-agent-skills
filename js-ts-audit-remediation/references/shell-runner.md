@@ -24,6 +24,18 @@ Im Wurzelverzeichnis des Zielprojekts, nachdem der Grobplan freigegeben ist:
 <skill>/scripts/remediate.sh --dry-run  # beide Briefe zeigen, nichts starten
 ```
 
+Gestartet wird auf der Maschine, auf der der Arbeitsbaum liegt, und dort läuft
+auch alles: die Schleife, beide Runner je Paket, deren Subagenten und jeder
+Verify-Lauf. Nichts davon wird anderswo gestartet — kein zweiter Klon, keine
+Session in einer fremden Umgebung. Die Runner teilen sich einen Arbeitsbaum, und
+genau deshalb läuft nie einer parallel zum anderen.
+
+Wer den Lauf von unterwegs verfolgen und die Rückfragen hinter Exit 10
+beantworten will, startet die umgebende Session mit Remote Control
+(`claude --remote-control`). Das verlagert die Unterhaltung, nicht die
+Ausführung. Dem Skript ist es gleichgültig: es druckt nach stdout und gibt
+Exit-Codes zurück, und wer das liest, ist nicht seine Sache.
+
 Branch und Arbeitsverzeichnis liest das Skript aus dem Kopf des Plans, nicht aus
 der Umgebung: der Plan ist die Wahrheit, auch für die Schleife. Sie startet
 nicht, wenn der ausgecheckte Branch ein anderer ist, wenn der Arbeitsbaum nicht
