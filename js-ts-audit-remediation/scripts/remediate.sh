@@ -29,12 +29,9 @@ EX_PRE=40      # eine Vorbedingung stimmt nicht
 # --- Stellschrauben, alle über die Umgebung überschreibbar ------------------
 PLAN=${PLAN:-./remediation-plan.md}
 
-# Wie Zug 0 läuft. »interactive«: das Skript übergibt dir das Terminal, der
-# Planer hat deine Werkzeuge, deine MCP-Server und kann dich fragen. Das ist
-# die Voreinstellung, weil ein Planer, der nicht nachfragen kann, gegen einen
-# Code-Stand plant, den er nur zur Hälfte versteht. »headless«: Zug 0 läuft
-# ohne Terminal durch; eine Rückfrage wird dann zu Exit 10.
-PLAN_MODE=${PLAN_MODE:-interactive}
+# Zug 0 läuft immer im Terminal der tmux-Session: der Planer hat deine
+# Werkzeuge, deine MCP-Server und kann dich fragen. Ein Planer, der das nicht
+# kann, plant gegen einen Code-Stand, den er nur zur Hälfte versteht.
 MODEL_A=${MODEL_A:-opus}        # Zug 0: Abgleich, Triage, Detailplan
 EFFORT_A=${EFFORT_A:-xhigh}
 MODEL_B=${MODEL_B:-opus}        # Zug 1-5: beauftragen, prüfen, verifizieren, committen
@@ -69,7 +66,8 @@ EXTRA_ARGS=${EXTRA_ARGS:-}
 
 ONCE=0
 DRY=0
-LAUNCH=0                        # --tmux: nur starten und zurückkommen
+# 1, sobald wir der Prozess in der tmux-Session sind. Setzt launch_tmux.
+INSIDE=0; [ -n "${REMEDIATE_INSIDE:-}" ] && INSIDE=1
 SESSION=${SESSION:-}            # Name der tmux-Session
 TMUX_BIN=${TMUX_BIN:-tmux}      # falls tmux woanders liegt
 
@@ -104,16 +102,14 @@ usage() {
   cat <<'EOF'
 
 Optionen:
-  --once      nach dem ersten Runner anhalten. Für den ersten Probelauf.
-  --headless  Zug 0 ohne Terminal fahren (wie PLAN_MODE=headless).
-  --tmux      den Lauf in einer abgelösten tmux-Session starten und sofort
-              zurückkommen. Die Session hat ein echtes Terminal, Zug 0 kann
-              also fragen; du hängst dich an, wenn du willst.
+  --once      nach dem ersten Paket anhalten. Für den ersten Probelauf.
+  --dry-run   im Vordergrund zeigen, was beauftragt würde. Startet nichts.
   --dry-run   nur zeigen, was beauftragt würde. Startet keinen Prozess.
   --help      diese Ausgabe.
 
 Umgebung:
-  PLAN PLAN_MODE MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER
+  PLAN MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER
+  ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS
   SESSION TMUX_BIN
   ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS
 EOF
@@ -175,7 +171,7 @@ tool_args() { # füllt TOOL_ARGS; die Muster enthalten Leerzeichen und dürfen
   fi
 }
 
-tool_args_interactive() { # für Zug 0 im Terminal: nichts entziehen, nichts erlauben
+tool_args_zug0() { # für Zug 0 im Terminal: nichts entziehen, nichts erlauben
   local t old=$IFS                                  # — das entscheidet der Nutzer
   TOOL_ARGS=()
   if [ -n "$EXTRA_ARGS" ]; then
@@ -220,9 +216,9 @@ dirty_paths() { # Arbeitsbaum ohne den Plan, der während des Laufs ungetrackt b
 launch_tmux() { # $@ = die Argumente, mit denen der Lauf drinnen starten soll
   local cmd v log
   command -v "$TMUX_BIN" >/dev/null 2>&1 || die $EX_PRE \
-    "$(printf 'tmux nicht gefunden. Ohne tmux gibt es zwei Wege:\n%s\n%s' \
-      '  · das Skript in einer Shell starten (Zug 0 braucht ein Terminal), oder' \
-      '  · nohup <skript> --headless & — dann ohne Rückfragen, siehe PLAN_MODE.')"
+    "$(printf '%s\n%s' \
+      'tmux wird gebraucht und ist nicht da. Der Lauf hängt sich in eine abgelöste' \
+      'tmux-Session, weil nur die ein Terminal hat, in dem Zug 0 dich fragen kann.')"
 
   [ -n "$SESSION" ] || SESSION="remediate-$(basename "$(pwd)")"
 
@@ -233,7 +229,8 @@ launch_tmux() { # $@ = die Argumente, mit denen der Lauf drinnen starten soll
   # Die Umgebung wandert ausdrücklich mit. Ein tmux-Server, der schon läuft,
   # hat seine eigene, und die kennt keine dieser Stellschrauben.
   cmd="env"
-  for v in PLAN PLAN_MODE MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD \
+  cmd="$cmd REMEDIATE_INSIDE=1"
+  for v in PLAN MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD \
            MAX_ITER ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS; do
     eval "[ -n \"\${$v:-}\" ]" && cmd="$cmd $v=$(eval printf '%q' "\"\$$v\"")"
   done
@@ -256,10 +253,8 @@ launch_tmux() { # $@ = die Argumente, mit denen der Lauf drinnen starten soll
   say ""
   say "Mitschrift: $log"
   say "Journal:    $WORK/remediate.log"
-  if [ "$PLAN_MODE" = interactive ]; then
-    say ""
-    say "Zug 0 wartet dort auf dich, sobald das erste Paket drankommt."
-  fi
+  say ""
+  say "Zug 0 wartet dort auf dich, sobald das erste Paket drankommt."
   exit $EX_OK
 }
 
@@ -294,18 +289,15 @@ preflight() {
 
   # Zwei Schleifen auf einem Arbeitsbaum ist genau der Konflikt, den die
   # Sequenzialität vermeiden soll.
-  if [ "$DRY" = 0 ] && [ "$LAUNCH" = 0 ] && ! mkdir "$WORK/.remediate.lock" 2>/dev/null; then
+  if [ "$INSIDE" = 1 ] && ! mkdir "$WORK/.remediate.lock" 2>/dev/null; then
     die $EX_PRE "hier läuft schon eine Schleife ($WORK/.remediate.lock). Läuft keine mehr, das Verzeichnis von Hand entfernen."
   fi
-  if [ "$DRY" = 0 ] && [ "$LAUNCH" = 0 ]; then
+  if [ "$INSIDE" = 1 ]; then
     trap 'ec=$?; journal "ende exit=$ec"; rmdir "$WORK/.remediate.lock" 2>/dev/null || true' EXIT
   fi
 
-  if [ "$PLAN_MODE" = interactive ] && [ "$DRY" = 0 ] && [ "$LAUNCH" = 0 ]; then
-    if [ ! -t 0 ] || [ ! -t 1 ]; then
-      die $EX_PRE "$(printf 'Zug 0 läuft interaktiv und braucht ein Terminal, hier ist keines.\n%s' \
-        'Entweder das Skript in einer Shell starten, oder PLAN_MODE=headless setzen — dann wird aus einer Rückfrage Exit 10.')"
-    fi
+  if [ "$INSIDE" = 1 ] && { [ ! -t 0 ] || [ ! -t 1 ]; }; then
+    die $EX_PRE "kein Terminal in der Session — Zug 0 könnte nicht fragen. Das sollte nicht vorkommen."
   fi
 
   [ "$(count_with_marker '.')" != "0" ] || die $EX_PRE "der Plan enthält kein einziges Paket"
@@ -343,10 +335,10 @@ EOF
 
 # --- Ein Runner -------------------------------------------------------------
 
-dispatch_interactive() { # $1 = Paketnummer; übergibt das Terminal an Zug 0
+dispatch_zug0() { # $1 = Paketnummer; übergibt das Terminal an Zug 0
   local pkg=$1 brief rc=0
   brief=$(brief_for A "$pkg")
-  tool_args_interactive
+  tool_args_zug0
 
   if [ "$DRY" = 1 ]; then
     say "--- Runner A · Paket $pkg · $MODEL_A/$EFFORT_A · interaktiv, dein Terminal"
@@ -507,24 +499,16 @@ check_commit() { # $1 = Paketnummer, $2 = HEAD vor dem Runner
   grep -q '^exit=0$' "$vlog" \
     || die $EX_CONTRACT "in $vlog steht keine Zeile 'exit=0'. Committet wird nur ein grüner Lauf, und belegt wird er dort."
 
-  # Wer committet, hat delegiert. Beide Wege zählen: eigene Prozesse hinterlassen
-  # ihre Reports als Dateien, Subagenten werden im Ergebnis-JSON mitgezählt.
-  # Belegt sein muss es, gleich wodurch.
-  local impl rev spawned
+  # Wer committet, hat delegiert, und der Beleg sind die Reports von
+  # Implementierer und Reviewer auf der Platte. Beide laufen als eigene
+  # Prozesse; ein Subagent hinterließe keine Datei und wäre hier kein Beleg.
+  local impl rev
   # find statt ls: ein leerer Glob lässt ls scheitern und reißt unter
   # pipefail den ganzen Aufruf mit.
   impl=$(find "$WORK" -maxdepth 1 -name "paket-$1.impl-*.json" 2>/dev/null | wc -l | tr -d ' ')
   rev=$(find "$WORK" -maxdepth 1 -name "paket-$1.review-*.json" 2>/dev/null | wc -l | tr -d ' ')
-  spawned=$(jq -r '(.subagent_stats.spawned // "-")' "$RAW")
-
-  if [ "$impl" -ge 1 ] && [ "$rev" -ge 1 ]; then
-    :   # Prozess-Weg: Reports liegen auf der Platte
-  elif [ "$spawned" != "-" ] && [ "$spawned" -ge 2 ]; then
-    :   # Subagenten-Weg: gezählt
-  elif [ "$spawned" = "-" ]; then
-    warn "Paket $1: weder Reports im Arbeitsverzeichnis noch subagent_stats — die Delegationsprüfung entfällt"
-  else
-    die $EX_CONTRACT "Paket $1 wurde ohne Beleg für Implementierer und Reviewer committet: $impl Report(s), $rev Review(s), $spawned Subagent(en). Ein Runner schreibt keinen Projektcode selbst."
+  if [ "$impl" -lt 1 ] || [ "$rev" -lt 1 ]; then
+    die $EX_CONTRACT "Paket $1 wurde ohne Beleg für Implementierer und Reviewer committet: $impl Report(s), $rev Review(s) im Arbeitsverzeichnis. Ein Runner schreibt keinen Projektcode selbst."
   fi
 
   local left
@@ -534,38 +518,10 @@ check_commit() { # $1 = Paketnummer, $2 = HEAD vor dem Runner
 
 # --- Die Schleife -----------------------------------------------------------
 
-run_a() { # $1 = Paketnummer
-  local status
-  if [ "$PLAN_MODE" = interactive ]; then
-    run_a_interactive "$1"
-    return
-  fi
-  dispatch A "$1"
-  status=$(field status)
-  case "$status" in
-    planned)
-      check_marker "$1" '~'
-      say "  Detailplan steht · $(field plan_changes)"
-      journal "paket=$1 rolle=A status=planned plan=$(field plan_changes) queue=$(field queue)"
-      ;;
-    dropped)
-      check_marker "$1" 'x'
-      say "  entfallen · $(field findings)"
-      PACKAGES_DONE=$((PACKAGES_DONE + 1))
-      journal "paket=$1 rolle=A status=dropped"
-      ;;
-    question|blocked)
-      hand_over A "$1" "$status"
-      ;;
-    *)
-      die $EX_CONTRACT "Runner A für Paket $1 gibt Status '$status' zurück, den es für A nicht gibt"
-      ;;
-  esac
-}
 
-run_a_interactive() { # $1 = Paketnummer; nach dem Terminal entscheidet die Marke
+run_a() { # $1 = Paketnummer; Zug 0 im Terminal, danach entscheidet die Marke
   local m
-  dispatch_interactive "$1"
+  dispatch_zug0 "$1"
   if [ "$DRY" = 1 ]; then return 0; fi
   m=$(marker_of "$1")
   case "$m" in
@@ -632,26 +588,23 @@ main() {
   while [ $# -gt 0 ]; do
     case "$1" in
       --once) ONCE=1; pass_on[${#pass_on[@]}]=$1 ;;
-      --headless) PLAN_MODE=headless; pass_on[${#pass_on[@]}]=$1 ;;
-      --dry-run) DRY=1; pass_on[${#pass_on[@]}]=$1 ;;
-      --tmux) LAUNCH=1 ;;
+      --dry-run) DRY=1 ;;
       --help|-h) usage; exit 0 ;;
       *) die $EX_PRE "unbekannte Option: $1" ;;
     esac
     shift
   done
 
-  # Erst prüfen, dann starten: ein falscher Branch soll hier auffallen und
-  # nicht in einer abgelösten Session, in die niemand hineinsieht.
+  # Erst prüfen, dann ablösen: ein falscher Branch soll hier auffallen und
+  # nicht in einer Session, in die niemand hineinsieht.
   preflight
-  if [ "$LAUNCH" = 1 ]; then
+  if [ "$INSIDE" = 0 ] && [ "$DRY" = 0 ]; then
     launch_tmux ${pass_on[@]+"${pass_on[@]}"}
   fi
 
   say "Plan:      $PLAN"
   say "Branch:    $BRANCH"
   say "Arbeit:    $WORK"
-  say "Zug 0:     $PLAN_MODE"
   say "Pakete:    $(count_with_marker ' ') offen · $(count_with_marker 'x') erledigt · $(count_with_marker '!') blockiert"
   say ""
 
@@ -687,9 +640,11 @@ main() {
       break
     fi
 
-    if [ "$ONCE" = "1" ]; then
+    # --once meint ein ganzes Paket, nicht einen Zug: nach Zug 0 allein wäre
+    # nichts geprüft, was sich zu prüfen lohnt.
+    if [ "$ONCE" = "1" ] && [ "$PACKAGES_DONE" -ge 1 ]; then
       say ""
-      say "--once: nach einem Runner angehalten. Kosten bisher: \$$TOTAL_COST"
+      say "--once: nach einem Paket angehalten. Kosten bisher: \$$TOTAL_COST"
       exit $EX_OK
     fi
   done

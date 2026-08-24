@@ -1,41 +1,27 @@
-# Die Shell-Schleife — der zweite Weg durch Schritt 6
+# Die Paketschleife — `scripts/remediate.sh`
 
 Schritt 6 der `SKILL.md` enthält kein Urteil: oberstes offenes Paket finden,
-Brief bauen, warten, Rückgabe lesen, Hash und Exit-Code prüfen, eine Zeile
-ausgeben, weiter. `scripts/remediate.sh` tut genau das, als Prozess statt als
-Agent. Alles, was ein Urteil verlangt, bleibt unangetastet: Schritt 1 bis 5
-davor, Schritt 7 danach, und der Inhalt jedes Zuges in `references/runner.md`.
+Zug 0 fahren, Züge 1–5 beauftragen, Ergebnis gegen `git` und das Verify-Log
+halten, weiter. Das tut dieses Skript, als Prozess statt als Agent. Alles, was
+ein Urteil verlangt, liegt davor (Schritt 1–5) und danach (Schritt 7); der
+Inhalt jedes Zuges steht in `references/runner.md`.
 
-Der Agenten-Weg bleibt der Standard. Die Schleife lohnt sich, wenn ein Lauf
-viele Pakete hat oder der Nutzer sie ausdrücklich will.
-
-Was sie ändert, ist nicht die Arbeit, sondern wer sie beaufsichtigt. Ein Prozess
-ist beendet oder nicht; es gibt keinen zweiten Kanal, in dem man nachfragen
-könnte, und keine Möglichkeit, das Ende eines Pakets für gekommen zu halten,
-weil es lange dauert.
+Diesen Text liest der Agent aus Schritt 5 **einmal**, bevor er das Skript zum
+ersten Mal startet, und danach jeder Runner, den das Skript beauftragt.
 
 ## Starten
 
-Ein Lauf beginnt nicht mit diesem Skript. Er beginnt wie immer in einer offenen
-Session im Projekt — »arbeite die Findings aus dem Audit ab« —, und dort laufen
-die Schritte 1 bis 5: Findings laden, Baseline messen, Scope klären, offene
-Entscheidungen abfragen, Grobplan schreiben, Freigabe. Erst danach übernimmt das
-Skript die Paketschleife, und am Ende geht es für Schritt 7 zurück in eine
-Session.
+Ein Lauf beginnt nicht hier. Er beginnt in einer offenen Session im Projekt —
+»arbeite die Findings aus dem Audit ab« —, und dort laufen die Schritte 1 bis 5.
+Sobald der Grobplan freigegeben ist, startet der Agent das Skript. Ungefragt:
+die Freigabe war die Frage.
 
 ```bash
-<skill>/scripts/remediate.sh --tmux     # abgelöst starten und zurückkommen
-<skill>/scripts/remediate.sh            # im aktuellen Terminal
-<skill>/scripts/remediate.sh --once     # nach einem Runner anhalten
-<skill>/scripts/remediate.sh --dry-run  # zeigen, was beauftragt würde
-<skill>/scripts/remediate.sh --headless # Zug 0 ohne Terminal fahren
+<skill>/scripts/remediate.sh
 ```
 
-### Wer das Skript startet
-
-**Du, der Agent aus Schritt 5, startest es mit `--tmux`**, sobald der Grobplan
-freigegeben ist. Der Nutzer muss dafür kein Terminal öffnen; du rufst es über
-Bash auf und bekommst sofort die Kontrolle zurück:
+Das war der ganze Aufruf. Der Lauf hängt sich in eine abgelöste tmux-Session
+und kommt sofort zurück:
 
 ```
 Läuft in tmux-Session »remediate-mein-projekt«.
@@ -47,44 +33,27 @@ Läuft in tmux-Session »remediate-mein-projekt«.
 
 Mitschrift: .git/remediation/remediate.pane.log
 Journal:    .git/remediation/remediate.log
+
+Zug 0 wartet dort auf dich, sobald das erste Paket drankommt.
 ```
 
-Diese Zeilen gibst du dem Nutzer weiter, und damit ist deine Arbeit an der
-Schleife getan. Sie läuft unabhängig von deiner Session weiter — schließt du
-dich, läuft sie; stirbt dein Kontext, läuft sie.
+Diese Zeilen gibt der Agent dem Nutzer weiter, und damit ist seine Arbeit an der
+Schleife getan. Sie läuft unabhängig von seiner Session — schließt sie sich,
+läuft sie; stirbt ihr Kontext, läuft sie.
 
-Der Grund für tmux ist nicht Bequemlichkeit: eine abgelöste tmux-Session hat ein
-echtes Pseudo-Terminal (gemessen: `stdin=ja stdout=ja tty=/dev/pts/0`). Ein
-gewöhnlicher Hintergrundprozess hat keines, und ohne Terminal kann Zug 0 nicht
-fragen. tmux ist damit das Einzige, was »abgelöst« und »fragt nach« gleichzeitig
-erlaubt.
+**tmux wird vorausgesetzt.** Fehlt es, bricht das Skript ab, und der Lauf
+beginnt nicht. Der Grund ist nicht Bequemlichkeit: eine abgelöste tmux-Session
+hat ein echtes Pseudo-Terminal (gemessen `stdin=ja stdout=ja tty=/dev/pts/0`),
+ein gewöhnlicher Hintergrundprozess hat keines, und ohne Terminal kann Zug 0
+den Nutzer nicht fragen. tmux ist das Einzige, was »abgelöst« und »fragt nach«
+zugleich erlaubt.
 
-Fehlt tmux, sagt das Skript es und nennt die zwei Alternativen: in einer Shell
-starten, oder `nohup … --headless &` ohne Rückfragen. `TMUX_BIN` zeigt auf ein
-tmux an anderer Stelle, `SESSION` benennt die Session anders als nach dem
-Projektverzeichnis.
+Zwei Argumente gibt es, beide für den Ausnahmefall: `--once` hält nach dem
+ersten vollständigen Paket an, `--dry-run` zeigt im Vordergrund, was beauftragt
+würde, und startet nichts. `SESSION` benennt die tmux-Session anders als nach
+dem Projektverzeichnis, `TMUX_BIN` zeigt auf ein tmux an anderer Stelle.
 
-**Vorbedingungen werden vor dem Ablösen geprüft.** Ein falscher Branch, ein
-schmutziger Arbeitsbaum, ein fehlender Plan — das fällt sofort auf und nicht
-erst in einer Session, in die niemand hineinsieht.
-
-### Nachsehen, ohne anzuhängen
-
-Drei Wege, alle ohne den Lauf zu stören:
-
-| Wozu | Kommando |
-| --- | --- |
-| Was steht gerade im Pane | `tmux capture-pane -p -t <session>` |
-| Was ist bisher passiert | `cat .git/remediation/remediate.log` |
-| Die ganze Ausgabe | `cat .git/remediation/remediate.pane.log` |
-
-Das Journal endet mit `ende exit=N`, sobald der Lauf durch ist. Solange die Zeile
-fehlt, läuft er noch oder wartet auf eine Antwort.
-
-### Zwei Modi für Zug 0
-
-Die Planung eines Pakets ist die eine Stelle, an der ein Agent Dinge wissen muss,
-die im Code nicht stehen. Deshalb läuft sie voreingestellt **in deinem Terminal**:
+### So sieht ein Paket aus
 
 ```
 → Runner A · Paket 2 · opus/xhigh · interaktiv
@@ -98,23 +67,27 @@ die im Code nicht stehen. Deshalb läuft sie voreingestellt **in deinem Terminal
 → Runner A · Paket 3 · opus/xhigh · interaktiv
 ```
 
-Du wirst am Anfang jedes Pakets gebraucht, meist ein paar Minuten. Die lange
-Strecke danach — Implementierer, Review, Fehlerkette, Verify, Commit — läuft ohne
-dich.
+Der Nutzer wird am Anfang jedes Pakets gebraucht, meist ein paar Minuten, und
+nur wenn er angehängt ist. Die lange Strecke danach — Implementierer, Review,
+Fehlerkette, Verify, Commit — läuft ohne ihn.
 
-`PLAN_MODE=headless` (oder `--headless`) fährt Zug 0 ohne Terminal. Dann gibt es
-kein Nachfragen: was der Planer nicht entscheiden kann, kommt als Status
-`question` zurück und wird zu Exit 10. Das ist der Modus für einen Lauf, den
-niemand begleiten soll, und er kostet genau das, was er spart.
+### Nachsehen, ohne zu stören
 
-Ohne Terminal startet der interaktive Modus gar nicht erst — die Meldung nennt
-den Schalter. Mit `--tmux` stellt sich die Frage nicht: die Session bringt ihr
-Terminal mit. Wer das Skript in eine `until`-Schleife steckt, will `--headless`.
+| Wozu | Kommando |
+| --- | --- |
+| Was steht gerade im Pane | `tmux capture-pane -p -t <session>` |
+| Was ist bisher passiert | `cat .git/remediation/remediate.log` |
+| Die ganze Ausgabe | `cat .git/remediation/remediate.pane.log` |
+
+Das Journal endet mit `ende exit=N`, sobald der Lauf durch ist. Solange die Zeile
+fehlt, läuft er noch oder wartet auf eine Antwort. Der Agent hängt sich nicht an
+die Session an — dort sitzt der Nutzer.
 
 ### Vorbedingungen
 
-Branch und Arbeitsverzeichnis liest das Skript aus dem Kopf des Plans, nicht aus
-der Umgebung: der Plan ist die Wahrheit, auch für die Schleife. Sie startet
+Sie werden vor dem Ablösen geprüft: ein falscher Branch soll sofort auffallen und
+nicht in einer Session, in die niemand hineinsieht. Branch und Arbeitsverzeichnis
+liest das Skript aus dem Kopf des Plans, nicht aus der Umgebung. Es startet
 nicht, wenn der ausgecheckte Branch ein anderer ist, wenn der Arbeitsbaum nicht
 sauber ist, wenn ein Paket auf `[~]` steht oder wenn schon eine Schleife läuft.
 
@@ -123,14 +96,10 @@ auch alles. Nichts wird anderswo gestartet — kein zweiter Klon, keine Session 
 einer fremden Umgebung. Die Runner teilen sich einen Arbeitsbaum, und genau
 deshalb läuft nie einer parallel zum anderen.
 
-Wer einen headless-Lauf von unterwegs verfolgen will, startet die umgebende
-Session mit Remote Control (`claude --remote-control`). Das verlagert die
-Unterhaltung, nicht die Ausführung.
-
 | Exit | Heißt | Was folgt |
 | --- | --- | --- |
 | 0 | Kein Paket mehr offen | Schritt 7, `references/semver-and-closeout.md` |
-| 10 | Ein Runner legt dem Nutzer etwas vor | Antwort datiert in »Entscheidungen«, dann erneut starten |
+| 10 | Es braucht eine Entscheidung | Antwort datiert in »Entscheidungen«, dann erneut starten |
 | 11 | Ein Paket steht auf `[~]` | `references/resume.md`, nicht dieses Skript |
 | 20 | Die Rückgabe passt nicht zum Repo | Plan und `git log` ansehen. Nicht blind wiederholen |
 | 21 | Ein Runner hing an einer Rechteschranke | Die Allowlist ist zu eng, nicht das Paket zu schwer |
@@ -153,9 +122,14 @@ Ergebnis, und bei A wäre das ein Urteil über Paketschnitt und Triage, auf dem
 jedes Folgepaket aufbaut. Lieber warten als unbemerkt schwächer werden. Wer es
 anders will, setzt `FALLBACK_MODEL`.
 
-Die dritte Ebene ist die Schleife. Scheitert ein Runner, wartet sie und startet
-ihn neu — `ATTEMPTS=3` Versuche, `BACKOFF=60,300,900` Sekunden dazwischen, also
-gut zwanzig Minuten Geduld. Beides über die Umgebung einstellbar.
+Die dritte Ebene ist die Schleife, und sie greift für die Züge 1 bis 5:
+scheitert der Prozess, wartet sie und startet ihn neu — `ATTEMPTS=3` Versuche,
+`BACKOFF=60,300,900` Sekunden dazwischen, also gut zwanzig Minuten Geduld.
+Beides über die Umgebung einstellbar.
+
+Zug 0 hat keine Wiederholung und braucht keine: dort sitzt der Nutzer im
+Terminal, sieht den Fehler und startet neu, wenn er will. Bleibt die Marke
+unverändert, hält die Schleife von selbst an.
 
 **Wiederholt wird nur, was nichts hinterlassen hat.** Vor jedem Start nimmt die
 Schleife einen Fingerabdruck aus drei Werten: `HEAD`, der Zustand des
@@ -174,15 +148,8 @@ wiederholt auch Fehler, die keine sind. Ein erschöpftes Budget ist keine
 Grenze und zahlte sie noch einmal.
 
 **Exit 31 heißt: warte länger, nicht: repariere etwas.** Weil der Plan den Stand
-trägt, ist ein Neustart des Skripts identisch mit einem Fortsetzen. Für einen
-unbeaufsichtigten Lauf reicht deshalb:
-
-```bash
-until <skill>/scripts/remediate.sh; do
-  [ $? -eq 31 ] || break     # alles andere braucht einen Menschen
-  sleep 600
-done
-```
+trägt, ist ein Neustart des Skripts identisch mit einem Fortsetzen — dasselbe
+Kommando später noch einmal, und der Lauf setzt beim nächsten offenen Paket auf.
 
 Die Grenze dieses Netzes: es umspannt den Runner-Prozess, nicht die Subagenten
 darin. Stirbt ein Implementierer an derselben Überlastung, sieht das B und
@@ -194,7 +161,7 @@ umgesetztes Paket auf einer überlasteten API repariert kein Neuversuch.
 
 Das hängt an der Rolle, und der Unterschied ist Absicht.
 
-### Zug 0 im interaktiven Modus: alles
+### Zug 0: alles, was die Maschine hat
 
 Das Skript startet ihn ohne `-p`, ohne Rückgabeschema, ohne Allowlist und ohne
 Verbotsliste. Es ist deine Session: deine MCP-Server, deine Skills, deine
@@ -207,8 +174,7 @@ das Dokument, gegen das anschließend alles gebaut wird. Ein Fehlurteil dort
 schlägt auf jedes Folgepaket durch — das ist die teuerste Stelle im Lauf, um
 sparsam zu sein.
 
-Weil es keine Rückgabe zu parsen gibt, entscheidet die **Marke im Plan**, wie es
-weitergeht:
+Es gibt nichts zu parsen: **die Marke im Plan** sagt, wie es weitergeht.
 
 | Marke danach | Heißt | Die Schleife |
 | --- | --- | --- |
@@ -222,7 +188,7 @@ immer nur ihre Behauptung.
 
 ### Zug 1–5: der Prozess bekommt viel, es fehlt nur, was ihn aufhält
 
-B läuft headless. Zwei Listen wirken dort, und beide zusammen sind kürzer, als
+B läuft ohne Terminal. Zwei Listen wirken dort, und beide zusammen sind kürzer, als
 sie klingen.
 
 **Die Allowlist erweitert**, sie zäunt nicht ein. Gemessen: mit `Bash(git *)` als
@@ -294,10 +260,10 @@ Was dabei zu tun ist:
   `runner.md`. Neu ist, dass du daneben auch den Effort setzen kannst: ein
   eigener Prozess nimmt `--effort`, ein Subagent nicht.
 
-Geht das auf einem Host nicht — kein verschachteltes `claude`, keine Rechte
-dafür —, fällst du auf Subagenten zurück. Die Schleife akzeptiert beides: sie
-prüft, ob Reports auf der Platte liegen **oder** ob `subagent_stats` zwei
-Starts zählt. Belegt sein muss es, gleich wodurch.
+Die Reports sind zugleich der Beleg: die Schleife prüft, ob je einer für
+Implementierer und Reviewer im Arbeitsverzeichnis liegt, bevor sie einen Commit
+gelten lässt. Ein Subagent hinterließe keine Datei und wäre hier kein Beleg —
+und die Reichweite, um derentwillen der Umweg existiert, hätte er auch nicht.
 
 ## Deine Rolle, wenn du beauftragt wurdest
 
@@ -326,14 +292,12 @@ Zug 0 je stattgefunden hat. Mit der Teilung sagt es die Marke im Plan.
 
 ## Deine Rückgabe
 
-**Als A im interaktiven Modus gibst du gar nichts zurück.** Es gibt keinen
-Kanal und keinen braucht es: du schreibst den Plan, setzt die Marke, und die
-Marke ist die Rückgabe. Die Tabelle oben unter »Zug 0 im interaktiven Modus«
-sagt, was die Schleife daraus liest.
+**Als A gibst du gar nichts zurück.** Es gibt keinen Kanal und keinen braucht
+es: du schreibst den Plan, setzt die Marke, und die Marke ist die Rückgabe. Die
+Tabelle oben unter »Zug 0« sagt, was die Schleife daraus liest.
 
-**Sonst** — als B, und als A im headless-Modus — gibst du ein JSON-Objekt nach
-`assets/runner-return.schema.json` zurück, statt der neun Zeilen aus
-`runner.md`. Die Felder sind dieselben, die Statuswerte sind englisch, weil sie
+**Als B** gibst du ein JSON-Objekt nach `assets/runner-return.schema.json`
+zurück, statt der neun Zeilen aus `runner.md`. Die Felder sind dieselben, die Statuswerte sind englisch, weil sie
 in einer Shell-Verzweigung landen:
 
 | Im JSON | Im Plan | Wer gibt das zurück |
@@ -359,10 +323,9 @@ sind. Fällt eine dieser Proben, endet der Lauf mit Exit 20:
   deinem Start bewegt.
 - Bei `committed`: die Datei aus `verify_log` liegt im Arbeitsverzeichnis und
   enthält die Zeile `exit=0`.
-- Bei `committed`: es gibt einen Beleg für Implementierer **und** Reviewer —
-  entweder ihre Reports als Dateien im Arbeitsverzeichnis (Prozess-Weg) oder
-  zwei Starts in `subagent_stats` (Subagenten-Weg). Ein Runner schreibt keinen
-  Projektcode selbst, und das wird belegt, nicht geglaubt.
+- Bei `committed`: im Arbeitsverzeichnis liegt je ein Report von Implementierer
+  und Reviewer. Ein Runner schreibt keinen Projektcode selbst, und das wird
+  belegt, nicht geglaubt.
 - Die Paketnummer in deiner Rückgabe ist die aus deinem Auftrag.
 - Kein Aufruf ist an einer Rechteschranke gescheitert.
 
@@ -397,12 +360,10 @@ werden darf. Beide gelten je Prozess, und Prozesse gibt es hier genau zwei.
 | **A** — Zug 0 | `MODEL_A=opus` | `EFFORT_A=xhigh` | Existiert das Finding noch, ist die Folge ein Symptom oder ein eigenes Paket, muss der Restplan anders geschnitten werden. Die härtesten Entscheidungen des Laufs, einmal je Paket und ohne eine Zeile Code. |
 | **B** — Züge 1–5 | `MODEL_B=opus` | aus dem Detailplan, sonst `EFFORT_B=medium` | B beauftragt, liest zwei Reports, fährt Verify, committet. Die einzige echte Entscheidung ist die Fehlerkette, und die hat den Befund im Wortlaut vor sich. |
 
-**Der Effort von B wirkt nach unten.** Startet B seine Implementierer und
-Reviewer als eigene Prozesse — der Weg oben —, setzt es deren `--effort` selbst,
-und dann ist `EFFORT_B` wirklich nur B. Fällt es auf Subagenten zurück, erben
-die den Effort des Prozesses, und der Wert entscheidet über die beiden Rollen mit
-den meisten Zügen. Weil das die teurere Möglichkeit ist, ist der Vorgabewert an
-ihr ausgerichtet.
+**`EFFORT_B` ist wirklich nur B.** Implementierer und Reviewer laufen als eigene
+Prozesse, und deren `--effort` setzt B selbst — nach dem Wert, den A in den
+Detailplan geschrieben hat. Der Vorgabewert `medium` gilt für B, das beauftragt,
+liest und committet; die Stufe, die zählt, steht im Paket.
 
 Deshalb setzt **A** ihn und nicht die Umgebung: A hat den Code gesehen, im
 interaktiven Modus auch mit dir darüber gesprochen, und weiß, was dieses Paket

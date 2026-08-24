@@ -345,87 +345,74 @@
 
   <section>
     <p class="kicker">Bestand</p>
-    <h2>Vier Rollen, drei Ebenen</h2>
+    <h2>Fünf Prozesse, keine Subagenten</h2>
     <div class="prose">
-      <p>Der Lauf hat genau vier Agenten-Rollen und eine feste Tiefe von drei Ebenen. Nichts davon läuft parallel: der große Koordinator startet je Paket einen Runner und nie zwei gleichzeitig, der Runner hält immer nur einen Implementierer offen. Die Blätter starten niemanden.</p>
+      <p>Der Lauf hat fünf Rollen, und jede ist ein eigener Betriebssystem-Prozess. Nichts davon läuft parallel: das Skript fährt je Paket erst Zug 0, dann die Züge 1 bis 5, und B hält immer nur einen Implementierer offen. Sie teilen sich einen Arbeitsbaum, und der Konflikt kostete mehr als die gesparte Zeit.</p>
     </div>
 
     <figure class="fig">
       <div class="fig-scroll">
-        <svg viewBox="0 0 940 505" role="img" aria-label="Aufrufgraph des Remediation-Laufs: der Orchestrator startet je Paket einen Runner, der Runner startet Implementierer und Reviewer. Audit- und GitHub-Sync-Skill sind eigene Läufe ohne Aufrufkante.">
+        <svg viewBox="0 0 940 480" role="img" aria-label="Aufrufgraph: die Session startet remediate.sh, das Skript fährt je Paket Zug 0 im Terminal und die Züge 1 bis 5 als eigenen Prozess, der wiederum Implementierer und Reviewer als Prozesse startet.">
           <defs>
             <marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
               <path class="mk" d="M0,0 L10,5 L0,10 z" />
             </marker>
           </defs>
 
-          <!-- detached cluster -->
           <rect class="frame" x="20" y="34" width="252" height="196" rx="4" />
           <text class="t-lane" x="32" y="56">UNABHÄNGIG · EIGENE SESSION</text>
-
           <rect class="box" x="34" y="70" width="224" height="52" rx="3" />
           <text class="t-strong" x="46" y="92">js-ts-project-audit</text>
-          <text class="t-sub" x="46" y="109">ein Agent, keine Subagenten</text>
-
+          <text class="t-sub" x="46" y="109">liefert ./audit.html</text>
           <rect class="box" x="34" y="134" width="224" height="52" rx="3" />
           <text class="t-strong" x="46" y="156">audit-github-sync</text>
-          <text class="t-sub" x="46" y="173">ein Agent, keine Subagenten</text>
-
+          <text class="t-sub" x="46" y="173">eigener Lauf</text>
           <text class="t-sub" x="34" y="212">keine Aufrufkante in beide Richtungen</text>
 
-          <!-- artifact handoff -->
-          <path class="edge edge-dot" d="M272,110 H320 V78 H400" marker-end="url(#ah1)" />
+          <path class="edge edge-dot" d="M272,110 H320 V78 H396" marker-end="url(#ah1)" />
           <text class="t-edge" x="288" y="70">./audit.html</text>
 
-          <!-- orchestrator -->
-          <rect class="box-long" x="400" y="46" width="290" height="64" rx="3" />
-          <text class="t-strong" x="416" y="72">Orchestrator (Root)</text>
-          <text class="t-sub" x="416" y="90">Schritt 1–5, Schleife, Abschluss</text>
-          <text class="t-sub" x="416" y="104">lebt vom ersten bis zum letzten Paket</text>
+          <rect class="box-agent" x="400" y="46" width="290" height="56" rx="3" />
+          <text class="t-strong" x="416" y="70">Session · Schritt 1–5 und 7</text>
+          <text class="t-sub" x="416" y="88">plant, fragt, gibt frei, schließt ab</text>
 
-          <!-- edge to runner -->
-          <path class="edge" d="M545,110 V196" marker-end="url(#ah1)" />
-          <text class="t-edge" x="556" y="140">1 pro Paket, streng sequentiell</text>
-          <text class="t-edge" x="556" y="156">Anzahl ≥ Paketzahl im Grobplan</text>
+          <path class="edge" d="M545,102 V162" marker-end="url(#ah1)" />
+          <text class="t-edge" x="556" y="124">startet nach der Freigabe</text>
+          <text class="t-edge" x="556" y="140">und ist danach fertig</text>
 
-          <!-- triage runner -->
-          <path class="edge edge-dot" d="M690,86 H760 V196" marker-end="url(#ah1)" />
-          <text class="t-edge" x="700" y="76">Drain, 0–1×</text>
-          <rect class="box-agent" x="700" y="196" width="200" height="64" rx="3" />
-          <text class="t-strong" x="714" y="222">Triage-Runner</text>
-          <text class="t-sub" x="714" y="240">nur einordnen, kein Commit</text>
-          <text class="t-sub" x="714" y="254">startet niemanden</text>
+          <rect class="box-shell" x="400" y="166" width="290" height="56" rx="3" />
+          <text class="t-strong" x="416" y="190">scripts/remediate.sh</text>
+          <text class="t-sub" x="416" y="208">abgelöst in tmux · kein Modell</text>
 
-          <!-- runner -->
-          <rect class="box-agent" x="400" y="196" width="290" height="64" rx="3" />
-          <text class="t-strong" x="416" y="222">Paket-Runner</text>
-          <text class="t-sub" x="416" y="240">Zug 0–5 · Detailplan bis Commit</text>
-          <text class="t-sub" x="416" y="254">Kontext verfällt mit dem Paket</text>
+          <path class="edge" d="M470,222 V258 H315 V286" marker-end="url(#ah1)" />
+          <text class="t-edge" x="330" y="252" text-anchor="end">je Paket zuerst</text>
+          <path class="edge" d="M620,222 V258 H675 V286" marker-end="url(#ah1)" />
+          <text class="t-edge" x="690" y="252">danach</text>
 
-          <!-- edges to leaves -->
-          <path class="edge" d="M470,260 V296 H322 V350" marker-end="url(#ah1)" />
-          <text class="t-edge" x="306" y="274" text-anchor="end">Zug 1 · Runde 1 derselbe</text>
-          <text class="t-edge" x="306" y="288" text-anchor="end">Runde 2 frisch, eine Stufe höher</text>
+          <rect class="box-agent" x="200" y="286" width="230" height="66" rx="3" />
+          <text class="t-strong" x="214" y="310">A · Zug 0</text>
+          <text class="t-sub" x="214" y="327">im Terminal der Session</text>
+          <text class="t-sub" x="214" y="343">kann den Nutzer fragen</text>
 
-          <path class="edge" d="M620,260 V296 H738 V350" marker-end="url(#ah1)" />
-          <text class="t-edge" x="628" y="274">Zug 3 · nach jeder Runde</text>
-          <text class="t-edge" x="628" y="288">1–3 Aufrufe je Paket</text>
+          <rect class="box-agent" x="560" y="286" width="230" height="66" rx="3" />
+          <text class="t-strong" x="574" y="310">B · Züge 1–5</text>
+          <text class="t-sub" x="574" y="327">claude -p, ohne Terminal</text>
+          <text class="t-sub" x="574" y="343">beauftragt, prüft, committet</text>
 
-          <rect class="box-agent" x="200" y="350" width="240" height="58" rx="3" />
-          <text class="t-strong" x="214" y="374">Implementierer</text>
-          <text class="t-sub" x="214" y="392">immer nur einer gleichzeitig</text>
+          <path class="edge" d="M620,352 V384 H516 V406" marker-end="url(#ah1)" />
+          <path class="edge" d="M730,352 V384 H786 V406" marker-end="url(#ah1)" />
 
-          <rect class="box-agent" x="620" y="350" width="240" height="58" rx="3" />
-          <text class="t-strong" x="634" y="374">Reviewer</text>
-          <text class="t-sub" x="634" y="392">Modellstufe nach dem Diff</text>
+          <rect class="box-agent" x="420" y="406" width="192" height="52" rx="3" />
+          <text class="t-strong" x="434" y="428">Implementierer</text>
+          <text class="t-sub" x="434" y="446">claude -p</text>
+          <rect class="box-agent" x="690" y="406" width="192" height="52" rx="3" />
+          <text class="t-strong" x="704" y="428">Reviewer</text>
+          <text class="t-sub" x="704" y="446">claude -p</text>
 
-          <line class="grid" x1="200" y1="432" x2="860" y2="432" />
-          <text class="t-lane" x="530" y="452" text-anchor="middle">Blätter · starten keine Subagenten, schreiben nur zurück</text>
-
-          <text class="t-sub" x="20" y="486">Ebene 1 Orchestrator · Ebene 2 Runner · Ebene 3 Implementierer und Reviewer · maximale Tiefe 3</text>
+          <text class="t-sub" x="20" y="466">Jede Ebene ist ein eigener Prozess · niemand ist Subagent von jemandem</text>
         </svg>
       </div>
-      <figcaption><b>Abb. 1 · Aufrufgraph.</b> Durchgezogene Kanten sind Agentenstarts, die gepunktete Kante ist eine Artefakt-Übergabe. Der Audit-Skill und der GitHub-Sync sind eigene Läufe: sie starten nichts in diesem Graphen und werden von ihm nicht gestartet. Verbunden sind sie ausschließlich über eine Datei im Projektroot.</figcaption>
+      <figcaption><b>Abb. 1 · Aufrufgraph.</b> Durchgezogene Kanten sind Prozessstarts, die gepunktete ist eine Artefakt-Übergabe. Die Session plant und startet das Skript; ab da läuft alles als eigener Prozess, keiner als Subagent eines anderen. Genau daran hängt die Reichweite: ein Prozess erbt MCP-Server, Skills und Einstellungen wie jede Session, ein Subagent nicht.</figcaption>
     </figure>
 
     <div class="table-wrap">
@@ -476,84 +463,10 @@
   </section>
 
   <section>
-    <p class="kicker">Lebensdauern</p>
-    <h2>Eine Spur, die alles überlebt</h2>
+    <p class="kicker">Warum</p>
+    <h2>Wo es vorher klemmte</h2>
     <div class="prose">
-      <p>Der Umbau vom 23. August hat genau das erreicht, was er sollte: Implementierungs- und Review-Kontexte verfallen paketweise. Übrig bleibt eine einzige Spur, die den ganzen Lauf durchhält, und das ist keine Eigenschaft der Arbeit, sondern eine Eigenschaft der Rolle. Der große Koordinator muss überleben, weil er die Schleife <i>ist</i>.</p>
-    </div>
-
-    <figure class="fig">
-      <div class="fig-scroll">
-        <svg viewBox="0 0 940 336" role="img" aria-label="Zeitleiste der Agenten-Lebensdauern: die Orchestrator-Spur läuft über alle Pakete, alle anderen Spuren zerfallen in kurze Abschnitte je Paket.">
-          <defs>
-            <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path class="mk" d="M0,0 L10,5 L0,10 z" />
-            </marker>
-          </defs>
-
-          <line class="grid" x1="170" y1="34" x2="894" y2="34" />
-
-          <text class="t-lane" x="152" y="64" text-anchor="end">Orchestrator</text>
-          <rect class="bar-long" x="170" y="48" width="724" height="26" rx="2" />
-          <text class="t-sub" x="184" y="66" style="fill: var(--surface)">ein Kontext über den ganzen Lauf</text>
-
-          <text class="t-lane" x="152" y="119" text-anchor="end">Paket-Runner</text>
-          <rect class="bar-agent" x="176" y="104" width="112" height="22" rx="2" />
-          <rect class="bar-agent" x="298" y="104" width="112" height="22" rx="2" />
-          <rect class="bar-agent" x="420" y="104" width="182" height="22" rx="2" />
-          <rect class="bar-agent" x="612" y="104" width="112" height="22" rx="2" />
-          <rect class="bar-agent" x="734" y="104" width="96" height="22" rx="2" />
-          <rect class="bar-agent" x="842" y="104" width="48" height="22" rx="2" />
-
-          <text class="t-lane" x="152" y="163" text-anchor="end">Implementierer</text>
-          <rect class="bar-agent-soft" x="190" y="150" width="46" height="16" rx="2" />
-          <rect class="bar-agent-soft" x="312" y="150" width="46" height="16" rx="2" />
-          <rect class="bar-agent-soft" x="434" y="150" width="44" height="16" rx="2" />
-          <rect class="bar-agent-soft" x="520" y="150" width="44" height="16" rx="2" />
-          <rect class="bar-agent-soft" x="626" y="150" width="46" height="16" rx="2" />
-          <rect class="bar-agent-soft" x="748" y="150" width="38" height="16" rx="2" />
-
-          <text class="t-lane" x="152" y="205" text-anchor="end">Reviewer</text>
-          <rect class="bar-agent-soft" x="244" y="192" width="32" height="16" rx="2" />
-          <rect class="bar-agent-soft" x="366" y="192" width="32" height="16" rx="2" />
-          <rect class="bar-agent-soft" x="484" y="192" width="28" height="16" rx="2" />
-          <rect class="bar-agent-soft" x="570" y="192" width="26" height="16" rx="2" />
-          <rect class="bar-agent-soft" x="680" y="192" width="32" height="16" rx="2" />
-          <rect class="bar-agent-soft" x="792" y="192" width="30" height="16" rx="2" />
-
-          <line class="axis" x1="170" y1="232" x2="894" y2="232" />
-          <line class="axis" x1="176" y1="232" x2="176" y2="238" />
-          <line class="axis" x1="298" y1="232" x2="298" y2="238" />
-          <line class="axis" x1="420" y1="232" x2="420" y2="238" />
-          <line class="axis" x1="612" y1="232" x2="612" y2="238" />
-          <line class="axis" x1="734" y1="232" x2="734" y2="238" />
-          <line class="axis" x1="842" y1="232" x2="842" y2="238" />
-          <text class="t-tick" x="232" y="252" text-anchor="middle">Paket 1</text>
-          <text class="t-tick" x="354" y="252" text-anchor="middle">Paket 2</text>
-          <text class="t-tick" x="511" y="252" text-anchor="middle">Paket 3 · 2 Runden</text>
-          <text class="t-tick" x="668" y="252" text-anchor="middle">Paket 4</text>
-          <text class="t-tick" x="782" y="252" text-anchor="middle">Paket 5</text>
-          <text class="t-tick" x="866" y="252" text-anchor="middle">Drain</text>
-
-          <path class="edge" d="M700,300 H912 V61 H898" marker-end="url(#ah2)" />
-          <text class="t-edge" x="694" y="304" text-anchor="end">je Rückgabe neun Zeilen, die nie wieder verschwinden</text>
-
-          <text class="t-sub" x="170" y="328">Balkenlängen schematisch · Paket 3 zeigt eine Fehlerkette mit zweiter Runde</text>
-        </svg>
-      </div>
-      <figcaption><b>Abb. 2 · Lebensdauern im Agenten-Weg.</b> Rost markiert den einen Kontext, der alle Pakete überlebt; Blau die Kontexte, die mit ihrem Paket verfallen. Bei zwölf Paketen sammelt die rostige Spur zwölf Rückgabeblöcke, zwölf Statuszeilen und zwölf Gegenproben ein. Das ist beherrschbar, aber es ist der einzige Posten im Lauf, der linear mit der Paketzahl wächst.</figcaption>
-      <div class="legend">
-        <span><i class="sw sw-long"></i> langlebiger Kontext</span>
-        <span><i class="sw sw-agent"></i> Agent, verfällt mit seiner Rückgabe</span>
-      </div>
-    </figure>
-  </section>
-
-  <section>
-    <p class="kicker">Befund</p>
-    <h2>Wo es klemmt</h2>
-    <div class="prose">
-      <p>Die Schwierigkeiten sitzen nicht in der Arbeit, sondern an den Nahtstellen zwischen zwei Agenten. Das eigene Testprotokoll des Repos benennt sie schon:</p>
+      <p>Die Pakete liefen einmal als Subagenten eines Orchestrators, der über den ganzen Lauf wach bleiben musste. Das Testprotokoll des Repos hält fest, woran das scheiterte:</p>
     </div>
 
     <blockquote class="quote">
@@ -564,52 +477,17 @@
       »Der Orchestrator wartete nach einer Status-Nachfrage in genau dem Kanal, in dem die Rückgabe nicht ankommt: der Lauf stand still, obwohl das Paket längst committet war.«
       <cite>CHANGELOG.md, 2026-08-23</cite>
     </blockquote>
-    <blockquote class="quote">
-      »… bestätigt auf frischer Sandbox mit eigener Historie, weil der gefallene erste Lauf im Hintergrund weiterarbeitete und die alte Sandbox nachträglich verändert hat.«
-      <cite>scenario-tests/STATUS.md, Arm C</cite>
-    </blockquote>
 
     <div class="prose">
-      <p>Drei verschiedene Symptome, ein Muster. Die Kanalsuche, das Warten im falschen Kanal und der Subagent, der nach dem Abbruch weiterlief: keines davon ist ein Denkfehler im Ablauf, alle drei sind Prozesssteuerung, die als Prosa formuliert werden musste. Und weil sie Prosa ist, gilt sie nur, solange das Modell sie befolgt.</p>
-      <p>Der Preis dafür steht sichtbar im Repo. Die Regel »frage den Runner nicht nach seinem Stand« steht in <code>SKILL.md</code> und in <code>runner.md</code>; die Ausreden-Tabelle in <code>runner.md</code> zählt inzwischen 25 Zeilen, von denen mehrere nichts anderes tun, als einen Agenten davon abzuhalten, auf einen anderen zu pollen. Jede dieser Zeilen ist ein Fehlschlag, den ein Text auffangen musste. Ein <code>wait</code> braucht keine Ausreden-Tabelle.</p>
-    </div>
-
-    <div class="note">
-      <span class="lbl">Der eigentliche Punkt</span>
-      <p>Schritt 6 enthält kein einziges Urteil. Oberstes <code>[ ]</code> finden, Brief aus vier Pfaden bauen, warten, neun Zeilen parsen, Hash und Exit-Code prüfen, eine Zeile ausgeben, weiter. Das ist keine Koordination, das ist ein Iterator, den ein Sprachmodell aus Höflichkeit mitspielt.</p>
-    </div>
-
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>Aufgabe des Orchestrators</th><th>Was sie verlangt</th><th>Träger</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Findings aus der JSON-Insel laden, Ausfälle abfangen</td><td>Urteil bei kaputter Insel oder fehlendem Report</td><td><span class="tag tag-agent">Agent</span></td></tr>
-          <tr><td>Baseline messen und einordnen</td><td>Messen ist mechanisch, »vorbestehend rot« ist ein Urteil</td><td><span class="tag tag-agent">Agent</span></td></tr>
-          <tr><td>Scope und Scope-Regel formulieren</td><td>Dialog mit dem Nutzer</td><td><span class="tag tag-agent">Agent</span></td></tr>
-          <tr><td>Offene Entscheidungen bündeln und klären</td><td>Dialog mit dem Nutzer</td><td><span class="tag tag-agent">Agent</span></td></tr>
-          <tr><td>Pakete schneiden, ordnen, Freigabe holen</td><td>Urteil und Dialog</td><td><span class="tag tag-agent">Agent</span></td></tr>
-          <tr><td>Nächstes offenes Paket finden</td><td><code>sed -n</code> auf eine Überschrift</td><td><span class="tag tag-shell">Shell</span></td></tr>
-          <tr><td>Runner-Brief bauen</td><td>Template mit vier Variablen</td><td><span class="tag tag-shell">Shell</span></td></tr>
-          <tr><td>Warten, bis der Runner fertig ist</td><td><code>wait</code> auf einen Prozess</td><td><span class="tag tag-shell">Shell</span></td></tr>
-          <tr><td>Rückgabeblock lesen</td><td>neun Zeilen <code>Feld: Wert</code></td><td><span class="tag tag-shell">Shell</span></td></tr>
-          <tr><td>Gegenprobe: Hash und Exit-Code</td><td>zwei Vergleiche, deterministisch</td><td><span class="tag tag-shell">Shell</span></td></tr>
-          <tr><td>Statuszeile an den Nutzer</td><td><code>printf</code></td><td><span class="tag tag-shell">Shell</span></td></tr>
-          <tr><td>Rückfrage und Blockade weiterreichen</td><td>Dialog mit dem Nutzer</td><td><span class="tag tag-agent">Agent</span></td></tr>
-          <tr><td>Drain, Semver, CHANGELOG, Report, Bericht</td><td>Urteil und Dialog</td><td><span class="tag tag-agent">Agent</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="prose">
-      <p>Sechs von sieben Aufgaben der Schleife sind Shell. Die siebte ist der Moment, in dem ein Mensch antworten muss, und dafür braucht es keinen wartenden Agenten, sondern einen Exit-Code.</p>
+      <p>Drei Symptome, ein Muster: Prozesssteuerung, die als Prosa formuliert werden musste und deshalb nur galt, solange ein Modell sie befolgte. Die Ausreden-Tabelle in <code>runner.md</code> zählt 25 Zeilen, mehrere davon halten einen Agenten davon ab, auf einen anderen zu pollen.</p>
+      <p>Dazu kam eine Grenze, die keine Prosa beheben konnte: in einem Subagenten ist ein MCP-Server in der Regel nicht exponiert. Ein Implementierer, der den Browser des Projekts nicht erreicht, ist für die Hälfte aller Pakete nutzlos.</p>
+      <p>Beides fällt weg, sobald jede Rolle ein eigener Prozess ist. Ein Prozess ist beendet oder nicht — es gibt keinen zweiten Kanal, in dem man nachfragen könnte — und er erbt die Konfiguration der Maschine wie jede Session.</p>
     </div>
   </section>
 
-  <section>
+<section>
     <p class="kicker">Aufbau</p>
-    <h2>Drei Prozesse statt einem</h2>
+    <h2>Was wo läuft</h2>
     <div class="prose">
       <p>Der große Koordinator verschwindet nicht, er zerfällt. Was mit dem Nutzer spricht, bleibt Agent; was zählt und prüft, wird ein Skript. Die entscheidende Voraussetzung dafür ist längst erfüllt, und zwar aus einem anderen Grund: <code>./remediation-plan.md</code> ist bereits die einzige Quelle der Wahrheit, weil der Skill genau das von jedem Runner verlangt. Ein Zustandsspeicher außerhalb aller Kontexte ist der Grund, warum sich die Mitte überhaupt herausschneiden lässt.</p>
     </div>
@@ -627,7 +505,7 @@
           <rect class="bar-shell" x="262" y="92" width="580" height="22" rx="2" />
           <text class="t-sub" x="276" y="107">grep · dispatch · wait · parse · verify · printf</text>
 
-          <text class="t-lane" x="152" y="150" text-anchor="end">A interaktiv · B headless</text>
+          <text class="t-lane" x="152" y="150" text-anchor="end">A im Terminal · B als Prozess</text>
           <rect class="bar-agent" x="176" y="136" width="32" height="22" rx="2" />
           <rect class="bar-agent" x="212" y="136" width="76" height="22" rx="2" />
           <rect class="bar-agent" x="298" y="136" width="32" height="22" rx="2" />
@@ -676,7 +554,7 @@
           <text class="t-sub" x="170" y="312">Gleiche Achse wie Abb. 2 · die rostige Spur ist ersetzt, alles darunter bleibt, wie es ist</text>
         </svg>
       </div>
-      <figcaption><b>Abb. 3 · Lebensdauern im Skript-Weg.</b> Dieselbe Zeitachse wie in Abb. 2: aus einem durchgehenden Kontext werden zwei kurze Sessions und eine Schleife ohne Kontext. Ein Paket zerfällt in zwei Prozesse — A führt Zug 0 in deinem Terminal und kann dich fragen, B fährt die Züge 1 bis 5 ohne dich. Implementierer und Reviewer sind darunter eigene Prozesse mit voller Werkzeugreichweite.</figcaption>
+      <figcaption><b>Abb. 2 · Die Lebensdauern.</b> Dieselbe Zeitachse wie in Abb. 2: aus einem durchgehenden Kontext werden zwei kurze Sessions und eine Schleife ohne Kontext. Ein Paket zerfällt in zwei Prozesse — A führt Zug 0 in deinem Terminal und kann dich fragen, B fährt die Züge 1 bis 5 ohne dich. Implementierer und Reviewer sind darunter eigene Prozesse mit voller Werkzeugreichweite.</figcaption>
       <div class="legend">
         <span><i class="sw sw-agent"></i> Agentenprozess</span>
         <span><i class="sw sw-shell"></i> Shell, kein Kontext, kein Modell</span>
@@ -767,7 +645,7 @@
           <text class="t-edge" x="422" y="326">der Runner schreibt fort</text>
         </svg>
       </div>
-      <figcaption><b>Abb. 4 · Die Schleife.</b> Grün umrandet ist Shell, blau gefüllt der einzige Agentenaufruf im Zyklus. Die Schleife trifft keine Entscheidung über Inhalte: sie liest Marken, startet, prüft zwei Werte und zählt Exit-Codes. Jeder Ausgang außer <code>exit 0</code> gibt an den Nutzer zurück, statt zu warten.</figcaption>
+      <figcaption><b>Abb. 3 · Die Schleife.</b> Grün umrandet ist Shell, blau gefüllt der einzige Agentenaufruf im Zyklus. Die Schleife trifft keine Entscheidung über Inhalte: sie liest Marken, startet, prüft zwei Werte und zählt Exit-Codes. Jeder Ausgang außer <code>exit 0</code> gibt an den Nutzer zurück, statt zu warten.</figcaption>
     </figure>
 
     <pre><code><span class="c-cmt">#!/usr/bin/env bash</span>
@@ -848,7 +726,7 @@ done</code></pre>
     <h2>Wie ein Lauf aussieht</h2>
     <div class="prose">
       <p>Er beginnt nicht im Skript. Er beginnt wie immer in einer offenen Session im Projekt, und dort laufen die Schritte 1 bis 5: Findings laden, Baseline messen, Scope klären, offene Entscheidungen abfragen, Grobplan schreiben, Freigabe. Erst danach übernimmt die Schleife, und für Schritt 7 geht es zurück in eine Session.</p>
-      <p>Gestartet wird die Schleife vom Agenten selbst, mit <code>--tmux</code>. Niemand muss ein Terminal öffnen: der Lauf hängt sich in eine abgelöste tmux-Session und läuft dort unabhängig weiter, auch wenn die Session, die ihn gestartet hat, längst zu ist.</p>
+      <p>Gestartet wird die Schleife vom Agenten selbst, ungefragt, sobald der Grobplan freigegeben ist. Niemand muss ein Terminal öffnen: der Lauf hängt sich in eine abgelöste tmux-Session und läuft dort unabhängig weiter, auch wenn die Session, die ihn gestartet hat, längst zu ist.</p>
     </div>
 
     <pre><code><span class="c-cmt"># in einer Session, im Projekt</span>
@@ -856,7 +734,7 @@ done</code></pre>
   <span class="c-cmt">… Schritt 1–5, Grobplan nach ./remediation-plan.md, Freigabe …</span>
 
 <span class="c-cmt"># der Agent startet die Schleife abgelöst</span>
-$ remediate.sh --tmux
+$ remediate.sh
 Läuft in tmux-Session »remediate-mein-projekt«.
   tmux attach -t remediate-mein-projekt   ansehen und antworten
   Ctrl-b d                                wieder ablösen
@@ -876,8 +754,8 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
 → Runner A · Paket 3 · opus/xhigh · interaktiv</code></pre>
 
     <div class="prose">
-      <p>Du wirst am Anfang jedes Pakets gebraucht, meist ein paar Minuten — und nur dann, wenn du dich anhängst. Die lange Strecke danach läuft ohne dich. <code>--headless</code> fährt auch Zug 0 ohne Terminal; dann wird aus einer Rückfrage ein Exit 10, und der Lauf hält an, statt zu fragen.</p>
-      <p>Der Grund für tmux ist nicht Bequemlichkeit. Eine abgelöste tmux-Session hat ein echtes Pseudo-Terminal — gemessen <code>stdin=ja stdout=ja tty=/dev/pts/0</code> —, ein gewöhnlicher Hintergrundprozess hat keines, und ohne Terminal kann Zug 0 nicht fragen. tmux ist damit das Einzige, was »abgelöst« und »fragt nach« zugleich erlaubt. Fehlt es, nennt das Skript die zwei Alternativen: in einer Shell starten, oder <code>nohup … --headless &amp;</code> ohne Rückfragen.</p>
+      <p>Du wirst am Anfang jedes Pakets gebraucht, meist ein paar Minuten — und nur dann, wenn du dich anhängst. Die lange Strecke danach läuft ohne dich. Kommt keine Frage auf, läuft ein Paket auch ohne dich durch.</p>
+      <p>Der Grund für tmux ist nicht Bequemlichkeit. Eine abgelöste tmux-Session hat ein echtes Pseudo-Terminal — gemessen <code>stdin=ja stdout=ja tty=/dev/pts/0</code> —, ein gewöhnlicher Hintergrundprozess hat keines, und ohne Terminal kann Zug 0 nicht fragen. tmux ist damit das Einzige, was »abgelöst« und »fragt nach« zugleich erlaubt. Fehlt tmux, bricht das Skript ab und der Lauf beginnt nicht — das ist die einzige Voraussetzung, die es selbst stellt.</p>
       <p>Hineinsehen geht ohne anzuhängen: <code>tmux capture-pane -p</code> zeigt das Pane, <code>remediate.log</code> das Journal, <code>remediate.pane.log</code> die ganze Ausgabe. Das Journal endet mit <code>ende exit=N</code>, sobald der Lauf durch ist — fehlt die Zeile, läuft er noch oder wartet auf eine Antwort.</p>
 
       <h3>Was jede Rolle in die Hand bekommt</h3>
@@ -1017,7 +895,7 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
           <text class="t-sub" x="475" y="326">Marke: [ ] → A → [~] → B → [x] · stirbt B, steht der Detailplan bereits</text>
         </svg>
       </div>
-      <figcaption><b>Abb. 5 · Der Schnitt im Runner.</b> Die Statusmarken des Plans kodieren die Teilung schon: <code>[ ]</code> heißt »Detailplan fehlt«, <code>[~]</code> heißt »Detailplan steht, Umsetzung läuft«. Die Schleife braucht also keine neue Zustandsvariable, sie liest die Marke und weiß, welchen der beiden Prozesse sie startet. Nebeneffekt: der Wiederaufnahmefall aus <code>resume.md</code>, »Verlauf endet nach Zug 0, sauberer Baum, nichts verloren«, wird vom Glücksfall zum Normalfall.</figcaption>
+      <figcaption><b>Abb. 4 · Der Schnitt im Runner.</b> Die Statusmarken des Plans kodieren die Teilung schon: <code>[ ]</code> heißt »Detailplan fehlt«, <code>[~]</code> heißt »Detailplan steht, Umsetzung läuft«. Die Schleife braucht also keine neue Zustandsvariable, sie liest die Marke und weiß, welchen der beiden Prozesse sie startet. Nebeneffekt: der Wiederaufnahmefall aus <code>resume.md</code>, »Verlauf endet nach Zug 0, sauberer Baum, nichts verloren«, wird vom Glücksfall zum Normalfall.</figcaption>
     </figure>
 
     <pre><code><span class="c-cmt"># Marke statt Zustandsvariable: [~] heißt »Detailplan steht«, [ ] heißt »fehlt«</span>
@@ -1068,14 +946,14 @@ first=1
       <h3>Der Plan ist eine Schnittstelle</h3>
       <p>Solange ein Modell die Datei liest, ist die Überschriftenform eine Konvention. Sobald <code>sed</code> sie liest, ist sie ein Vertrag: <code>### [Marke] &lt;Nummer&gt;. &lt;Titel&gt;</code>, die Marke genau ein Zeichen, die Nummer Ziffern mit optionalem Kleinbuchstaben. Das steht so in der <code>SKILL.md</code>; was davon abweicht, ist für die Schleife kein Paket.</p>
 
-      <h3>MCP im Subagenten bleibt unsicher</h3>
-      <p>Implementierer und Reviewer laufen als eigene Prozesse und erben damit die MCP-Konfiguration wie jede Session. Fällt ein Host darauf zurück, sie als Subagenten zu starten, gilt wieder, was <code>testing-on-mac-safari</code> festhält: dort ist ein MCP-Server in der Regel nicht exponiert. Der verlässliche Weg bleibt die CLI eines Dienstes statt seines Werkzeugs.</p>
+      <h3>MCP ist der wacklige Teil</h3>
+      <p>Implementierer und Reviewer laufen als eigene Prozesse und erben die MCP-Konfiguration wie jede Session — das ist der Grund für den Umweg. Ob ein Server dort ankommt, hängt trotzdem daran, wo er konfiguriert ist; <code>EXTRA_ARGS=&quot;--mcp-config,…&quot;</code> gibt ihn ausdrücklich mit. Der verlässlichste Weg bleibt die CLI eines Dienstes statt seines Werkzeugs.</p>
 
-      <h3>Der interaktive Modus braucht dich</h3>
-      <p>Zug 0 im Terminal heißt: ein Lauf über zwölf Pakete braucht zwölf kurze Momente deiner Aufmerksamkeit. Wer das nicht will, nimmt <code>--headless</code> und bezahlt es damit, dass aus jeder Rückfrage ein Exit 10 wird. Beides ist ein Tausch, keines ist gratis.</p>
+      <h3>Die Planung braucht dich</h3>
+      <p>Zug 0 im Terminal heißt: ein Lauf über zwölf Pakete braucht zwölf kurze Momente deiner Aufmerksamkeit. Das ist der Preis dafür, dass der Planer fragen kann, und er wird bewusst bezahlt — ein Detailplan auf halbem Verständnis kostet später mehr. Über Nacht durchlaufen kann ein Lauf nur, solange keine Frage aufkommt.</p>
 
       <h3>Portabilität</h3>
-      <p>Der Skill läuft sonst auf jedem Host mit einem Subagenten-Werkzeug. Das Skript bindet ihn an eine POSIX-Shell und an die Flags der <code>claude</code>-CLI. Deshalb bleibt der Agenten-Weg der dokumentierte Standard und das Skript der zweite Weg.</p>
+      <p>Der Skill setzt jetzt eine POSIX-Shell, tmux und die <code>claude</code>-CLI voraus. Auf einem Host ohne diese drei läuft er nicht — bewusst: ein zweiter Weg für den Ausnahmefall kostet mehr Verwirrung, als er Fälle rettet.</p>
 
       <h3>Ungeprüft</h3>
       <p>Alles, was die Schleife deterministisch prüft, ist gegen einen Stub über dreißig Fälle abgesichert. Nicht geprüft sind die drei Stellen, an denen ein Modell entscheidet: ob A nach dem Detailplan wirklich aufhört, statt den Fix gleich selbst zu machen; ob B bei Zug 1 beginnt, statt Zug 0 zu wiederholen; und ob im Plan wirklich alles steht, was B über die Prozessgrenze hinweg braucht. Dafür braucht es ein echtes Paket, keinen Stub.</p>
@@ -1084,10 +962,10 @@ first=1
 
   <div class="verdict">
     <p class="kicker">Stand</p>
-    <h2>Zwei Wege, ein Runner</h2>
-    <p>Der Agenten-Weg ist der Standard und unverändert: ein Orchestrator startet je Paket einen Runner als Subagenten. Der Skript-Weg zerlegt dieselbe Schleife in Prozesse — Planung und Abschluss bleiben Sessions, weil dort Urteile und Dialoge sitzen, die Mitte wird ein <code>while</code>, weil dort keine sitzen. Beide lesen denselben <code>runner.md</code>; kein Implementierer und kein Reviewer merkt, über welchen Weg er beauftragt wurde.</p>
-    <p>Der Gewinn ist nicht, dass die Schleife klüger wird, sondern dass sie sich nicht herausreden kann: sie pollt nicht, sie sucht keinen Kanal, und sie erklärt keinen Prozess für beendet, der noch läuft. Was der Prozess an Interaktivität kostet, holt Zug 0 zurück, indem er in deinem Terminal läuft — die eine Stelle im Lauf, an der ein Agent Dinge wissen muss, die im Code nicht stehen.</p>
-    <p>Die deterministischen Zusicherungen sind gegen einen <code>claude</code>-Stub über dreißig Fälle geprüft: Marken, Hash gegen HEAD, <code>exit=0</code> im Verify-Log, Delegationsbeleg, Rechteschranke, unlesbare Rückgabe, falsches Paket, abgestürzter Prozess, Überlast in fünf Spielarten, der interaktive Zug 0 mit und ohne Ergebnis, und acht Vorbedingungen. Was ein Modell entscheidet, prüft kein Stub — das steht unter »Grenzen«.</p>
+    <h2>Ein Weg</h2>
+    <p>Nach der Freigabe startet der Agent <code>scripts/remediate.sh</code>, ungefragt. Der Lauf hängt sich in eine abgelöste tmux-Session, plant jedes Paket im Terminal — dort kann er fragen — und führt es ohne Terminal aus. Implementierer und Reviewer sind eigene Prozesse und erreichen alles, was auf der Maschine eingestellt ist. Der Agent gibt die Startausgabe weiter und wartet auf einen Exit-Code; eine zweite Betriebsart gibt es nicht, und ohne tmux beginnt der Lauf gar nicht erst.</p>
+    <p>Der Gewinn ist nicht, dass die Schleife klüger wird, sondern dass sie sich nicht herausreden kann: sie pollt nicht, sie sucht keinen Kanal, und sie erklärt keinen Prozess für beendet, der noch läuft. Was ein Prozess an Interaktivität kostet, holt Zug 0 im Terminal zurück — die eine Stelle im Lauf, an der ein Agent Dinge wissen muss, die im Code nicht stehen.</p>
+    <p>Die deterministischen Zusicherungen sind gegen einen <code>claude</code>-Stub über 36 Fälle geprüft: Marken, Hash gegen HEAD, <code>exit=0</code> im Verify-Log, Reports von Implementierer und Reviewer, Rechteschranke, unlesbare Rückgabe, falsches Paket, abgestürzter Prozess, Überlast in fünf Spielarten, der Start über tmux mit und ohne Session, der Abbruch ohne tmux, und acht Vorbedingungen. Was ein Modell entscheidet, prüft kein Stub — das steht unter »Grenzen«.</p>
   </div>
 
 </div>
