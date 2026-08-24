@@ -39,6 +39,13 @@ ATTEMPTS=${ATTEMPTS:-3}         # Versuche je Runner, wenn die API überlastet i
 BACKOFF=${BACKOFF:-60,300,900}  # Wartezeiten dazwischen, in Sekunden
 FALLBACK_MODEL=${FALLBACK_MODEL:-}  # leer lassen: lieber warten als still schwächer werden
 
+# Werkzeuge, die einen zweiten Kanal aufmachen oder den Prozess überdauern.
+# Die Rückgabe ist der einzige Kanal, und ein Runner, der sich selbst einen
+# Weckruf legt, überlebt seinen Prozess — beides Regeln, die damit nicht mehr
+# nur im Text stehen. Namen, die es in einer Umgebung gar nicht gibt, stören
+# nicht.
+DENY_TOOLS=${DENY_TOOLS:-AskUserQuestion,SendMessage,SendUserFile,PushNotification,ScheduleWakeup,CronCreate,Artifact}
+
 ONCE=0
 DRY=0
 
@@ -79,7 +86,7 @@ Optionen:
 
 Umgebung:
   PLAN MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER
-  ATTEMPTS BACKOFF FALLBACK_MODEL
+  ATTEMPTS BACKOFF FALLBACK_MODEL DENY_TOOLS
 EOF
 }
 
@@ -240,6 +247,7 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
 
   if [ "$DRY" = 1 ]; then
     say "--- Runner $role · Paket $pkg · $model/$effort · Budget \$$BUDGET_USD"
+    say "    ohne: ${DENY_TOOLS:-—}"
     printf '%s\n\n' "$brief"
     RES=''; RAW=''
     return 0
@@ -258,6 +266,7 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
       --model "$model" \
       --effort "$effort" \
       ${FALLBACK_MODEL:+--fallback-model "$FALLBACK_MODEL"} \
+      ${DENY_TOOLS:+--disallowedTools "$DENY_TOOLS"} \
       --session-id "$(uuid)" \
       --output-format json \
       --json-schema "$SCHEMA" \

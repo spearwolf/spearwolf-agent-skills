@@ -104,6 +104,52 @@ behandelt es über die Fehlerkette; kommt es damit nicht durch, gibt es
 `blocked` zurück und die Schleife hält an. Das ist richtig so — ein halb
 umgesetztes Paket auf einer überlasteten API repariert kein Neuversuch.
 
+## Was ein Runner in die Hand bekommt
+
+Zwei verschiedene Dinge, die leicht in einen Topf geraten: **welche Werkzeuge es
+gibt** und **welche Aufrufe eine Freigabe brauchen**.
+
+**Die Werkzeugfläche** schränkt die Schleife ein. Sie entzieht jedem Runner per
+`--disallowedTools` die Werkzeuge, die einen zweiten Kanal aufmachen oder den
+Prozess überdauern würden:
+
+```
+AskUserQuestion · SendMessage · SendUserFile · PushNotification
+ScheduleWakeup · CronCreate · Artifact
+```
+
+Der Grund steht schon im Brief, aber im Text hat er sich als nicht haltbar
+erwiesen: die Rückgabe ist der einzige Kanal, und ein Runner, der sich selbst
+einen Weckruf legt, überlebt seinen Prozess — womit die Terminierung wieder eine
+Ermessensfrage wäre. `AskUserQuestion` ist der wichtigste Eintrag: in einem
+`-p`-Prozess sitzt niemand, der antworten könnte, und der vorgesehene Weg für
+»hier muss jemand entscheiden« ist der Status `question`, aus dem die Schleife
+Exit 10 macht. Über `DENY_TOOLS` lässt sich die Liste ändern.
+
+Drei Eigenschaften dieser Liste, gemessen und nicht vermutet:
+
+- Ein Name, den es in dieser Umgebung gar nicht gibt, stört nicht. Die Liste darf
+  deshalb Werkzeuge nennen, die nur mancher Host anbietet.
+- Ein entzogenes Werkzeug ist **keine** abgelehnte Berechtigung: `permission_denials`
+  bleibt leer. Eine zu strenge Liste läuft also nicht in Exit 21, sondern in einen
+  Runner, der `blocked` oder `KONTEXT_FEHLT` meldet.
+- Es ist ein Boden, kein Zaun. Eine Verbotsliste kennt nur, was es beim Schreiben
+  gab; für alles Weitere gilt weiterhin der Satz im Brief.
+
+**Die Berechtigungen** sind davon unabhängig. Die Schleife startet mit
+`--permission-mode acceptEdits`; ob daneben `git commit` und `npm test` eine
+eigene Freigabe brauchen, entscheidet die Einstellung des Hosts. Ein Prozess ohne
+Terminal kann keine Rückfrage beantworten, also wird aus einer fehlenden Freigabe
+eine Absage — und die sieht die Schleife: Exit 21, mit der Ansage, dass die
+Allowlist zu eng ist und nicht das Paket zu schwer. Wer das vorher klären will,
+nimmt `--allowedTools` in die Einstellungen auf, etwa `Bash(git *)` und
+`Bash(npm *)`.
+
+**Was in der eigenen Umgebung tatsächlich anliegt**, findet man nicht dadurch
+heraus, dass man ein Modell nach seinen Werkzeugen fragt: zwei Läufe derselben
+Frage haben hier zwei verschiedene Listen genannt. Verlässlich ist nur das
+Verhalten — einen Aufruf versuchen lassen und nachsehen, was zurückkommt.
+
 ## Deine Rolle, wenn du beauftragt wurdest
 
 Ein Paket läuft in zwei Prozessen statt in einem. Die Trennung liegt zwischen
