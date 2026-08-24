@@ -203,8 +203,8 @@ liegt die Klärungsrunde, und sie ist unangetastet.
 Runner A plant ebenfalls, aber nur ein Paket, und für ihn galt die Regel schon
 immer: `runner.md` schickt ihn bei einer Rückfrage nicht zum Nutzer, sondern in
 die Rückgabe — »hier änderst du nichts, sondern schreibst deinen Vorschlag in die
-Rückgabe und brichst ab«. Die Verbotsliste nimmt ihm also nichts, was der
-Entwurf ihm je gegeben hätte; sie macht die Regel bloß unumgehbar.
+Rückgabe und brichst ab«. Ihm wird damit nichts genommen: den Kanal hatte er
+nie, und in einem `-p`-Prozess gibt es ihn ohnehin nicht.
 
 Sein Weg ist der Status `question`. Daraus macht die Schleife Exit 10, druckt
 `for_you`, schreibt es ins Journal und hält an. Der Nutzer trägt die Antwort
@@ -222,14 +222,6 @@ Weil die Frage den Prozess überleben muss, gehört sie außerdem in den Plan.
 Terminal und Journal reichen für einen beaufsichtigten Lauf; wer über Nacht
 laufen lässt, findet am Morgen den Plan vor und nicht die Bildschirmausgabe.
 
-- Ein Name, den es in dieser Umgebung gar nicht gibt, stört nicht. Die Liste darf
-  deshalb Werkzeuge nennen, die nur mancher Host anbietet.
-- Ein entzogenes Werkzeug ist **keine** abgelehnte Berechtigung: `permission_denials`
-  bleibt leer. Eine zu strenge Liste läuft also nicht in Exit 21, sondern in einen
-  Runner, der `blocked` oder `KONTEXT_FEHLT` meldet.
-- Es ist ein Boden, kein Zaun. Eine Verbotsliste kennt nur, was es beim Schreiben
-  gab; für alles Weitere gilt weiterhin der Satz im Brief.
-
 **Die Berechtigungen** sind davon unabhängig, und hier liegt die Falle:
 `--permission-mode acceptEdits` deckt Dateiänderungen ab, **Bash aber nicht**.
 Gemessen: unter `acceptEdits` allein wurden `git add` und `git commit`
@@ -244,10 +236,8 @@ Fährt das Zielprojekt seine Verify-Kommandos anders — `make`, `cargo`, ein
 eigenes Skript —, gehört das über `ALLOW_TOOLS` ergänzt. Merkt man sonst beim
 ersten Paket, an Exit 21.
 
-`Bash(git *)` schließt Kommandos ein, die dieser Lauf nicht kennt. Sie stehen
-deshalb in der Verbotsliste, die Vorrang hat: `git push`, `git tag`,
-`npm publish` und die Geschwister. »Kein Push, kein Tag, kein Publish« aus den
-Grenzen des Laufs ist damit keine Bitte mehr.
+`Bash(git *)` schließt Kommandos ein, die dieser Lauf nicht kennt — `git push`
+und `git tag` stehen deshalb in der Verbotsliste, die Vorrang hat.
 
 ### Welcher Permission-Modus
 
