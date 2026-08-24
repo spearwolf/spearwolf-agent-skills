@@ -17,7 +17,7 @@
     },
     "status": {
       "enum": ["planned", "committed", "dropped", "blocked", "question"],
-      "description": "planned: Detailplan steht, Paket auf [~] (nur A). committed: Paket committet, auf [x] (nur B). dropped: alle Findings gegenstandslos, ohne Commit auf [x]. blocked: Paket auf [!], Arbeitsbaum im Stash. question: nichts geändert, der Nutzer entscheidet."
+      "description": "planned: Detailplan steht, Paket auf [~] (nur A). committed: Paket committet, auf [x] (nur B). dropped: alle Findings gegenstandslos, ohne Commit auf [x]. blocked: Paket auf [!], Arbeitsbaum im Stash. question: das Paket behält seine Marke und es ändert sich keine Zeile Code — die Frage selbst gehört trotzdem in den Plan, denn was dort nicht steht, gibt es nach deiner Rückgabe nicht mehr."
     },
     "hash": {
       "type": "string",

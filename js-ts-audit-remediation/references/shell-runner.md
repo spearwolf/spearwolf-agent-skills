@@ -126,7 +126,39 @@ Ermessensfrage wäre. `AskUserQuestion` ist der wichtigste Eintrag: in einem
 »hier muss jemand entscheiden« ist der Status `question`, aus dem die Schleife
 Exit 10 macht. Über `DENY_TOOLS` lässt sich die Liste ändern.
 
-Drei Eigenschaften dieser Liste, gemessen und nicht vermutet:
+### Wer darf den Nutzer noch fragen
+
+Die Liste betrifft ausschließlich die Runner, die dieses Skript startet. Der
+Agent, der Schritt 1 bis 5 fährt — Findings laden, Scope klären, Entscheidungen
+einholen, Grobplan vorlegen —, wird von der Schleife gar nicht gestartet. Er ist
+eine gewöhnliche Session und behält jedes Werkzeug, das er sonst hat. Genau dort
+liegt die Klärungsrunde, und sie ist unangetastet.
+
+Runner A plant ebenfalls, aber nur ein Paket, und für ihn galt die Regel schon
+immer: `runner.md` schickt ihn bei einer Rückfrage nicht zum Nutzer, sondern in
+die Rückgabe — »hier änderst du nichts, sondern schreibst deinen Vorschlag in die
+Rückgabe und brichst ab«. Die Verbotsliste nimmt ihm also nichts, was der
+Entwurf ihm je gegeben hätte; sie macht die Regel bloß unumgehbar.
+
+Sein Weg ist der Status `question`. Daraus macht die Schleife Exit 10, druckt
+`for_you`, schreibt es ins Journal und hält an. Der Nutzer trägt die Antwort
+datiert in »Entscheidungen« ein, startet das Skript neu, und ein frischer A
+beginnt das Paket mit der Antwort im Rücken.
+
+Das ist nicht nur ein Ersatz, sondern der bessere Weg: eine Antwort im Dialog
+lebte im Kontext eines Prozesses, der ohnehin endet. Eine Zeile in
+»Entscheidungen« überlebt den Lauf und verhindert, dass ein späteres Paket
+dieselbe Frage noch einmal aufwirft. Der Preis ist ein neuer Zug 0 für dieses
+eine Paket — derselbe Preis wie auf dem Agenten-Weg, und Zug 0 ändert keine
+Zeile Code.
+
+Weil die Frage den Prozess überleben muss, gehört sie außerdem in den Plan.
+Terminal und Journal reichen für einen beaufsichtigten Lauf; wer über Nacht
+laufen lässt, findet am Morgen den Plan vor und nicht die Bildschirmausgabe.
+
+### Drei Eigenschaften der Verbotsliste
+
+Gemessen und nicht vermutet:
 
 - Ein Name, den es in dieser Umgebung gar nicht gibt, stört nicht. Die Liste darf
   deshalb Werkzeuge nennen, die nur mancher Host anbietet.

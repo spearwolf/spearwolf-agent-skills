@@ -341,13 +341,18 @@ field() { jq -r "(.$1 // \"\")" <<<"$RES"; }
 # --- Vorlegen und anhalten --------------------------------------------------
 
 hand_over() { # $1 = Rolle, $2 = Paketnummer, $3 = Status
+  local frage
+  frage=$(field for_you)
   say ""
   say "Paket $2 · Runner $1 · $3"
-  say "$(field for_you)"
-  journal "paket=$2 rolle=$1 status=$3 -> Nutzer"
+  say "$frage"
+  # Die Frage gehört ins Journal und nicht nur ins Terminal: bei einem Lauf,
+  # den niemand ansieht, ist das Terminal am nächsten Morgen weg.
+  journal "paket=$2 rolle=$1 status=$3 -> Nutzer: $frage"
   say ""
   say "Die Schleife hält an. Antwort datiert in »Entscheidungen« im Plan eintragen,"
   say "dann dieses Skript erneut starten."
+  say "Wortlaut nachlesbar in $RAW und $WORK/remediate.log."
   exit $EX_ASK
 }
 
