@@ -56,6 +56,12 @@ zu hängen. Die Züge 1–5 laufen mit `--name "<session>-p<N>-lauf"`; sie sind
 nicht interaktiv, aber auffindbar. Der Sessionname kommt aus `SESSION`, sonst aus
 dem Projektverzeichnis.
 
+**Die Fehlerkette hat eine Obergrenze:** `MAX_ROUNDS`, voreingestellt fünf. Der
+Wert steht im Brief an Zug 1–5, und die Schleife prüft ihn beim Commit nach.
+Er ist aber nicht die eigentliche Bremse — die steht in `runner.md`: eine Runde,
+die die Zahl der offenen Befunde nicht senkt, ist die letzte. Fünf Runden sind
+eine Erlaubnis, kein Auftrag.
+
 Zwei Argumente gibt es, beide für den Ausnahmefall: `--once` hält nach dem
 ersten vollständigen Paket an, `--dry-run` zeigt im Vordergrund, was beauftragt
 würde, und startet nichts. `SESSION` benennt die tmux-Session anders als nach
@@ -362,6 +368,8 @@ sind. Fällt eine dieser Proben, endet der Lauf mit Exit 20:
   deinem Start bewegt.
 - Bei `committed`: die Datei aus `verify_log` liegt im Arbeitsverzeichnis und
   enthält die Zeile `exit=0`.
+- Bei `committed`: `rounds` liegt nicht über `MAX_ROUNDS`, und es gibt nicht
+  mehr Implementierer-Reports als erlaubte Runden.
 - Bei `committed`: im Arbeitsverzeichnis liegt je ein Report von Implementierer
   und Reviewer. Ein Runner schreibt keinen Projektcode selbst, und das wird
   belegt, nicht geglaubt.

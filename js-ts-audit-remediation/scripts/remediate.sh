@@ -39,6 +39,7 @@ EFFORT_B=${EFFORT_B:-medium}   # nur der Vorgabewert; »- Effort:« im Detailpla
 PERM=${PERM:-acceptEdits}
 BUDGET_USD=${BUDGET_USD:-15}    # harte Obergrenze je Runner-Prozess
 MAX_ITER=${MAX_ITER:-200}       # Reißleine gegen eine Schleife ohne Fortschritt
+MAX_ROUNDS=${MAX_ROUNDS:-5}     # Obergrenze der Fehlerkette je Paket
 ATTEMPTS=${ATTEMPTS:-3}         # Versuche je Runner, wenn die API überlastet ist
 BACKOFF=${BACKOFF:-60,300,900}  # Wartezeiten dazwischen, in Sekunden
 FALLBACK_MODEL=${FALLBACK_MODEL:-}  # leer lassen: lieber warten als still schwächer werden
@@ -107,7 +108,7 @@ Optionen:
   --help      diese Ausgabe.
 
 Umgebung:
-  PLAN MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER
+  PLAN MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER MAX_ROUNDS
   ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS
   SESSION TMUX_BIN
 EOF
@@ -229,7 +230,8 @@ launch_tmux() { # $@ = die Argumente, mit denen der Lauf drinnen starten soll
   cmd="env"
   cmd="$cmd REMEDIATE_INSIDE=1"
   for v in PLAN SESSION MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD \
-           MAX_ITER ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS; do
+           MAX_ITER MAX_ROUNDS ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS \
+           DENY_TOOLS EXTRA_ARGS; do
     eval "[ -n \"\${$v:-}\" ]" && cmd="$cmd $v=$(eval printf '%q' "\"\$$v\"")"
   done
   cmd="$cmd $(printf '%q' "$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")")"
@@ -310,7 +312,8 @@ brief_for() { # $1 = Rolle, $2 = Paketnummer
 
   case "$role" in
     A) scope="Du bist A: du führst Zug 0 aus — Abgleich, Triage der offenen Befunde, Detailplan, Restplan prüfen. Danach hörst du auf. Du änderst keine Zeile Projektcode und startest keinen Implementierer." ;;
-    B) scope="Du bist B: Zug 0 ist erledigt, dein Detailplan steht im Plan unter deinem Paket. Du beginnst bei Zug 1 und endest mit dem Commit aus Zug 5. Du machst Zug 0 nicht noch einmal." ;;
+    B) scope="Du bist B: Zug 0 ist erledigt, dein Detailplan steht im Plan unter deinem Paket. Du beginnst bei Zug 1 und endest mit dem Commit aus Zug 5. Du machst Zug 0 nicht noch einmal.
+Die Fehlerkette in Zug 4 hat höchstens $MAX_ROUNDS Runden. Eine Runde, die die Zahl der offenen Befunde nicht senkt, ist die letzte — dann blockieren und berichten." ;;
   esac
 
   cat <<EOF
@@ -525,6 +528,15 @@ check_commit() { # $1 = Paketnummer, $2 = HEAD vor dem Runner
   if [ "$impl" -lt 1 ] || [ "$rev" -lt 1 ]; then
     die $EX_CONTRACT "Paket $1 wurde ohne Beleg für Implementierer und Reviewer committet: $impl Report(s), $rev Review(s) im Arbeitsverzeichnis. Ein Runner schreibt keinen Projektcode selbst."
   fi
+
+  # Die Obergrenze der Fehlerkette. Eine Kette, die länger läuft, hat ein
+  # anderes Problem als das, das sie behebt.
+  local runden
+  runden=$(jq -r '(.rounds // 0)' <<<"$RES")
+  [ "$runden" -le "$MAX_ROUNDS" ] || die $EX_CONTRACT \
+    "Paket $1 meldet $runden Runden, erlaubt sind $MAX_ROUNDS"
+  [ "$impl" -le "$MAX_ROUNDS" ] || die $EX_CONTRACT \
+    "Paket $1 hat $impl Implementierer-Reports bei $MAX_ROUNDS erlaubten Runden"
 
   local left
   left=$(dirty_paths)
