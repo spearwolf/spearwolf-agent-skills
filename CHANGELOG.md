@@ -2,6 +2,18 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-08-24
+
+### Hinzugefügt
+- **`js-ts-audit-remediation` bekommt einen zweiten Weg durch Schritt 6: `scripts/remediate.sh`.** Die Schleife läuft als Prozess statt als Agent — sie liest die Marken im Plan, startet je Paket zwei Runner über `claude -p` und prüft deren Rückgabe gegen `git` und das Verify-Log. Für den Nutzer heißt das: der Orchestrator muss nicht mehr über alle Pakete wach bleiben, und ein Paket ist fertig, wenn ein Prozess endet, statt wenn ein Agent das annimmt. Genau daran ist im Testlauf vom 2026-08-23 ein Lauf stehengeblieben. Schritt 1–5 und Schritt 7 bleiben Agentenarbeit, und der Agenten-Weg bleibt der Standard.
+- **Im Skript-Weg läuft ein Paket in zwei Prozessen: A führt Zug 0 aus, B die Züge 1 bis 5.** Das trennt die teure Planung von der Ausführung, macht Modell und Effort je Hälfte einstellbar, und vor allem: es macht die Mitte eines Pakets sichtbar. Stirbt ein einzelner Runner in Zug 3, weiß niemand, ob Zug 0 stattgefunden hat; mit der Teilung sagt es die Marke im Plan. `references/shell-runner.md` beschreibt Rollen, Exit-Codes und die Modell/Effort-Tabelle und wird nur auf diesem Weg gelesen.
+- **`assets/runner-return.schema.json` — die neun Zeilen der Rückgabe als Schema.** Die CLI validiert sie beim Zurückgeben, womit »Rückgabe unlesbar« kein Fall mehr ist, den irgendjemand behandeln müsste. Das Ergebnis-JSON liefert nebenbei die Zahl der gestarteten Subagenten: dass ein Runner delegiert hat statt selbst zu schreiben, wird auf diesem Weg gezählt und nicht geglaubt.
+
+### Geändert
+- **Der Exit-Code eines Verify-Laufs geht in die Logdatei, nicht nur ins Terminal.** Betrifft die Baseline in Schritt 2 und jedes Paket in Zug 5. Er war bisher der einzige Teil des Laufs, den nach dem Ende des Runners niemand mehr nachsehen konnte — für eine Gegenprobe, die kein Agent ist, gab es damit nichts zu prüfen.
+- **Die Paketüberschrift im Plan ist ein Format:** `### [Marke] <Nummer>. <Titel>`. Solange ein Modell die Datei liest, ist das eine Konvention; sobald `sed` sie liest, ein Vertrag. Abweichungen sind für den Skript-Weg schlicht kein Paket.
+- **Die Freigabe in Schritt 5 nennt den Weg mit.** Läuft Schritt 6 als Skript, arbeiten die Runner ohne Rückfrage am Terminal, mit den Rechten ihres Permission-Modus. Das ist ein Tausch, und er wird angesagt statt vorausgesetzt.
+
 ## 2026-08-23
 
 ### Hinzugefügt

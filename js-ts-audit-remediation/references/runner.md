@@ -404,9 +404,13 @@ wandert und der Orchestrator sie trotzdem nachlesen kann:
 
 ```bash
 set -o pipefail
-<verify-kommando> > "$ARBEITSDIR/paket-N.verify.log" 2>&1; echo "exit=$?"
+<verify-kommando> > "$ARBEITSDIR/paket-N.verify.log" 2>&1; echo "exit=$?" | tee -a "$ARBEITSDIR/paket-N.verify.log"
 tail -n 15 "$ARBEITSDIR/paket-N.verify.log"
 ```
+
+Der Exit-Code geht in dieselbe Datei und nicht nur ins Terminal. Er ist der eine
+Teil deines Verify-Laufs, den danach niemand mehr nachsehen kann, wenn er nur
+dort steht.
 
 Gegen die Baseline im Kopf des Plans halten: was dort schon rot war, blockiert
 nicht. Alles Neue schon. Bei einem grünen Lauf reicht der Tail; bei einem roten
@@ -485,6 +489,8 @@ Im Zweifel Folge — die Fehleinordnung nach oben kostet einen Blick in
 
 Genau dieses Format, keine Prosa daneben. Er sieht von deinem ganzen Paket nur
 diese Zeilen, und jede zusätzliche kostet ihn Kontext für alle folgenden Pakete.
+Nennt dein Auftrag stattdessen ein Rückgabeschema, gilt dieses — die Felder sind
+dieselben.
 
 ```
 Paket: 3

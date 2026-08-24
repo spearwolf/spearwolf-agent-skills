@@ -26,6 +26,7 @@ entsteht im Runner, gegen den Code, der dann tatsächlich dasteht.
 | --- | --- |
 | `references/resume.md` | vor Schritt 1 — nur wenn schon ein `./remediation-plan.md` existiert |
 | `references/runner.md` | **nie von dir.** Du gibst dem Runner in Schritt 6 nur den Pfad |
+| `references/shell-runner.md` | Schritt 6 — nur wenn die Schleife als Skript laufen soll |
 | `references/semver-and-closeout.md` | Schritt 7 — nach dem letzten Paket |
 | `references/audit-report-update.md` | Schritt 7 — nur wenn eine `./audit.html` im Projekt liegt |
 
@@ -101,7 +102,7 @@ lesen:
 
 ```bash
 set -o pipefail
-<kommando> > "$ARBEITSDIR/baseline-<name>.log" 2>&1; echo "exit=$?"
+<kommando> > "$ARBEITSDIR/baseline-<name>.log" 2>&1; echo "exit=$?" | tee -a "$ARBEITSDIR/baseline-<name>.log"
 tail -n 15 "$ARBEITSDIR/baseline-<name>.log"
 ```
 
@@ -304,6 +305,11 @@ Modulgrenze aus Paket 2 —, denn genau daran entscheidet sich später, was
 umgestellt werden darf und was nicht. Steht dort nichts, ist das Paket
 verschiebbar.
 
+Die Überschrift eines Pakets ist ein Format und keine Formulierung:
+`### [Marke] <Nummer>. <Titel>`, die Marke genau ein Zeichen, die Nummer Ziffern
+mit optionalem Kleinbuchstaben. Der Skript-Weg aus Schritt 6 liest die Marken mit
+`sed`; was von dieser Form abweicht, ist für ihn kein Paket.
+
 Der Absatz mit Einstieg und Statuslegende steht wörtlich so in der Datei und
 wird nicht als Redundanz zum Skill-Text weggekürzt. Er ist der Grund, warum
 jemand die Datei einordnen kann, der sie als Erstes findet und nicht diesen
@@ -328,6 +334,10 @@ Audit — vorgelegt wird beides, vor dem Abschluss, in einer Runde. Freigegeben
 werden Paketschnitt und Reihenfolge.
 Ohne diese Freigabe beginnt die Umsetzung nicht.
 
+Läuft Schritt 6 als Skript, gehört das in dieselbe Ansage: die Runner laufen dann
+ohne Rückfrage am Terminal, mit den Rechten, die ihr Permission-Modus ihnen gibt.
+Das ist ein Tausch, und er wird genannt, nicht vorausgesetzt.
+
 Im selben Aufwasch der Verbleib des Plans, als Ansage statt als Frage: »am Ende
 nimmt ein Commit `./remediation-plan.md` mit ins Repo — sag Bescheid, wenn er
 stattdessen ungetrackt bleiben soll«. Ohne Widerspruch wird committet;
@@ -341,6 +351,13 @@ kann.
 Für jedes offene Paket, in der Reihenfolge des Plans, genau ein Runner. Nie
 zwei gleichzeitig: sie teilen sich einen Arbeitsbaum, und der Konflikt kostet
 mehr als die gesparte Zeit.
+
+**Diese Schleife lässt sich auch als Prozess fahren, statt sie selbst zu drehen.**
+`scripts/remediate.sh` liest die Marken im Plan, startet je Paket zwei Runner und
+prüft ihre Rückgabe gegen `git` und das Verify-Log. Das ist der zweite Weg, nicht
+der erste: er kommt in Frage, wenn der Lauf viele Pakete hat oder der Nutzer ihn
+nennt. Dann `references/shell-runner.md` lesen, sonst nicht — der Rest dieses
+Schritts beschreibt den Agenten-Weg und gilt unverändert.
 
 **Dispatch.** Der Prompt ist kurz und besteht aus Pfaden, nicht aus Inhalten:
 

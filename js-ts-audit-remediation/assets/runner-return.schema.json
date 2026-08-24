@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rückgabe eines Paket-Runners",
+  "description": "Das Rückgabeformat aus references/runner.md als Schema. Wird von scripts/remediate.sh über --json-schema erzwungen, damit die Schleife die Rückgabe nicht aus Prosa lesen muss. Die Statuswerte sind englisch, weil sie in einer Shell-case-Verzweigung landen; references/shell-runner.md nennt die Zuordnung zu den Marken im Plan.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["package", "role", "status", "plan_changes", "queue", "for_you"],
+  "properties": {
+    "package": {
+      "type": "string",
+      "pattern": "^[0-9]+[a-z]?$",
+      "description": "Die Paketnummer, wie sie im Plan steht. Nie neu vergeben, auch nicht bei einer Teilung: 3a bleibt 3a."
+    },
+    "role": {
+      "enum": ["A", "B"],
+      "description": "A hat Zug 0 ausgeführt, B die Züge 1 bis 5."
+    },
+    "status": {
+      "enum": ["planned", "committed", "dropped", "blocked", "question"],
+      "description": "planned: Detailplan steht, Paket auf [~] (nur A). committed: Paket committet, auf [x] (nur B). dropped: alle Findings gegenstandslos, ohne Commit auf [x]. blocked: Paket auf [!], Arbeitsbaum im Stash. question: nichts geändert, der Nutzer entscheidet."
+    },
+    "hash": {
+      "type": "string",
+      "description": "Bei status=committed der Commit-Hash, der auch unter dem Paket im Plan steht. Sonst leer. Die Schleife hält ihn gegen HEAD."
+    },
+    "stash": {
+      "type": "string",
+      "description": "Bei status=blocked der Name des Stash, sonst leer."
+    },
+    "findings": {
+      "type": "string",
+      "description": "Eine Zeile: welche Finding-ID behoben, verschoben oder gegenstandslos ist."
+    },
+    "verify_log": {
+      "type": "string",
+      "description": "Absoluter Pfad der Verify-Logdatei im Arbeitsverzeichnis. Bei status=committed Pflicht: die Schleife liest dort die Zeile exit=0."
+    },
+    "verify_exit": {
+      "type": "integer",
+      "description": "Exit-Code des Verify-Laufs. Muss zu der Zeile im Log passen."
+    },
+    "rounds": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Anzahl der Runden in der Fehlerkette. 1 heißt: der erste Anlauf saß."
+    },
+    "plan_changes": {
+      "type": "string",
+      "description": "Was sich am Restplan bewegt hat: neue Pakete, Teilungen, Umsortierungen. Ein Strich, wenn nichts."
+    },
+    "queue": {
+      "type": "string",
+      "description": "Was in »Offene Befunde« dazukam, mit der Verteilung auf die Urteile. Ein Strich, wenn nichts."
+    },
+    "for_you": {
+      "type": "string",
+      "description": "Nur bei status=question oder blocked gefüllt: was der Nutzer entscheiden soll, je mit deinem Vorschlag. Sonst ein Strich. Das ist das einzige Feld, das lang werden darf."
+    }
+  }
+}

@@ -27,7 +27,7 @@ Jede Zeile Ausgabe heißt: fällig.
 | `install-drift.md` | `global-behavior/INSTALL.md` | unbekannt (vor Einführung dieser Datei) | — |
 | `audit-followup.md` | `js-ts-project-audit/` | unbekannt (vor Einführung dieser Datei) | **fällig** — am 2026-08-07 kamen Domain-Trennung und responsives Layout dazu, am 2026-08-13 volle Desktop-Breite, Sektions-Faltung und Farbdisziplin, am 2026-08-22 das mitgeführte Feld `github` samt Rendering, alles ungetestet |
 | `es-frequency.md` | Abschnitt `## ES` in `global-behavior/CLAUDE.md` | unbekannt (vor Einführung dieser Datei) | **fällig** — Regel und Test am 2026-07-26 neu geschrieben und am 2026-07-29 erneut umgebaut, beides ungetestet |
-| `remediation-plan.md` | `js-ts-audit-remediation/` | 2026-08-23, unkommittierte Scope-Regel | **bestanden nach einer Korrektur** — Arm B 6/6 (Scope-Regel entsteht und ist auf Unbekanntes anwendbar), Arm A 7/9 + A6b (Köder trägt `→ Scope` und bleibt trotzdem liegen), Arm C im ersten Lauf **C3 gefallen**: der Abschluss legte korrekt vor und startete im selben Zug einen Runner für den `→ Scope`-Eintrag (»→ Scope, läuft als Paket 3«). Gegenregel »Vorlegen heißt anhalten« in `semver-and-closeout.md`, danach Arm C 5/5 — bestätigt auf frischer Sandbox mit eigener Historie, weil der gefallene erste Lauf im Hintergrund weiterarbeitete und die alte Sandbox nachträglich verändert hat. Offen aus Arm A, nicht von dieser Änderung verursacht und ungeprüft: `Schnittstellen:` fehlte unter Paket 1, obwohl `add`/`remove` async wurden (A8), und der Queue-Eintrag nannte Symbol statt Zeilennummer (A6). Arm E 6/6 — Terminierung hält auch mit einem Paket, das erst in der Drain-Runde entsteht; Widerspruch im `→ Scope`-Block greift (Eintrag wanderte nach `→ Audit` und steht als neues Finding im Report). Dabei aufgefallen und danach abgestellt: Agenten dieses Laufs suchten einen Nachrichtenkanal neben der Rückgabe, einmal bis zum Stillstand — Gegenregel in `SKILL.md` (Schritt 6) und `runner.md` (Zug 1/3), selbst ungetestet |
+| `remediation-plan.md` | `js-ts-audit-remediation/` | 2026-08-23, unkommittierte Scope-Regel | **fällig** — am 2026-08-24 kam der Skript-Weg dazu (`scripts/remediate.sh`, `references/shell-runner.md`, Rückgabeschema, Teilung in A und B), kein Arm deckt ihn ab. Davor: **bestanden nach einer Korrektur** — Arm B 6/6 (Scope-Regel entsteht und ist auf Unbekanntes anwendbar), Arm A 7/9 + A6b (Köder trägt `→ Scope` und bleibt trotzdem liegen), Arm C im ersten Lauf **C3 gefallen**: der Abschluss legte korrekt vor und startete im selben Zug einen Runner für den `→ Scope`-Eintrag (»→ Scope, läuft als Paket 3«). Gegenregel »Vorlegen heißt anhalten« in `semver-and-closeout.md`, danach Arm C 5/5 — bestätigt auf frischer Sandbox mit eigener Historie, weil der gefallene erste Lauf im Hintergrund weiterarbeitete und die alte Sandbox nachträglich verändert hat. Offen aus Arm A, nicht von dieser Änderung verursacht und ungeprüft: `Schnittstellen:` fehlte unter Paket 1, obwohl `add`/`remove` async wurden (A8), und der Queue-Eintrag nannte Symbol statt Zeilennummer (A6). Arm E 6/6 — Terminierung hält auch mit einem Paket, das erst in der Drain-Runde entsteht; Widerspruch im `→ Scope`-Block greift (Eintrag wanderte nach `→ Audit` und steht als neues Finding im Report). Dabei aufgefallen und danach abgestellt: Agenten dieses Laufs suchten einen Nachrichtenkanal neben der Rückgabe, einmal bis zum Stillstand — Gegenregel in `SKILL.md` (Schritt 6) und `runner.md` (Zug 1/3), selbst ungetestet |
 | — | `audit-github-sync/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-22 angelegt |
 | — | `testing-on-mac-safari/` | **Test existiert nicht** | kein Szenario-Test. Die Ad-hoc-Prüfung vom 2026-07-30 ist durch den seitherigen Ausbau überholt |
 
@@ -144,6 +144,24 @@ Läufe geändert. Praktisch heißt das: fällig, sobald es jemandem wichtig ist.
   überlebt er bis Schritt 7, und legt die Drain-Runde ihn dem Nutzer vor, statt
   ihn mit »geht ins nächste Audit« abzuräumen? Der alte Ausgang steht im Skill
   nicht mehr, aber er ist die naheliegendste Rationalisierung.
+  Am 2026-08-24 kam der Skript-Weg dazu, und mit ihm die Teilung eines Pakets
+  in zwei Prozesse. Was die Schleife selbst prüft — Marke gewandert, Hash gleich
+  `HEAD`, `exit=0` im Log, mindestens zwei Subagenten, Rechteschranke sauber —
+  ist deterministisch und am 2026-08-24 mit einem `claude`-Stub über fünfzehn
+  Fälle geprüft worden; das braucht keinen Agenten und gehört nicht in einen
+  Szenario-Test. Zu prüfen bleiben die drei Stellen, an denen ein Modell
+  entscheidet. Erstens: hält A an? A hat gerade den Detailplan geschrieben, der
+  Fix steht ihm klar vor Augen, und niemand außer der Instruktion hindert ihn
+  daran, ihn gleich selbst zu machen — die Schleife merkt das erst, wenn B
+  später mit zu wenigen Subagenten zurückkommt, und dann ist der Code schon da.
+  Zweitens: beginnt B wirklich bei Zug 1, oder gleicht es die Findings noch
+  einmal ab, weil `runner.md` mit Zug 0 anfängt? Der Fehler kostet nur einen
+  Zug, aber er hebt die Ersparnis der Teilung auf. Drittens die Naht selbst:
+  steht im Plan alles, was B braucht? Zwischen A und B liegt ein
+  Prozesswechsel, über den nichts als die Datei geht — das ist dieselbe Frage
+  wie beim Kontextverfall eines Runners, nur dass sie hier mitten im Paket
+  gestellt wird und nicht an seinem Ende.
+
 - Der erste Lauf von `remediation-plan.md` am 2026-08-23 hat die
   Architektur-Prüfpunkte bestätigt: der Runner delegiert wirklich, sein
   Rückgabeformat hält, `runner.md` wird vom Orchestrator nie gelesen, und die
