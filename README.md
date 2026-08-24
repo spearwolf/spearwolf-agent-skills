@@ -20,7 +20,10 @@ chaotisch, gelegentlich gefährlich, und der Bibliothekar sagt zu allem nur
     Findings aus so einem Audit ab: Umsetzungsplan nach
     `./remediation-plan.md`, ein eigener Runner-Agent pro Paket, der
     Implementierung und Review selbst delegiert und zehn Zeilen zurückgibt,
-    ein Commit pro Paket, am Ende die Semver-Bewertung.
+    ein Commit pro Paket, am Ende die Semver-Bewertung. Wahlweise fährt
+    `scripts/remediate.sh` dieselbe Schleife als Prozess; wie das aussieht,
+    zeigt [`runner-topologie.html`](./js-ts-audit-remediation/runner-topologie.html)
+    — im Browser öffnen, es ist eigenständig.
   - [`audit-github-sync`](./audit-github-sync/) — gleicht das Backlog aus
     so einem Audit mit den Issues eines GitHub-Repos ab, in beide Richtungen:
     Findings werden zu englischen, für sich stehenden Issues mit Labels, und

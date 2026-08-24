@@ -28,6 +28,13 @@ EX_PRE=40      # eine Vorbedingung stimmt nicht
 
 # --- Stellschrauben, alle über die Umgebung überschreibbar ------------------
 PLAN=${PLAN:-./remediation-plan.md}
+
+# Wie Zug 0 läuft. »interactive«: das Skript übergibt dir das Terminal, der
+# Planer hat deine Werkzeuge, deine MCP-Server und kann dich fragen. Das ist
+# die Voreinstellung, weil ein Planer, der nicht nachfragen kann, gegen einen
+# Code-Stand plant, den er nur zur Hälfte versteht. »headless«: Zug 0 läuft
+# ohne Terminal durch; eine Rückfrage wird dann zu Exit 10.
+PLAN_MODE=${PLAN_MODE:-interactive}
 MODEL_A=${MODEL_A:-opus}        # Zug 0: Abgleich, Triage, Detailplan
 EFFORT_A=${EFFORT_A:-xhigh}
 MODEL_B=${MODEL_B:-opus}        # Zug 1-5: beauftragen, prüfen, verifizieren, committen
@@ -43,7 +50,7 @@ FALLBACK_MODEL=${FALLBACK_MODEL:-}  # leer lassen: lieber warten als still schw�
 # ab, Bash aber nicht: ohne diese Liste wird »git add« abgefragt, und ein
 # Prozess ohne Terminal kann nicht antworten. Die Verify-Kommandos des Projekts
 # gehören hier ergänzt, wenn es nicht npm, pnpm oder yarn ist.
-ALLOW_TOOLS=${ALLOW_TOOLS:-Bash(git *),Bash(npm *),Bash(pnpm *),Bash(yarn *),Bash(node *)}
+ALLOW_TOOLS=${ALLOW_TOOLS:-Bash(git *),Bash(npm *),Bash(pnpm *),Bash(yarn *),Bash(node *),Bash(claude *)}
 
 # Was ein Runner nicht bekommt, und zwar nur zweierlei. Erstens Werkzeuge, mit
 # denen ein Prozess auf eine Antwort warten oder sich selbst überleben kann:
@@ -95,11 +102,12 @@ usage() {
 
 Optionen:
   --once      nach dem ersten Runner anhalten. Für den ersten Probelauf.
+  --headless  Zug 0 ohne Terminal fahren (wie PLAN_MODE=headless).
   --dry-run   nur zeigen, was beauftragt würde. Startet keinen Prozess.
   --help      diese Ausgabe.
 
 Umgebung:
-  PLAN MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER
+  PLAN PLAN_MODE MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER
   ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS
 EOF
 }
@@ -155,6 +163,14 @@ tool_args() { # füllt TOOL_ARGS; die Muster enthalten Leerzeichen und dürfen
     TOOL_ARGS[${#TOOL_ARGS[@]}]=--disallowedTools
     IFS=','; for t in $DENY_TOOLS; do TOOL_ARGS[${#TOOL_ARGS[@]}]=$t; done; IFS=$old
   fi
+  if [ -n "$EXTRA_ARGS" ]; then
+    IFS=','; for t in $EXTRA_ARGS; do TOOL_ARGS[${#TOOL_ARGS[@]}]=$t; done; IFS=$old
+  fi
+}
+
+tool_args_interactive() { # für Zug 0 im Terminal: nichts entziehen, nichts erlauben
+  local t old=$IFS                                  # — das entscheidet der Nutzer
+  TOOL_ARGS=()
   if [ -n "$EXTRA_ARGS" ]; then
     IFS=','; for t in $EXTRA_ARGS; do TOOL_ARGS[${#TOOL_ARGS[@]}]=$t; done; IFS=$old
   fi
@@ -230,6 +246,13 @@ preflight() {
     trap 'rmdir "$WORK/.remediate.lock" 2>/dev/null || true' EXIT
   fi
 
+  if [ "$PLAN_MODE" = interactive ] && [ "$DRY" = 0 ]; then
+    if [ ! -t 0 ] || [ ! -t 1 ]; then
+      die $EX_PRE "$(printf 'Zug 0 läuft interaktiv und braucht ein Terminal, hier ist keines.\n%s' \
+        'Entweder das Skript in einer Shell starten, oder PLAN_MODE=headless setzen — dann wird aus einer Rückfrage Exit 10.')"
+    fi
+  fi
+
   [ "$(count_with_marker '.')" != "0" ] || die $EX_PRE "der Plan enthält kein einziges Paket"
 }
 
@@ -264,6 +287,36 @@ EOF
 }
 
 # --- Ein Runner -------------------------------------------------------------
+
+dispatch_interactive() { # $1 = Paketnummer; übergibt das Terminal an Zug 0
+  local pkg=$1 brief rc=0
+  brief=$(brief_for A "$pkg")
+  tool_args_interactive
+
+  if [ "$DRY" = 1 ]; then
+    say "--- Runner A · Paket $pkg · $MODEL_A/$EFFORT_A · interaktiv, dein Terminal"
+    printf '%s\n\n' "$brief"
+    return 0
+  fi
+
+  say "→ Runner A · Paket $pkg · $MODEL_A/$EFFORT_A · interaktiv"
+  say "─────────────────────────────────────────────────────────────"
+  # Kein -p, kein Schema, keine Verbotsliste: das hier ist deine Session.
+  # Der Planer hat, was du eingestellt hast, und kann dich fragen.
+  claude "$brief" \
+    --model "$MODEL_A" \
+    --effort "$EFFORT_A" \
+    ${TOOL_ARGS[@]+"${TOOL_ARGS[@]}"} || rc=$?
+  say "─────────────────────────────────────────────────────────────"
+
+  [ "$rc" -eq 0 ] || warn "die Planungs-Session endete mit Exit $rc — der Plan entscheidet"
+
+  # Es gibt keine Rückgabe zum Parsen. Der Plan trägt den Stand, und die Marke
+  # sagt, was passiert ist. Das ist keine Notlösung: die Marke ist ohnehin die
+  # Wahrheit, die Rückgabe war immer nur ihre Behauptung.
+  RES=''; RAW="$PLAN"
+  return 0
+}
 
 dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
   local role=$1 pkg=$2 model effort brief rc cost denials
@@ -399,14 +452,24 @@ check_commit() { # $1 = Paketnummer, $2 = HEAD vor dem Runner
   grep -q '^exit=0$' "$vlog" \
     || die $EX_CONTRACT "in $vlog steht keine Zeile 'exit=0'. Committet wird nur ein grüner Lauf, und belegt wird er dort."
 
-  # Wer committet, hat delegiert: Implementierer und Reviewer sind je ein
-  # Subagent. Das ist gezählt worden, nicht behauptet.
-  local spawned
+  # Wer committet, hat delegiert. Beide Wege zählen: eigene Prozesse hinterlassen
+  # ihre Reports als Dateien, Subagenten werden im Ergebnis-JSON mitgezählt.
+  # Belegt sein muss es, gleich wodurch.
+  local impl rev spawned
+  # find statt ls: ein leerer Glob lässt ls scheitern und reißt unter
+  # pipefail den ganzen Aufruf mit.
+  impl=$(find "$WORK" -maxdepth 1 -name "paket-$1.impl-*.json" 2>/dev/null | wc -l | tr -d ' ')
+  rev=$(find "$WORK" -maxdepth 1 -name "paket-$1.review-*.json" 2>/dev/null | wc -l | tr -d ' ')
   spawned=$(jq -r '(.subagent_stats.spawned // "-")' "$RAW")
-  if [ "$spawned" = "-" ]; then
-    warn "diese CLI meldet keine subagent_stats — die Delegationsprüfung entfällt für Paket $1"
-  elif [ "$spawned" -lt 2 ]; then
-    die $EX_CONTRACT "Paket $1 wurde mit $spawned Subagenten committet. Implementierer und Reviewer sind zwei, und ein Runner schreibt keinen Projektcode selbst."
+
+  if [ "$impl" -ge 1 ] && [ "$rev" -ge 1 ]; then
+    :   # Prozess-Weg: Reports liegen auf der Platte
+  elif [ "$spawned" != "-" ] && [ "$spawned" -ge 2 ]; then
+    :   # Subagenten-Weg: gezählt
+  elif [ "$spawned" = "-" ]; then
+    warn "Paket $1: weder Reports im Arbeitsverzeichnis noch subagent_stats — die Delegationsprüfung entfällt"
+  else
+    die $EX_CONTRACT "Paket $1 wurde ohne Beleg für Implementierer und Reviewer committet: $impl Report(s), $rev Review(s), $spawned Subagent(en). Ein Runner schreibt keinen Projektcode selbst."
   fi
 
   local left
@@ -418,6 +481,10 @@ check_commit() { # $1 = Paketnummer, $2 = HEAD vor dem Runner
 
 run_a() { # $1 = Paketnummer
   local status
+  if [ "$PLAN_MODE" = interactive ]; then
+    run_a_interactive "$1"
+    return
+  fi
   dispatch A "$1"
   status=$(field status)
   case "$status" in
@@ -437,6 +504,37 @@ run_a() { # $1 = Paketnummer
       ;;
     *)
       die $EX_CONTRACT "Runner A für Paket $1 gibt Status '$status' zurück, den es für A nicht gibt"
+      ;;
+  esac
+}
+
+run_a_interactive() { # $1 = Paketnummer; nach dem Terminal entscheidet die Marke
+  local m
+  dispatch_interactive "$1"
+  if [ "$DRY" = 1 ]; then return 0; fi
+  m=$(marker_of "$1")
+  case "$m" in
+    '~')
+      say "  Detailplan steht"
+      journal "paket=$1 rolle=A interaktiv marke=[~]"
+      ;;
+    'x')
+      say "  entfallen oder ohne Commit erledigt"
+      PACKAGES_DONE=$((PACKAGES_DONE + 1))
+      journal "paket=$1 rolle=A interaktiv marke=[x]"
+      ;;
+    '!')
+      say ""
+      say "Paket $1 steht auf [!]. Was offen blieb, steht im Plan."
+      journal "paket=$1 rolle=A interaktiv marke=[!] -> Nutzer"
+      exit $EX_ASK
+      ;;
+    *)
+      say ""
+      say "Paket $1 steht unverändert auf [${m:-nichts}] — Zug 0 ist nicht"
+      say "durchgelaufen. Ein zweiter Anlauf käme an dieselbe Stelle."
+      journal "paket=$1 rolle=A interaktiv marke=[${m:-?}] abgebrochen"
+      exit $EX_ASK
       ;;
   esac
 }
@@ -478,6 +576,7 @@ main() {
   while [ $# -gt 0 ]; do
     case "$1" in
       --once) ONCE=1 ;;
+      --headless) PLAN_MODE=headless ;;
       --dry-run) DRY=1 ;;
       --help|-h) usage; exit 0 ;;
       *) die $EX_PRE "unbekannte Option: $1" ;;
@@ -490,6 +589,7 @@ main() {
   say "Plan:      $PLAN"
   say "Branch:    $BRANCH"
   say "Arbeit:    $WORK"
+  say "Zug 0:     $PLAN_MODE"
   say "Pakete:    $(count_with_marker ' ') offen · $(count_with_marker 'x') erledigt · $(count_with_marker '!') blockiert"
   say ""
 

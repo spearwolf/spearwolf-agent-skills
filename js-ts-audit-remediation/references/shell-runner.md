@@ -16,30 +16,64 @@ weil es lange dauert.
 
 ## Starten
 
-Im Wurzelverzeichnis des Zielprojekts, nachdem der Grobplan freigegeben ist:
+Ein Lauf beginnt nicht mit diesem Skript. Er beginnt wie immer in einer offenen
+Session im Projekt — »arbeite die Findings aus dem Audit ab« —, und dort laufen
+die Schritte 1 bis 5: Findings laden, Baseline messen, Scope klären, offene
+Entscheidungen abfragen, Grobplan schreiben, Freigabe. Erst danach übernimmt das
+Skript die Paketschleife, und am Ende geht es für Schritt 7 zurück in eine
+Session.
 
 ```bash
 <skill>/scripts/remediate.sh            # bis kein Paket mehr offen ist
 <skill>/scripts/remediate.sh --once     # nach einem Runner anhalten
-<skill>/scripts/remediate.sh --dry-run  # beide Briefe zeigen, nichts starten
+<skill>/scripts/remediate.sh --dry-run  # zeigen, was beauftragt würde
+<skill>/scripts/remediate.sh --headless # Zug 0 ohne Terminal fahren
 ```
 
-Gestartet wird auf der Maschine, auf der der Arbeitsbaum liegt, und dort läuft
-auch alles: die Schleife, beide Runner je Paket, deren Subagenten und jeder
-Verify-Lauf. Nichts davon wird anderswo gestartet — kein zweiter Klon, keine
-Session in einer fremden Umgebung. Die Runner teilen sich einen Arbeitsbaum, und
-genau deshalb läuft nie einer parallel zum anderen.
+### Zwei Modi für Zug 0
 
-Wer den Lauf von unterwegs verfolgen und die Rückfragen hinter Exit 10
-beantworten will, startet die umgebende Session mit Remote Control
-(`claude --remote-control`). Das verlagert die Unterhaltung, nicht die
-Ausführung. Dem Skript ist es gleichgültig: es druckt nach stdout und gibt
-Exit-Codes zurück, und wer das liest, ist nicht seine Sache.
+Die Planung eines Pakets ist die eine Stelle, an der ein Agent Dinge wissen muss,
+die im Code nicht stehen. Deshalb läuft sie voreingestellt **in deinem Terminal**:
+
+```
+→ Runner A · Paket 2 · opus/xhigh · interaktiv
+─────────────────────────────────────────────────────────────
+  … eine gewöhnliche Claude-Session: deine MCP-Server, deine Skills,
+    dein Werkzeugkasten, und sie kann dich fragen …
+─────────────────────────────────────────────────────────────
+  Detailplan steht
+→ Runner B · Paket 2 · opus/medium
+  a3f91c2 · LEAK-001 behoben · 1 Runde(n)
+→ Runner A · Paket 3 · opus/xhigh · interaktiv
+```
+
+Du wirst am Anfang jedes Pakets gebraucht, meist ein paar Minuten. Die lange
+Strecke danach — Implementierer, Review, Fehlerkette, Verify, Commit — läuft ohne
+dich.
+
+`PLAN_MODE=headless` (oder `--headless`) fährt Zug 0 ohne Terminal. Dann gibt es
+kein Nachfragen: was der Planer nicht entscheiden kann, kommt als Status
+`question` zurück und wird zu Exit 10. Das ist der Modus für einen Lauf, den
+niemand begleiten soll, und er kostet genau das, was er spart.
+
+Ohne Terminal startet der interaktive Modus gar nicht erst — die Meldung nennt
+den Schalter. Wer das Skript in eine `until`-Schleife steckt, will `--headless`.
+
+### Vorbedingungen
 
 Branch und Arbeitsverzeichnis liest das Skript aus dem Kopf des Plans, nicht aus
 der Umgebung: der Plan ist die Wahrheit, auch für die Schleife. Sie startet
 nicht, wenn der ausgecheckte Branch ein anderer ist, wenn der Arbeitsbaum nicht
 sauber ist, wenn ein Paket auf `[~]` steht oder wenn schon eine Schleife läuft.
+
+Gestartet wird auf der Maschine, auf der der Arbeitsbaum liegt, und dort läuft
+auch alles. Nichts wird anderswo gestartet — kein zweiter Klon, keine Session in
+einer fremden Umgebung. Die Runner teilen sich einen Arbeitsbaum, und genau
+deshalb läuft nie einer parallel zum anderen.
+
+Wer einen headless-Lauf von unterwegs verfolgen will, startet die umgebende
+Session mit Remote Control (`claude --remote-control`). Das verlagert die
+Unterhaltung, nicht die Ausführung.
 
 | Exit | Heißt | Was folgt |
 | --- | --- | --- |
@@ -106,168 +140,112 @@ umgesetztes Paket auf einer überlasteten API repariert kein Neuversuch.
 
 ## Was ein Runner in die Hand bekommt
 
-Zwei verschiedene Dinge, die leicht in einen Topf geraten: **welche Werkzeuge es
-gibt** und **welche Aufrufe eine Freigabe brauchen**.
+Das hängt an der Rolle, und der Unterschied ist Absicht.
 
-**Die Werkzeugfläche** bleibt weitgehend die der Maschine. Was der Nutzer dort
-eingestellt hat, steht dem Runner und seinen Subagenten offen; die Schleife nimmt
-nur zweierlei weg.
+### Zug 0 im interaktiven Modus: alles
 
-Erstens Werkzeuge, mit denen ein Prozess **auf eine Antwort warten oder sich
-selbst überleben** kann. Beides bräche die einzige Zusage, auf der die Schleife
-ruht: dass ein beendeter Prozess ein fertiges Paket bedeutet.
+Das Skript startet ihn ohne `-p`, ohne Rückgabeschema, ohne Allowlist und ohne
+Verbotsliste. Es ist deine Session: deine MCP-Server, deine Skills, deine
+Einstellungen, `AskUserQuestion`. Weitergereicht wird nur, was in `EXTRA_ARGS`
+steht, plus Modell und Effort.
 
-| Entzogen | Weil |
-| --- | --- |
-| `AskUserQuestion` | wartet auf eine Antwort, die in einem Prozess ohne Terminal nie kommt |
-| `SendMessage` | dito, sobald ein Runner auf eine Erwiderung wartet — Arm E ist genau daran stehengeblieben |
-| `ScheduleWakeup`, `CronCreate` | legen Arbeit an, die den Prozess überlebt. Danach heißt »beendet« nicht mehr »fertig« |
+Der Grund ist nicht Großzügigkeit. Ein Planer, der nicht nachfragen kann, plant
+gegen einen Code-Stand, den er nur zur Hälfte versteht, und der Detailplan ist
+das Dokument, gegen das anschließend alles gebaut wird. Ein Fehlurteil dort
+schlägt auf jedes Folgepaket durch — das ist die teuerste Stelle im Lauf, um
+sparsam zu sein.
 
-Zweitens die Kommandos, die der Lauf laut `SKILL.md` ohnehin nicht kennt:
-`git push`, `git tag`, `npm publish` und die Geschwister. »Der Lauf endet mit
-lokalen Commits« ist damit keine Bitte mehr.
+Weil es keine Rückgabe zu parsen gibt, entscheidet die **Marke im Plan**, wie es
+weitergeht:
 
-**Alles andere bleibt.** Kein `PushNotification`, kein `SendUserFile`, kein
-`Artifact` in der Liste: die reichen etwas hinaus, ohne zu warten und ohne den
-Prozess zu überdauern, und wenn die Maschine sie hat, sollen die Runner sie
-haben. `DENY_TOOLS=""` schaltet auch den Rest ab.
+| Marke danach | Heißt | Die Schleife |
+| --- | --- | --- |
+| `[~]` | Detailplan steht | fährt Zug 1–5 |
+| `[x]` | alle Findings gegenstandslos | zählt das Paket ab, nächstes |
+| `[!]` | bewusst blockiert | hält an, Exit 10 |
+| unverändert `[ ]` | Zug 0 ist nicht durchgelaufen | hält an, Exit 10 |
 
-**Fragen kann ein Runner trotzdem nicht**, und das ist keine Frage der Rechte.
-Gemessen, ohne jede Verbotsliste: `AskUserQuestion` existiert in einem
-`-p`-Prozess gar nicht. Die Prozessgrenze verhindert das Fragen, nicht die
-Liste — der Eintrag oben ist nur der Gürtel zum Hosenträger, für einen Host, der
-es anders hält. Wer eine Rückfrage mitten im Paket braucht, will den
-Agenten-Weg; er bleibt der Standard und ist dafür da.
+Das ist keine Notlösung. Die Marke war ohnehin die Wahrheit, die Rückgabe war
+immer nur ihre Behauptung.
 
-Zwei Eigenschaften der Liste, gemessen und nicht vermutet:
+### Zug 1–5: der Prozess bekommt viel, es fehlt nur, was ihn aufhält
 
-- Ein Name, den es in dieser Umgebung gar nicht gibt, stört nicht. Die Liste darf
-  deshalb Werkzeuge nennen, die nur mancher Host anbietet.
-- Ein entzogenes Werkzeug ist **keine** abgelehnte Berechtigung: `permission_denials`
-  bleibt leer. Eine zu strenge Liste läuft also nicht in Exit 21, sondern in einen
-  Runner, der `blocked` oder `KONTEXT_FEHLT` meldet.
+B läuft headless. Zwei Listen wirken dort, und beide zusammen sind kürzer, als
+sie klingen.
 
-### Was ein Implementierer erreicht
-
-Die Listen der Schleife gelten für den Runner-Prozess, und Implementierer und
-Reviewer erben sie. Was das praktisch heißt, in drei Schichten:
-
-**Bash ist nicht eingezäunt.** `--allowedTools` ist additiv, gemessen: mit
-`Bash(git *)` als einzigem Eintrag liefen `echo` und `python3 --version`
-trotzdem. Die Liste hebt gezielt die Kommandos an, die sonst abgefragt würden,
-und nimmt nichts weg. Was die Umgebung ohnehin erlaubt, bleibt erlaubt. Nur
-`DENY_TOOLS` nimmt etwas weg, und dort steht mit Absicht wenig.
-
-**Skills bleiben.** Die Schleife setzt weder `--bare` noch `--safe-mode` noch
-`--disable-slash-commands`; ein Runner löst Skills aus denselben Quellen auf wie
-eine interaktive Session.
-
-**MCP ist der wacklige Teil**, und zwar an zwei Stellen. Ob ein `-p`-Prozess die
-Server überhaupt erbt, hängt daran, wo sie konfiguriert sind — hier im Container
-kam keiner an. Und selbst wenn der Runner sie hat, gilt für die Ebene darunter,
-was `testing-on-mac-safari` längst notiert: **in einem Subagenten ist der
-MCP-Server in der Regel nicht exponiert.** Der Implementierer ist ein Subagent.
-Ein Paket, dessen Arbeit an einem MCP-Server hängt, wird ihn dort also
-wahrscheinlich nicht finden.
-
-Zwei Wege daran vorbei, in dieser Reihenfolge:
-
-1. **Den Weg über Bash nehmen.** Was als CLI existiert, überlebt den Sprung in
-   den Subagenten: `npx playwright test` statt der Playwright-Werkzeuge. Genau
-   dieses Muster steht in diesem Repo schon einmal, als `scripts/mcp_safari.py`
-   — ein Skript, das den MCP-Server über SSH anspricht, weil der Subagent ihn
-   nicht sehen kann.
-2. **Den Server ausdrücklich mitgeben**, über `EXTRA_ARGS`. Der Inhalt wird an
-   Kommas getrennt und unverändert an jeden Runner durchgereicht:
-
-   ```bash
-   EXTRA_ARGS="--mcp-config,./mcp.json" <skill>/scripts/remediate.sh
-   ```
-
-   Damit hat der Runner-Prozess den Server. Ob seine Subagenten ihn sehen, ist
-   damit noch nicht gesagt — deshalb steht Weg 1 zuerst.
-
-Und die Regel darüber: braucht die Verifikation eines Pakets einen Browser oder
-einen anderen Dienst, gehört das in die `Verify:`-Zeile des Detailplans als
-Kommando. Das Kommando fährt **B** selbst in Zug 5, nicht ein Subagent — dort
-ist die Reichweite am größten und die Rechtefrage am klarsten.
-
-### Wer darf den Nutzer noch fragen
-
-Die Liste betrifft ausschließlich die Runner, die dieses Skript startet. Der
-Agent, der Schritt 1 bis 5 fährt — Findings laden, Scope klären, Entscheidungen
-einholen, Grobplan vorlegen —, wird von der Schleife gar nicht gestartet. Er ist
-eine gewöhnliche Session und behält jedes Werkzeug, das er sonst hat. Genau dort
-liegt die Klärungsrunde, und sie ist unangetastet.
-
-Runner A plant ebenfalls, aber nur ein Paket, und für ihn galt die Regel schon
-immer: `runner.md` schickt ihn bei einer Rückfrage nicht zum Nutzer, sondern in
-die Rückgabe — »hier änderst du nichts, sondern schreibst deinen Vorschlag in die
-Rückgabe und brichst ab«. Ihm wird damit nichts genommen: den Kanal hatte er
-nie, und in einem `-p`-Prozess gibt es ihn ohnehin nicht.
-
-Sein Weg ist der Status `question`. Daraus macht die Schleife Exit 10, druckt
-`for_you`, schreibt es ins Journal und hält an. Der Nutzer trägt die Antwort
-datiert in »Entscheidungen« ein, startet das Skript neu, und ein frischer A
-beginnt das Paket mit der Antwort im Rücken.
-
-Das ist nicht nur ein Ersatz, sondern der bessere Weg: eine Antwort im Dialog
-lebte im Kontext eines Prozesses, der ohnehin endet. Eine Zeile in
-»Entscheidungen« überlebt den Lauf und verhindert, dass ein späteres Paket
-dieselbe Frage noch einmal aufwirft. Der Preis ist ein neuer Zug 0 für dieses
-eine Paket — derselbe Preis wie auf dem Agenten-Weg, und Zug 0 ändert keine
-Zeile Code.
-
-Weil die Frage den Prozess überleben muss, gehört sie außerdem in den Plan.
-Terminal und Journal reichen für einen beaufsichtigten Lauf; wer über Nacht
-laufen lässt, findet am Morgen den Plan vor und nicht die Bildschirmausgabe.
-
-**Die Berechtigungen** sind davon unabhängig, und hier liegt die Falle:
-`--permission-mode acceptEdits` deckt Dateiänderungen ab, **Bash aber nicht**.
-Gemessen: unter `acceptEdits` allein wurden `git add` und `git commit`
-abgefragt, und ein Prozess ohne Terminal kann nicht antworten — der Runner käme
-nie bis zum Commit. Deshalb reicht die Schleife eine Allowlist mit:
+**Die Allowlist erweitert**, sie zäunt nicht ein. Gemessen: mit `Bash(git *)` als
+einzigem Eintrag liefen `echo` und `python3 --version` trotzdem. Sie hebt gezielt
+an, was `--permission-mode acceptEdits` nicht abdeckt — Bash nämlich —, und nimmt
+nichts weg:
 
 ```
-Bash(git *) · Bash(npm *) · Bash(pnpm *) · Bash(yarn *) · Bash(node *)
+Bash(git *) · Bash(npm *) · Bash(pnpm *) · Bash(yarn *) · Bash(node *) · Bash(claude *)
 ```
 
 Fährt das Zielprojekt seine Verify-Kommandos anders — `make`, `cargo`, ein
 eigenes Skript —, gehört das über `ALLOW_TOOLS` ergänzt. Merkt man sonst beim
 ersten Paket, an Exit 21.
 
-`Bash(git *)` schließt Kommandos ein, die dieser Lauf nicht kennt — `git push`
-und `git tag` stehen deshalb in der Verbotsliste, die Vorrang hat.
+**Die Verbotsliste** nimmt nur, was die eine Zusage bräche, auf der die Schleife
+ruht: dass ein beendeter Prozess ein fertiges Paket bedeutet.
 
-### Welcher Permission-Modus
+| Entzogen | Weil |
+| --- | --- |
+| `AskUserQuestion` | wartet auf eine Antwort, die in einem Prozess ohne Terminal nie kommt. In `-p` gibt es das Werkzeug ohnehin nicht — der Eintrag ist der Gürtel zum Hosenträger |
+| `SendMessage` | dito, sobald ein Runner auf eine Erwiderung wartet |
+| `ScheduleWakeup`, `CronCreate` | legen Arbeit an, die den Prozess überlebt |
+| `Bash(git push*)`, `Bash(git tag*)`, `Bash(npm publish*)` | kennt dieser Lauf laut `SKILL.md` nicht |
 
-| Modus | Gemessen | Taugt für die Schleife |
+`PushNotification`, `SendUserFile` und `Artifact` stehen bewusst **nicht** dort:
+sie reichen etwas hinaus, ohne zu warten und ohne den Prozess zu überdauern.
+`DENY_TOOLS=""` schaltet auch den Rest ab.
+
+Zwei Eigenschaften, gemessen: ein Name ohne Entsprechung stört nicht, und ein
+entzogenes Werkzeug ist keine abgelehnte Berechtigung — `permission_denials`
+bleibt leer, eine zu strenge Liste läuft also nicht in Exit 21, sondern in einen
+Runner, der `blocked` meldet.
+
+**Welcher Permission-Modus**, gemessen:
+
+| Modus | Verhalten in `-p` | Taugt |
 | --- | --- | --- |
-| `acceptEdits` | Änderungen laufen durch, Bash nicht — mit der Allowlist oben vollständig | **ja**, die Voreinstellung |
-| `auto` | Lesende Aufrufe laufen durch, ein gewöhnlicher `Edit` wurde abgelehnt | nein |
-| `bypassPermissions` | fragt nichts | nur wenn man auf jede Schranke verzichten will |
+| `acceptEdits` | Änderungen laufen durch, Bash erst mit der Allowlist oben | **ja**, die Voreinstellung |
+| `auto` | Lesendes läuft durch, ein gewöhnlicher `Edit` wurde abgelehnt | nein |
+| `bypassPermissions` | fragt nichts | nur ohne jede Schranke |
 
-`auto` ist ein Klassifikator: er urteilt über jeden Aufruf anhand von Regeln,
-die `claude auto-mode defaults` ausgibt. Der Modus ist als Wert gültig und
-`PERM=auto` läuft, nur trägt er keinen unbeaufsichtigten Lauf — was er nicht von
-sich aus erlaubt, will er freigegeben haben, und dafür ist niemand da. Im
-Versuch endete das damit, dass ein Runner höflich um Erlaubnis bat und nichts
-committete.
+`auto` ist ein Klassifikator und als Leitplanke nah an diesem Skill — seine
+Verbotsliste nennt Force-Push, entfernte Historie, das Entfernen von
+Sicherheitstests. Gewähren kann er nur nicht, und Gewähren ist hier die Aufgabe.
 
-Als Leitplanke ist er trotzdem bemerkenswert nah an diesem Skill: seine
-Verbotsliste nennt Force-Push, das Umschreiben entfernter Historie und das
-Entfernen von Sicherheitstests — alles Dinge, die `runner.md` ohnehin untersagt.
-Er kann nur nicht gewähren, und Gewähren ist hier die Aufgabe.
+### Implementierer und Reviewer: eigene Prozesse
 
-`bypassPermissions` würde laufen, aber dann feuert Exit 21 nie, und ein Kommando,
-das aus dem Ruder läuft, hat nichts mehr vor sich. Wer den Lauf unbeaufsichtigt
-über Nacht stellt, will die Schranke behalten, die ihn am nächsten Morgen
-erklärt.
+**Du startest sie als eigene `claude -p`-Prozesse, nicht als Subagenten.** Das
+weicht von `runner.md` ab und gilt nur auf diesem Weg.
 
-**Was in der eigenen Umgebung tatsächlich anliegt**, findet man nicht dadurch
-heraus, dass man ein Modell nach seinen Werkzeugen fragt: zwei Läufe derselben
-Frage haben hier zwei verschiedene Listen genannt. Verlässlich ist nur das
-Verhalten — `--once` auf dem ersten Paket sagt es in einem Zug.
+Der Grund ist Reichweite. In einem Subagenten ist ein MCP-Server in der Regel
+nicht exponiert — `testing-on-mac-safari` hält das seit Juli fest, und ein
+Implementierer, der den Browser des Projekts nicht erreicht, ist für die Hälfte
+aller Pakete nutzlos. Ein eigener Prozess erbt die Konfiguration wie jede andere
+Session.
+
+Was dabei zu tun ist:
+
+- Den Brief wie gehabt bauen, dann `claude -p "<brief>" --model <stufe>
+  --output-format json` über Bash starten und die Ausgabe **als Datei ablegen**:
+  `$ARBEITSDIR/paket-N.impl-<runde>.json` für den Implementierer,
+  `$ARBEITSDIR/paket-N.review-<runde>.json` für den Reviewer.
+- Die Dateinamen sind kein Ordnungssinn, sondern der Beleg: die Schleife zählt
+  sie, weil ein eigener Prozess in `subagent_stats` nicht mehr auftaucht.
+- Den Report liest du aus der Datei. Er steht damit auch noch da, wenn dein
+  eigener Kontext längst weg ist.
+- Modelle setzt du weiter ausdrücklich, nach der Dreistufen-Tabelle in
+  `runner.md`. Neu ist, dass du daneben auch den Effort setzen kannst: ein
+  eigener Prozess nimmt `--effort`, ein Subagent nicht.
+
+Geht das auf einem Host nicht — kein verschachteltes `claude`, keine Rechte
+dafür —, fällst du auf Subagenten zurück. Die Schleife akzeptiert beides: sie
+prüft, ob Reports auf der Platte liegen **oder** ob `subagent_stats` zwei
+Starts zählt. Belegt sein muss es, gleich wodurch.
 
 ## Deine Rolle, wenn du beauftragt wurdest
 
@@ -279,6 +257,9 @@ Zug 0 und Zug 1:
   gehört auf diesem Weg eine Zeile mehr: `- Effort:`, siehe unten. Danach steht
   das Paket auf `[~]`, und A hört auf. **A schreibt keine Zeile Projektcode und
   startet keinen Implementierer.**
+  Im interaktiven Modus sitzt der Nutzer dabei: was der Code nicht hergibt,
+  fragst du. Nicht als Ausnahme, sondern als der Zweck dieses Zuges — ein
+  Detailplan auf halbem Verständnis kostet später mehr als jede Rückfrage.
 - **B** führt die Züge 1 bis 5 aus: Implementierer beauftragen, Report
   entgegennehmen, Review, Fehlerkette, Verify, Commit, Plan fortschreiben.
   **B wiederholt Zug 0 nicht.** Der Detailplan steht unter dem Paket; er ist
@@ -293,9 +274,15 @@ Zug 0 je stattgefunden hat. Mit der Teilung sagt es die Marke im Plan.
 
 ## Deine Rückgabe
 
-Statt der neun Zeilen aus `runner.md` gibst du ein JSON-Objekt nach
-`assets/runner-return.schema.json` zurück. Die Felder sind dieselben, die
-Statuswerte sind englisch, weil sie in einer Shell-Verzweigung landen:
+**Als A im interaktiven Modus gibst du gar nichts zurück.** Es gibt keinen
+Kanal und keinen braucht es: du schreibst den Plan, setzt die Marke, und die
+Marke ist die Rückgabe. Die Tabelle oben unter »Zug 0 im interaktiven Modus«
+sagt, was die Schleife daraus liest.
+
+**Sonst** — als B, und als A im headless-Modus — gibst du ein JSON-Objekt nach
+`assets/runner-return.schema.json` zurück, statt der neun Zeilen aus
+`runner.md`. Die Felder sind dieselben, die Statuswerte sind englisch, weil sie
+in einer Shell-Verzweigung landen:
 
 | Im JSON | Im Plan | Wer gibt das zurück |
 | --- | --- | --- |
@@ -320,16 +307,17 @@ sind. Fällt eine dieser Proben, endet der Lauf mit Exit 20:
   deinem Start bewegt.
 - Bei `committed`: die Datei aus `verify_log` liegt im Arbeitsverzeichnis und
   enthält die Zeile `exit=0`.
-- Bei `committed`: du hast mindestens zwei Subagenten gestartet. Implementierer
-  und Reviewer sind zwei, und ein Runner schreibt keinen Projektcode selbst.
-  Das wird gezählt, nicht geglaubt.
+- Bei `committed`: es gibt einen Beleg für Implementierer **und** Reviewer —
+  entweder ihre Reports als Dateien im Arbeitsverzeichnis (Prozess-Weg) oder
+  zwei Starts in `subagent_stats` (Subagenten-Weg). Ein Runner schreibt keinen
+  Projektcode selbst, und das wird belegt, nicht geglaubt.
 - Die Paketnummer in deiner Rückgabe ist die aus deinem Auftrag.
 - Kein Aufruf ist an einer Rechteschranke gescheitert.
 
 Bleibt nach deinem Commit etwas im Arbeitsbaum liegen, gibt es eine Warnung und
 der Lauf geht weiter. Der nächste Diff enthält es dann mit.
 
-## Zwei Dinge, die du anders machst als in `runner.md`
+## Drei Dinge, die du anders machst als in `runner.md`
 
 1. **Der Exit-Code gehört ins Log, nicht nur ins Terminal.** Ein Prozess liest
    deine Terminalausgabe nicht.
@@ -342,6 +330,10 @@ der Lauf geht weiter. Der nächste Diff enthält es dann mit.
 2. **Du nennst den Pfad dieses Logs in `verify_log`**, absolut und im
    Arbeitsverzeichnis. Ohne ihn gibt es nichts nachzulesen.
 
+3. **Implementierer und Reviewer startest du als eigene Prozesse**, mit ihren
+   Reports als Dateien. Siehe oben — es geht um die Reichweite, nicht um die
+   Form.
+
 ## Modell und Effort
 
 Zwei Regler mit zwei verschiedenen Fragen. Das Modell entscheidet, wie viel
@@ -353,14 +345,16 @@ werden darf. Beide gelten je Prozess, und Prozesse gibt es hier genau zwei.
 | **A** — Zug 0 | `MODEL_A=opus` | `EFFORT_A=xhigh` | Existiert das Finding noch, ist die Folge ein Symptom oder ein eigenes Paket, muss der Restplan anders geschnitten werden. Die härtesten Entscheidungen des Laufs, einmal je Paket und ohne eine Zeile Code. |
 | **B** — Züge 1–5 | `MODEL_B=opus` | aus dem Detailplan, sonst `EFFORT_B=medium` | B beauftragt, liest zwei Reports, fährt Verify, committet. Die einzige echte Entscheidung ist die Fehlerkette, und die hat den Befund im Wortlaut vor sich. |
 
-**Der Effort von B ist der Effort seiner Subagenten.** Modelle setzt B je
-Subagent ausdrücklich, nach der Dreistufen-Tabelle in `runner.md`; für den Effort
-gibt es diesen Schalter nicht, die Subagenten erben ihn vom Prozess. Der Wert
-entscheidet damit nicht über B, sondern über Implementierer und Reviewer, also
-über die beiden Rollen mit den meisten Zügen und den meisten gelesenen Dateien.
+**Der Effort von B wirkt nach unten.** Startet B seine Implementierer und
+Reviewer als eigene Prozesse — der Weg oben —, setzt es deren `--effort` selbst,
+und dann ist `EFFORT_B` wirklich nur B. Fällt es auf Subagenten zurück, erben
+die den Effort des Prozesses, und der Wert entscheidet über die beiden Rollen mit
+den meisten Zügen. Weil das die teurere Möglichkeit ist, ist der Vorgabewert an
+ihr ausgerichtet.
 
-Deshalb setzt **A** ihn und nicht die Umgebung: A hat den Code gesehen und weiß,
-was dieses Paket verlangt. Eine Zeile im Detailplan, neben `- Modell:`:
+Deshalb setzt **A** ihn und nicht die Umgebung: A hat den Code gesehen, im
+interaktiven Modus auch mit dir darüber gesprochen, und weiß, was dieses Paket
+verlangt. Eine Zeile im Detailplan, neben `- Modell:`:
 
 ```markdown
 - Effort: low
