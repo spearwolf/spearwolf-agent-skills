@@ -71,15 +71,35 @@ DENY_TOOLS=${DENY_TOOLS:-AskUserQuestion,SendMessage,ScheduleWakeup,CronCreate,B
 EXTRA_ARGS=${EXTRA_ARGS:-}
 
 # Zug 0 läuft in einem eigenen tmux-Fenster und meldet sein Ende über eine
-# Datei, nicht über einen Menschen an der Tastatur. Diese vier Werte sagen, wie
+# Datei, nicht über einen Menschen an der Tastatur. Diese Werte sagen, wie
 # geduldig die Schleife dabei ist. ZUG0_GRACE ist die Gnadenfrist zwischen dem
 # Feierabendzeichen und dem Schließen des Fensters; wer in dieser Zeit noch
-# etwas hineinschreibt, redet gegen eine Uhr. ZUG0_TIMEOUT=0 heißt: warten,
-# solange es dauert — Zug 0 wartet auch auf den Nutzer, und der schläft manchmal.
-ZUG0_POLL=${ZUG0_POLL:-5}        # Sekunden zwischen zwei Blicken auf die Datei
-ZUG0_GRACE=${ZUG0_GRACE:-20}     # Gnadenfrist, bevor das Fenster zugeht
-ZUG0_CLOSE=${ZUG0_CLOSE:-20}     # wie lange /exit Zeit bekommt, bevor kill-window folgt
-ZUG0_TIMEOUT=${ZUG0_TIMEOUT:-0}  # Obergrenze für einen ganzen Zug 0, 0 = keine
+# etwas hineinschreibt, redet gegen eine Uhr.
+#
+# ZUG0_TIMEOUT ist die Obergrenze für einen ganzen Zug 0 und stand lange auf 0,
+# also auf »warten, solange es dauert«. Das war richtig gedacht und in der Praxis
+# falsch: ein Lauf, den niemand beaufsichtigt, stand damit bis ans Ende aller
+# Tage, und von außen sah das aus wie Arbeit. Deshalb jetzt eine endliche Zahl —
+# und eine Uhr, die stillsteht, solange ein Client an der Session hängt. Wer im
+# Fenster sitzt, wird nie abgeschnitten; wer nicht da ist, bekommt einen sauberen
+# Abbruch statt eines Hängers. 0 stellt das alte Verhalten wieder her.
+ZUG0_POLL=${ZUG0_POLL:-5}           # Sekunden zwischen zwei Blicken auf die Datei
+ZUG0_GRACE=${ZUG0_GRACE:-20}        # Gnadenfrist, bevor das Fenster zugeht
+ZUG0_CLOSE=${ZUG0_CLOSE:-20}        # wie lange /exit Zeit bekommt, bevor kill-window folgt
+ZUG0_TIMEOUT=${ZUG0_TIMEOUT:-1800}  # Obergrenze für einen unbeaufsichtigten Zug 0, 0 = keine
+# Der Vertrauensdialog der CLI (»Is this a project you trust?«) erscheint in
+# jedem Verzeichnis, das sie noch nie gesehen hat. Er entfällt in -p, trifft also
+# nur Zug 0, und keine Flagge nimmt ihn weg. Steht er länger als diese Frist,
+# bricht die Schleife ab und sagt, was zu tun ist — sonst wartet sie auf eine
+# Taste, die niemand drückt.
+ZUG0_TRUST_GRACE=${ZUG0_TRUST_GRACE:-60}
+# »Es hing ein Client an der Session« ist der Beleg dafür, dass ein Mensch da
+# war — und der einzige, den tmux hergibt. Wer stattdessen von außen per
+# send-keys antwortet (Szenario-Tests tun das), erzeugt keinen Client und liefe
+# in den Vorwurf, Entscheidungen erfunden zu haben. Für diesen Fall gibt es
+# diese Tür, und sie ist ausdrücklich zu öffnen: ZUG0_ASSUME_USER=1 sagt »ich
+# beantworte von außen«. Ein unbeaufsichtigter Lauf setzt das nicht.
+ZUG0_ASSUME_USER=${ZUG0_ASSUME_USER:-0}
 
 ONCE=0
 DRY=0
@@ -109,6 +129,10 @@ die() { # $1 = Exit-Code, Rest = Meldung
   exit "$code"
 }
 
+entscheidungen() { # der Abschnitt »Entscheidungen« aus dem Plan, roh
+  sed -n '/^## Entscheidungen/,/^## /p' "$PLAN" 2>/dev/null
+}
+
 journal() { # eine Zeile je Paket, damit ein Lauf nachvollziehbar bleibt
   [ -n "${WORK:-}" ] || return 0
   printf '%s\t%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*" >> "$WORK/remediate.log"
@@ -126,7 +150,7 @@ Optionen:
 Umgebung:
   PLAN MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER MAX_ROUNDS
   ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS
-  SESSION TMUX_BIN ZUG0_POLL ZUG0_GRACE ZUG0_CLOSE ZUG0_TIMEOUT
+  SESSION TMUX_BIN ZUG0_POLL ZUG0_GRACE ZUG0_CLOSE ZUG0_TIMEOUT ZUG0_TRUST_GRACE ZUG0_ASSUME_USER
 EOF
 }
 
@@ -278,7 +302,8 @@ launch_tmux() { # $@ = die Argumente, mit denen der Lauf drinnen starten soll
   cmd="$cmd REMEDIATE_INSIDE=1"
   for v in PLAN SESSION MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD \
            MAX_ITER MAX_ROUNDS ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS \
-           DENY_TOOLS EXTRA_ARGS ZUG0_POLL ZUG0_GRACE ZUG0_CLOSE ZUG0_TIMEOUT; do
+           DENY_TOOLS EXTRA_ARGS ZUG0_POLL ZUG0_GRACE ZUG0_CLOSE ZUG0_TIMEOUT \
+           ZUG0_TRUST_GRACE ZUG0_ASSUME_USER; do
     eval "[ -n \"\${$v:-}\" ]" && cmd="$cmd $v=$(eval printf '%q' "\"\$$v\"")"
   done
   cmd="$cmd $(printf '%q' "$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")")"
@@ -423,7 +448,7 @@ close_zug0_window() { # $1 = tmux-Fenster; erst höflich, dann bestimmt
 }
 
 dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
-  local pkg=$1 brief win wname done_file brieffile starter a waited=0
+  local pkg=$1 brief win wname done_file brieffile starter a waited=0 trusted_wait=0 saw_client=0 ents_before
   brief=$(brief_for A "$pkg")
   tool_args_zug0 "$pkg"
 
@@ -433,6 +458,7 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
     return 0
   fi
 
+  ents_before=$(entscheidungen)
   wname="p$pkg-plan"
   win="$SESSION:$wname"
   done_file="$WORK/paket-$pkg.zug0.done"
@@ -472,6 +498,10 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
   say "    tmux attach -t $SESSION"
   say "  Schließen musst du nichts. Wenn er fertig ist, hinterlegt er ein"
   say "  Zeichen, die Schleife macht das Fenster zu und läuft weiter."
+  if [ "$ZUG0_TIMEOUT" -gt 0 ]; then
+    say "  Hängt niemand an der Session, hört der Lauf nach $((ZUG0_TIMEOUT / 60)) min"
+    say "  von selbst auf, statt auf eine Antwort zu warten, die nicht kommt."
+  fi
   say ""
 
   while :; do
@@ -489,15 +519,51 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
       break
     fi
 
+    # Der Vertrauensdialog steht vor allem anderen: der Planer hat zu diesem
+    # Zeitpunkt nicht einmal seinen Brief gelesen. Ohne diese Probe wartet die
+    # Schleife auf ein Feierabendzeichen von jemandem, der noch gar nicht
+    # angefangen hat.
+    if "$TMUX_BIN" capture-pane -p -t "$win" 2>/dev/null \
+         | grep -qi 'trust this folder'; then
+      trusted_wait=$((trusted_wait + ZUG0_POLL))
+      if [ "$trusted_wait" -ge "$ZUG0_TRUST_GRACE" ]; then
+        close_zug0_window "$win"
+        journal "paket=$pkg rolle=A abgebrochen vertrauensdialog nach ${trusted_wait}s"
+        die $EX_PRE "Zug 0 für Paket $pkg steht im Vertrauensdialog der CLI: sie kennt $(pwd) noch nicht. Öffne dort einmal »claude«, bestätige den Ordner, beende die Sitzung und starte den Lauf erneut."
+      fi
+    else
+      trusted_wait=0
+    fi
+
     sleep "$ZUG0_POLL"
-    waited=$((waited + ZUG0_POLL))
+    # Die Uhr läuft nur, wenn niemand zusieht. Ein angehängter Client heißt: der
+    # Nutzer ist da und denkt nach, und Nachdenken ist kein Hänger.
+    if "$TMUX_BIN" list-clients -t "$SESSION" -F '#{client_name}' 2>/dev/null \
+         | grep -q .; then
+      waited=0
+      saw_client=1
+    else
+      waited=$((waited + ZUG0_POLL))
+    fi
     if [ "$ZUG0_TIMEOUT" -gt 0 ] && [ "$waited" -ge "$ZUG0_TIMEOUT" ]; then
       close_zug0_window "$win"
-      journal "paket=$pkg rolle=A abgebrochen nach ${waited}s"
-      die $EX_ASK "Zug 0 für Paket $pkg lief ${waited}s ohne Feierabendzeichen. Das Fenster ist zu, der Plan trägt, was der Planer geschrieben hat."
+      journal "paket=$pkg rolle=A abgebrochen unbeaufsichtigt nach ${waited}s"
+      die $EX_ASK "Zug 0 für Paket $pkg stand ${waited}s ohne angehängten Client und ohne Feierabendzeichen — vermutlich wartet er auf eine Antwort, die niemand gibt. Das Fenster ist zu, der Plan trägt, was der Planer geschrieben hat. Die Mitschrift liegt in $WORK/paket-$pkg.zug0.pane.log."
     fi
-    [ $((waited % 600)) -ge "$ZUG0_POLL" ] || say "  … Zug 0 läuft seit $((waited / 60)) min"
+    [ $((waited % 600)) -ge "$ZUG0_POLL" ] || say "  … Zug 0 wartet seit $((waited / 60)) min unbeaufsichtigt"
   done
+
+  # Eine Entscheidung des Nutzers setzt einen Nutzer voraus. Hing während des
+  # ganzen Zuges kein Client an der Session, hat niemand etwas beantwortet — und
+  # ein neuer Eintrag unter »Entscheidungen« ist dann keine Entscheidung, sondern
+  # eine Erfindung. Gemessen: ein Planer, den niemand beantwortet hat, notierte
+  # »Vorgabewert 30000 ms«, eine Zahl, die weder im Code noch im Audit steht.
+  # Das wiegt schwerer als ein Hänger — die Zeile trägt ein Datum und wird von
+  # jedem späteren Lauf als beschlossen behandelt.
+  if [ "$saw_client" = 0 ] && [ "$ZUG0_ASSUME_USER" != 1 ] && [ "$(entscheidungen)" != "$ents_before" ]; then
+    journal "paket=$pkg rolle=A entscheidungen ohne nutzer"
+    die $EX_CONTRACT "Zug 0 für Paket $pkg hat »Entscheidungen« fortgeschrieben, aber es hing zu keinem Zeitpunkt ein Client an der Session — diese Antworten hat niemand gegeben. Der Plan ist unverändert zu behandeln: nimm die neuen Zeilen dort heraus, häng dich an ($TMUX_BIN attach -t $SESSION) und starte erneut. Die Mitschrift liegt in $WORK/paket-$pkg.zug0.pane.log."
+  fi
 
   # Es gibt keine Rückgabe zum Parsen. Der Plan trägt den Stand, und die Marke
   # sagt, was passiert ist. Das ist keine Notlösung: die Marke ist ohnehin die

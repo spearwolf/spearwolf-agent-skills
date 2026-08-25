@@ -186,6 +186,16 @@ was davon ändert die Reihenfolge oder den Schnitt der noch offenen Pakete? Jede
   ihre Ursache behandelt, oder für eine echte Folge ein neues Paket schneiden
   und einsortieren. Das ist keine Scope-Verschiebung, sondern deren Kehrseite —
   der Scope des Laufs schließt ein, was die Fixes nach sich ziehen.
+
+  **Diese Befugnis gilt der Folge und nur ihr.** Für einen Nebenbefund
+  schneidest du kein Paket, auch wenn die Scope-Regel ihn deckt und der Schnitt
+  offensichtlich wäre. Sein Weg ist die Queue, und das Paket daraus schneidet
+  der Abschluss in der Drain-Runde — dort liegen alle Befunde des Laufs
+  nebeneinander, und erst dann sieht jemand, welche davon dieselbe Ursache
+  haben. Wer sie einzeln einsortiert, während sie auflaufen, trifft diese
+  Entscheidung zwölfmal mit je einem Achtel der Übersicht. Der Unterschied ist
+  nicht Bürokratie: die Folge gehört zu deinem Paket, der Nebenbefund gehört dem
+  Lauf.
 - Dein Paket teilen, wenn es gewachsen ist. Zwei Pakete zusammenlegen, wenn
   ein Vorgänger beide fast erledigt hat.
 - Die Reihenfolge der offenen Pakete ändern, solange jedes »Hängt ab von«
@@ -590,6 +600,8 @@ Das Modell des Reviewers wählst du nach dem Diff, nicht nach dem Paket.
 | »Der Befund ist offensichtlich falsch, ich lasse ihn weg« | Dann steht die Begründung im Plan. Ein stilles Verschwinden gibt es nicht. |
 | »Das ist mir nicht aufgefallen« | In einer Datei, die du geändert hast, ist das keine Auskunft über deine Aufmerksamkeit, sondern darüber, dass du sie nicht gelesen hast. Der Nebenbefund vier Zeilen unter deinem Fix ist der billigste, den dieser Lauf je bekommt. |
 | »Der Nebenbefund fällt unter die Scope-Regel, also nehme ich ihn gleich mit« | Die Regel entscheidet, ob er in diesen Lauf gehört, nicht ob er in dein Paket gehört. Ohne gemeinsame Ursache bekommt er ein eigenes Paket, und das schneidet der Abschluss. |
+| »Ich fixe ihn nicht selbst, ich schneide nur schon mal ein Paket dafür« | Dieselbe Grenze, eine Ebene höher. Pakete schneidest du für Folgen, nicht für Nebenbefunde; die Drain-Runde tut es mit allen Befunden vor Augen und du mit einem. |
+| »Ich lege dem Nutzer die Wahl vor, ob es ein Paket wird oder in die Queue geht« | Eine Frage, deren Optionen einen vom Skill ausgeschlossenen Weg enthalten, macht den Nutzer zu dem, der die Regel bricht — und er merkt es nicht, weil die Option von dir kommt und damit erlaubt aussieht. Vorgelegt wird, was der Code nicht hergibt, nicht was die Regel schon entschieden hat. |
 | »Die Regel passt nicht so recht, ich schiebe ihn ins Audit« | Genau dafür gibt es `→ Rückfrage`. Ein Befund, den du im Zweifel hinausbuchst, ist der einzige der drei Ausgänge, den niemand mehr nachprüft. |
 | »Das andere Problem fixe ich gleich mit« | War es auch ohne dich falsch, ist es ein Nebenbefund mit Datei und Zeile und geht in die Queue. Hat deine Änderung es erzeugt, ist es kein anderes Problem, sondern deins. |
 | »Das hat mein Fix ausgelöst, aber es ist ein eigenes Problem — ab ins nächste Audit« | Das nächste Audit sieht einen Defekt ohne Vorgeschichte und hält ihn für vorbestehend. Was dieser Lauf verursacht, schließt dieser Lauf. |

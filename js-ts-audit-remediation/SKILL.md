@@ -193,6 +193,16 @@ fehlt:
 gilt sie. Rückfragen zu Dingen, die im Audit bereits beantwortet sind, sind der
 schnellste Weg, eine Klärungsrunde nutzlos zu machen.
 
+Die beiden Sätze davor und dieser hier ziehen an derselben Stelle gegeneinander,
+und die Auflösung ist einfach: **die Empfehlung entscheidet das Wie, nicht das
+Ob.** Eine eindeutige Empfehlung gilt — es sei denn, ihre Umsetzung ändert, was
+ein fremder Aufrufer zu sehen bekommt. Ein `await`, das eine Methode asynchron
+macht, ist im Audit ein Einzeiler und beim Aufrufer ein Bruch; über den Einzeiler
+ist entschieden, über den Bruch nicht. Der Test steht in einer Frage: Müsste
+jemand, der dieses Projekt einbindet, seinen Code anfassen? Dann in die
+Klärungsrunde, samt Vorschlag, wie weit der Lauf die eigenen Aufrufer mitzieht.
+Sonst gilt die Empfehlung, und es wird nicht gefragt.
+
 Gebündelt fragen, in einer Runde, je mit Vorschlag statt offener Frage. Die
 Antworten kommen mit Datum in den Plan-Abschnitt »Entscheidungen«, damit ein
 späterer Lauf sie nicht neu aufwirft.

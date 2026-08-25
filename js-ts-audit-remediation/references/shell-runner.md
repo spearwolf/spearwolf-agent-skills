@@ -72,13 +72,31 @@ ersten vollständigen Paket an, `--dry-run` zeigt im Vordergrund, was beauftragt
 würde, und startet nichts. `SESSION` benennt die tmux-Session anders als nach
 dem Projektverzeichnis, `TMUX_BIN` zeigt auf ein tmux an anderer Stelle.
 
-Vier Werte betreffen nur Zug 0. `ZUG0_GRACE` (20 s) ist die Frist zwischen dem
+Fünf Werte betreffen nur Zug 0. `ZUG0_GRACE` (20 s) ist die Frist zwischen dem
 Feierabendzeichen und dem Schließen des Fensters, `ZUG0_CLOSE` (20 s) die
 Geduld, die `/exit` bekommt, bevor das Fenster beendet wird, `ZUG0_POLL` (5 s)
-der Abstand zwischen zwei Blicken auf das Zeichen. `ZUG0_TIMEOUT` steht auf 0:
-ein Zug 0 darf beliebig lange dauern, weil er auf einen Menschen wartet. Wer den
-Lauf über Nacht allein lässt, setzt ihn auf eine Zahl und findet am Morgen einen
-Abbruch statt eines Fensters.
+der Abstand zwischen zwei Blicken auf das Zeichen.
+
+`ZUG0_TIMEOUT` (1800 s) ist die Obergrenze für einen Zug 0, **den niemand
+beaufsichtigt** — und der Zusatz ist der ganze Punkt. Die Uhr läuft nur, solange
+kein Client an der Session hängt; sobald sich jemand anhängt, steht sie und
+beginnt beim Ablösen von vorn. Wer im Fenster sitzt und nachdenkt, wird also nie
+abgeschnitten, und wer nicht da ist, bekommt nach einer halben Stunde einen
+Abbruch mit Exit 10 statt eines Fensters, das bis morgen früh wartet. Der Wert
+stand lange auf 0, also auf »warten, solange es dauert«; das war als Höflichkeit
+gegenüber dem Menschen gedacht und wurde in der Praxis zum häufigsten Hänger des
+Laufs — von außen sieht ein wartendes Fenster genauso aus wie ein arbeitendes.
+`ZUG0_TIMEOUT=0` stellt das alte Verhalten wieder her.
+
+`ZUG0_TRUST_GRACE` (60 s) gilt einem Dialog, der nichts mit diesem Skill zu tun
+hat und ihn trotzdem lahmlegt: In einem Verzeichnis, das die CLI noch nie
+gesehen hat, fragt sie »Is this a project you trust?«, bevor das Modell
+irgendetwas tut. In `-p` entfällt die Frage, Zug 0 aber ist eine TUI, und keine
+Flagge nimmt sie weg. Die Schleife sieht deshalb bei jedem Blick in das Pane
+nach; steht der Dialog länger als diese Frist, schließt sie das Fenster und
+bricht mit Exit 40 ab — samt der einen Zeile, die hilft: einmal `claude` in dem
+Verzeichnis öffnen, den Ordner bestätigen, Sitzung beenden, Lauf erneut starten.
+Wer angehängt ist, drückt in dieser Minute einfach Enter und merkt nichts davon.
 
 ### So sieht ein Paket aus
 
@@ -127,13 +145,13 @@ deshalb läuft nie einer parallel zum anderen.
 | Exit | Heißt | Was folgt |
 | --- | --- | --- |
 | 0 | Kein Paket mehr offen | Schritt 7, `references/semver-and-closeout.md` |
-| 10 | Es braucht eine Entscheidung | Antwort datiert in »Entscheidungen«, dann erneut starten |
+| 10 | Es braucht eine Entscheidung — oder Zug 0 stand unbeaufsichtigt in einer Frage | Antwort datiert in »Entscheidungen«, dann erneut starten. Sagt die Meldung »unbeaufsichtigt«, war niemand am Fenster: anhängen und noch einmal starten |
 | 11 | Ein Paket steht auf `[~]` | `references/resume.md`, nicht dieses Skript |
-| 20 | Die Rückgabe passt nicht zum Repo | Plan und `git log` ansehen. Nicht blind wiederholen |
+| 20 | Die Rückgabe passt nicht zum Repo — oder Zug 0 hat Entscheidungen notiert, die niemand getroffen hat | Plan und `git log` ansehen. Nicht blind wiederholen. Bei »ohne Nutzer«: die neuen Zeilen unter »Entscheidungen« herausnehmen, anhängen, erneut starten |
 | 21 | Ein Runner hing an einer Rechteschranke | Die Meldung nennt die abgelehnten Werkzeuge; sie gehören in `ALLOW_TOOLS` |
 | 30 | Der Runner-Prozess selbst ist gescheitert | `paket-N.*.stderr` im Arbeitsverzeichnis |
 | 31 | Die API blieb überlastet | Nichts ist kaputt, nichts hat sich bewegt: später erneut starten |
-| 40 | Eine Vorbedingung stimmt nicht | Die Meldung sagt, welche |
+| 40 | Eine Vorbedingung stimmt nicht | Die Meldung sagt, welche. Auch der Vertrauensdialog landet hier: die CLI kennt das Verzeichnis nicht |
 
 Entstehen im Abschluss neue Pakete — die Drain-Runde schneidet welche —, läuft
 das Skript danach noch einmal. Es fasst den Abschluss selbst nie an.
@@ -442,6 +460,17 @@ sind. Fällt eine dieser Proben, endet der Lauf mit Exit 20:
   `role` nennt die Rolle, in der du beauftragt wurdest. Wer sich für die andere
   hält, hat womöglich den falschen Zug gefahren.
 - Kein Aufruf ist an einer Rechteschranke gescheitert.
+- **Zug 0 hat »Entscheidungen« nur fortgeschrieben, wenn jemand da war.** Hing
+  während des ganzen Zuges kein Client an der Session und ist der Abschnitt
+  trotzdem gewachsen, endet der Lauf mit Exit 20. Der Grund ist gemessen: ein
+  Planer, den niemand beantwortet hat, notierte »Vorgabewert 30000 ms« — eine
+  Zahl, die weder im Code noch im Audit steht — und der Mitschnitt behauptete
+  dazu »User answered Claude's questions«. Aus seiner Sicht hat er eine Antwort
+  bekommen; es gab nur niemanden, der sie hätte geben können. Eine Instruktion
+  hilft dagegen nicht, ein Beleg schon: eine Entscheidung des Nutzers setzt
+  einen Nutzer voraus, und ob einer da war, weiß tmux. Das wiegt schwerer als
+  jeder Hänger — die Zeile trägt ein Datum, und ein späterer Lauf behandelt sie
+  laut Regel als beschlossen.
 
 Bleibt nach deinem Commit etwas im Arbeitsbaum liegen, gibt es eine Warnung und
 der Lauf geht weiter. Der nächste Diff enthält es dann mit.
