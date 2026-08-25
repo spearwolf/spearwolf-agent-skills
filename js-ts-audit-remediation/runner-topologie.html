@@ -336,10 +336,11 @@
     <h1>Runner-Topologie</h1>
     <p class="standfirst">Wer startet wen, wer lebt wie lange, und wie der Skill <code>js-ts-audit-remediation</code> seine Paketschleife fährt — als Agent oder als Prozess.</p>
     <div class="meta">
-      <span><b>Stand</b> 2026-08-24</span>
+      <span><b>Stand</b> 2026-08-25</span>
       <span><b>Beschreibt</b> <code>scripts/remediate.sh</code> · <code>references/shell-runner.md</code></span>
       <span><b>Gemessen</b> gegen CLI 2.1.241</span>
       <span><b>Umgesetzt</b> 2026-08-24 · Branch <code>claude/audit-remediation-orchestration-660ebh</code></span>
+      <span><b>Gefahren</b> Szenario-Test, fünf Arme, 2026-08-25</span>
     </div>
   </header>
 
@@ -805,6 +806,41 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
   </section>
 
   <section>
+    <p class="kicker">Erreichbarkeit</p>
+    <h2>Zwei Instanzen fragen, eine hält den Lauf an</h2>
+    <div class="prose">
+      <p>Ein Lauf hält an zwei ganz verschiedenen Orten an, und sie werden regelmäßig verwechselt. Der <b>Orchestrator</b> ist der Agent im Gespräch: er klärt vor dem Plan, holt die Freigabe, legt die Befund-Queue vor, bewertet am Schluss die Version. Er fragt im Chat und blockiert nichts — was er fragt, fragt er, bevor das Skript überhaupt läuft, oder nachdem es zurückgekommen ist. <b>Zug 0</b> ist der Paket-Planer im tmux-Fenster. Er fragt mitten im laufenden Skript, und seine Frage hält die Schleife an, bis sie beantwortet ist.</p>
+      <p>Die beiden haben seit dem 2026-08-25 sehr verschiedene Schwellen. Für Zug 0 steht sie einmal, in <code>runner.md</code> unter »Wo du anhältst«, und sie ist abschließend: gefragt wird allein, was die Richtung umwirft; was sich begründen lässt, entscheidet er, und der Grund steht im Detailplan. Für den Orchestrator gibt es keine solche Grenze. Gemessen am Szenariolauf desselben Tages: fünf Züge 0 über drei Sandboxen, keine einzige Frage — und im selben Lauf vier Halte des Orchestrators (Scope, API-Entscheidung, Befund-Queue, Versionsanhebung).</p>
+
+      <h3>Woran die Schleife merkt, dass jemand da ist</h3>
+      <p>Sie prüft nicht die Absicht, sondern die Anwesenheit — dieselbe Trennung von Behauptung und Beleg wie beim Commit, der einen eigenen Verify-Lauf braucht. Der Grund ist gemessen: ein Planer notierte »User answered Claude's questions« samt ausgefüllter Antworten, während in sein Fenster keine Taste gesendet worden war. Gegen einen Irrtum über die eigene Wahrnehmung hilft keine Instruktion, gegen ihn hilft ein Beleg.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Weg</th><th>Beleg</th><th>Wofür gedacht</th></tr></thead>
+        <tbody>
+          <tr><td class="who">tmux-Client</td><td><code>list-clients</code> nennt einen</td><td>du sitzt am Fenster</td></tr>
+          <tr><td class="who">Remote Control</td><td><code>/remote-control is active</code> in Mitschrift oder Scrollback</td><td>du antwortest vom Handy</td></tr>
+          <tr><td class="who">ZUG0_ASSUME_USER=1</td><td>deine Zusage, sonst nichts</td><td><code>send-keys</code> von außen, etwa im Szenario-Test</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <span class="lbl">Was der zweite Weg gekostet hat, bevor es ihn gab</span>
+      <p>Der Beleg war einmal allein der tmux-Client. Zug 0 startet aber selbst mit <code>--remote-control</code>, ausdrücklich damit dieselbe Frage vom Handy zu beantworten ist — und wer das tat, hing an keinem Client. Drei Läufe desselben Projekts am selben Tag endeten deshalb mit Exit 20 und dem Vorwurf, die Antworten habe niemand gegeben: dreimal rund zwanzig Minuten Planung auf <code>opus</code>/<code>xhigh</code> weggeworfen, während der Nutzer beide Fragen tatsächlich beantwortet hatte. Gesucht wird seither an zwei Orten, in der Mitschrift <i>und</i> im Scrollback des Fensters — <code>pipe-pane</code> lässt sich erst einschalten, wenn das Fenster schon läuft, und was ein Prozess in dieser Lücke schreibt, steht in keiner Mitschrift. Die Mitschrift rotiert dafür je Zug 0 nach <code>.vorlauf</code>, sonst wiese die Meldung eines früheren Laufs den Kanal dauerhaft als offen aus.</p>
+    </div>
+
+    <div class="prose">
+      <h3>Wann die Uhr läuft</h3>
+      <p><code>ZUG0_TIMEOUT</code> (1800 s) richtet sich gegen den blinden Lauf, nicht gegen den langsamen Menschen. Sie steht still, solange einer der beiden Wege offen ist: wer erreichbar ist, braucht so lange, wie er braucht, und wer nicht mehr antworten will, beendet den Lauf selbst. Erst wenn beide Wege zu sind, zählt sie hoch und beendet den Zug mit Exit 10. <code>ZUG0_TIMEOUT=0</code> nimmt auch das weg.</p>
+      <p>Derselbe Beleg trägt den zweiten Wächter: ist »Entscheidungen« im Plan gewachsen, obwohl der Nutzer zu keinem Zeitpunkt erreichbar war, endet der Lauf mit Exit 20 und nennt die Zeilen, die herauszunehmen sind. Das wiegt schwerer als jeder Hänger — eine geratene Zahl fällt auf, eine datierte Entscheidung im Plan nicht, und ein späterer Lauf behandelt sie als beschlossen.</p>
+      <p>Was der Beleg <i>nicht</i> beweist, steht dazu: dass jemand geantwortet hat. Er beweist, dass jemand hätte antworten können. Ein Kanal steht, sobald die CLI ihren Handshake fertig hat — der Wächter aus Exit 20 feuert seither fast nie. Die andere Hälfte des Tauschs war schlechter: ein Wächter, der echte Nutzer zu Erfindern erklärt.</p>
+    </div>
+  </section>
+
+  <section>
     <p class="kicker">Regler</p>
     <h2>Modell und Effort</h2>
     <div class="prose">
@@ -955,14 +991,17 @@ first=1
       <h3>MCP ist der wacklige Teil</h3>
       <p>Implementierer und Reviewer laufen als eigene Prozesse und erben die MCP-Konfiguration wie jede Session — das ist der Grund für den Umweg. Ob ein Server dort ankommt, hängt trotzdem daran, wo er konfiguriert ist; <code>EXTRA_ARGS=&quot;--mcp-config,…&quot;</code> gibt ihn ausdrücklich mit. Der verlässlichste Weg bleibt die CLI eines Dienstes statt seines Werkzeugs.</p>
 
-      <h3>Die Planung braucht dich</h3>
-      <p>Zug 0 im eigenen Fenster heißt: ein Lauf über zwölf Pakete braucht zwölf kurze Momente deiner Aufmerksamkeit. Das ist der Preis dafür, dass der Planer fragen kann, und er wird bewusst bezahlt — ein Detailplan auf halbem Verständnis kostet später mehr. Über Nacht durchlaufen kann ein Lauf nur, solange keine Frage aufkommt.</p>
+      <h3>Die Planung braucht dich seltener, als der Aufbau vermuten lässt</h3>
+      <p>Zug 0 im eigenen Fenster hieß einmal: ein Lauf über zwölf Pakete kostet zwölf kurze Momente deiner Aufmerksamkeit. Seit die Schwelle steht, stimmt das nicht mehr. Gemessen: fünf Züge 0 am 2026-08-25, keine einzige Frage — auch nicht dort, wo die Test-Fixture ausdrücklich eine erzwingen wollte. Zwei Planer entschieden dort unabhängig voneinander dasselbe und schrieben die Begründung in den Detailplan, statt zu fragen.</p>
+      <p>Der Preis ist damit auf die andere Seite gewandert. Ein Lauf geht über Nacht durch, und die Entscheidungen, die dabei fallen, findest du am Morgen als Begründung im Plan statt als Frage in deinem Fenster. Wer das umgekehrt haben will, dreht an <code>runner.md</code> — dort steht die Schwelle, und nur dort.</p>
 
       <h3>Portabilität</h3>
       <p>Der Skill setzt jetzt eine POSIX-Shell, tmux und die <code>claude</code>-CLI voraus. Auf einem Host ohne diese drei läuft er nicht — bewusst: ein zweiter Weg für den Ausnahmefall kostet mehr Verwirrung, als er Fälle rettet.</p>
 
-      <h3>Ungeprüft</h3>
-      <p>Alles, was die Schleife deterministisch prüft, ist gegen einen Stub über dreißig Fälle abgesichert. Nicht geprüft sind die drei Stellen, an denen ein Modell entscheidet: ob A nach dem Detailplan wirklich aufhört, statt den Fix gleich selbst zu machen; ob B bei Zug 1 beginnt, statt Zug 0 zu wiederholen; und ob im Plan wirklich alles steht, was B über die Prozessgrenze hinweg braucht. Dafür braucht es ein echtes Paket, keinen Stub.</p>
+      <h3>Was geprüft ist, und was offen bleibt</h3>
+      <p>Alles, was die Schleife deterministisch prüft, ist gegen einen Stub über 36 Fälle abgesichert. Die drei Stellen, an denen ein Modell entscheidet, sind seit dem 2026-08-25 mit echten Paketen gefahren, und alle drei halten: A hört nach dem Detailplan auf, statt den Fix gleich selbst zu machen; B beginnt bei Zug 1, statt Zug 0 zu wiederholen; und der Plan trägt über die Prozessgrenze, was B danach braucht. Dazu ein vollständiger Lauf über drei Pakete samt Drain-Runde und Abschluss, der terminiert hat.</p>
+      <p>Offen bleibt der Fall, für den es keine Probe mehr gibt: ein Zug 0, der wirklich auf eine Antwort wartet. Seit die Schwelle steht, stellt er keine Frage, die eine erzwingen würde — der Arm des Szenario-Tests, der genau diesen Fall prüft, misst seither nichts. Ebenso ungeprüft: ob der Scrollback eines sehr langen Zuges 0 über sein <code>history-limit</code> hinausläuft und der Erreichbarkeitsbeleg damit aus dem Fenster fällt, und ob eine echte CLI die Kanal-Meldung in jeder Fensterbreite ungebrochen schreibt.</p>
+      <p>Und eine Lücke im Test selbst, die der Lauf sichtbar gemacht hat: geprüft wird die Rückfrage-Disziplin von Zug 0 (»höchstens eine weitere Frage«), für den Orchestrator zählt sie niemand. Vier Halte in einem Lauf haben keinen einzigen Prüfpunkt ausgelöst.</p>
     </div>
   </section>
 
@@ -971,6 +1010,7 @@ first=1
     <h2>Ein Weg</h2>
     <p>Nach der Freigabe startet der Agent <code>scripts/remediate.sh</code>, ungefragt. Der Lauf hängt sich in eine abgelöste tmux-Session, plant jedes Paket in einem eigenen Fenster — dort kann er fragen — und führt es ohne Terminal aus. Implementierer und Reviewer sind eigene Prozesse und erreichen alles, was auf der Maschine eingestellt ist. Der Agent gibt die Startausgabe weiter und wartet auf einen Exit-Code; eine zweite Betriebsart gibt es nicht, und ohne tmux beginnt der Lauf gar nicht erst.</p>
     <p>Der Gewinn ist nicht, dass die Schleife klüger wird, sondern dass sie sich nicht herausreden kann: sie pollt nicht, sie sucht keinen Kanal, und sie erklärt keinen Prozess für beendet, der noch läuft. Was ein Prozess an Interaktivität kostet, holt Zug 0 in seinem Fenster zurück — die eine Stelle im Lauf, an der ein Agent Dinge wissen muss, die im Code nicht stehen.</p>
+    <p>Am 2026-08-25 ist der Weg zum ersten Mal in voller Länge gefahren worden: Grobplan, Freigabe, Skriptstart, drei Pakete mit Implementierer, Reviewer und eigenem Verify-Lauf, Drain-Runde, Versionsanhebung, nachgeführter Report, Plan archiviert und aus dem Arbeitsbaum geräumt. Fünf Commits, sauberer Arbeitsbaum, Tests grün, kein Eingriff von Hand. Was dabei fiel, fiel an der Rückfrage-Schwelle und nicht an der Topologie.</p>
     <p>Die deterministischen Zusicherungen sind gegen einen <code>claude</code>-Stub über 36 Fälle geprüft: Marken, Hash gegen HEAD, <code>exit=0</code> im Verify-Log, Reports von Implementierer und Reviewer, Rechteschranke, unlesbare Rückgabe, falsches Paket, abgestürzter Prozess, Überlast in fünf Spielarten, der Start über tmux mit und ohne Session, der Abbruch ohne tmux, und acht Vorbedingungen. Was ein Modell entscheidet, prüft kein Stub — das steht unter »Grenzen«.</p>
   </div>
 

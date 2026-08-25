@@ -600,7 +600,15 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
       journal "paket=$pkg rolle=A abgebrochen unbeaufsichtigt nach ${waited}s"
       die $EX_ASK "Zug 0 für Paket $pkg stand ${waited}s ohne jede Erreichbarkeit — kein Client am Fenster, kein offener Remote-Control-Kanal — und ohne Feierabendzeichen — vermutlich wartet er auf eine Antwort, die niemand gibt. Das Fenster ist zu, der Plan trägt, was der Planer geschrieben hat. Die Mitschrift liegt in $WORK/paket-$pkg.zug0.pane.log."
     fi
-    [ $((waited % 600)) -ge "$ZUG0_POLL" ] || say "  … Zug 0 wartet seit $((waited / 60)) min, und niemand ist erreichbar"
+    # Ein Lebenszeichen alle zehn Minuten, und nur für den Fall, den es meint:
+    # niemand erreichbar, die Uhr läuft. Bei einem erreichbaren Nutzer steht
+    # »waited« dauerhaft auf 0, und die Modulo-Rechnung allein träfe dann bei
+    # jedem Poll zu — der Satz stand gemessen 33-mal in einem Zug 0 von unter
+    # drei Minuten und behauptete dabei jedes Mal das Gegenteil dessen, was
+    # gerade galt.
+    if [ "$waited" -gt 0 ] && [ $((waited % 600)) -lt "$ZUG0_POLL" ]; then
+      say "  … Zug 0 wartet seit $((waited / 60)) min, und niemand ist erreichbar"
+    fi
   done
 
   # Eine Entscheidung des Nutzers setzt einen Nutzer voraus. War er während des
