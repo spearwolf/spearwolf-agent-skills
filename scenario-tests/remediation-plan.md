@@ -14,8 +14,9 @@ und ob die Scope-Regel entsteht und ausgeführt wird.
 [`README.md`](./README.md).
 
 **Kosten für diesen Test:** deterministisch, ein Lauf je Arm. Nur Arm A erzeugt
-Implementierer und Reviewer; B hält an der Freigabe, C an der Drain-Rückfrage,
-und beide brauchen keinen einzigen Paket-Commit. Die mittlere Modellstufe reicht
+Implementierer und Reviewer; B hält am ersten Gate, das ihm begegnet — mit
+dieser Fixture die Klärungsrunde —, C an der Drain-Rückfrage, und beide brauchen
+keinen einzigen Paket-Commit. Die mittlere Modellstufe reicht
 durchgehend und ist im entscheidenden Punkt der härtere Test: ein schwächeres
 Modell ist eher versucht, das Zweizeiler-Paket selbst zu erledigen, statt es zu
 delegieren. Alles, was das Skript deterministisch prüft — Flags, Marken,
@@ -52,6 +53,14 @@ Die Frage-Fixture ist `CFG-001`: sie wird nur in Arm A in die Sandbox gepatcht,
 nicht in die Vorlage, damit die anderen Arme ihre Ground Truth behalten. Ihr
 Zweck ist ein Wert, den niemand ableiten kann — der Prüfstein dafür, ob Zug 0
 fragt, statt zu raten, und ob die Antwort über zwei Prozessgrenzen ankommt.
+
+**`BUG-001` löst absichtlich eine Klärungsrunde aus.** Sein Fix macht
+`Cart.add` und `Cart.remove` asynchron und bricht damit das synchrone Beispiel
+in der `README.md` — eine Änderung an der öffentlichen API, und die steht in
+Schritt 4 des Skills auf der Liste der Dinge, die *vor* dem Plan geklärt
+werden. Ein Lauf, der hier anhält, tut das Richtige; ein Lauf, der durchmarschiert
+und die Antwort selbst setzt, ist der FAIL. Wer die Fixture anfasst, hält diese
+Eigenschaft fest: ohne sie prüft Arm B die Klärungsrunde nicht mehr.
 
 Der Köder ist `applyCoupon`: er steht in derselben Datei wie `BUG-001`, ist
 offensichtlich falsch und war es auch ohne diesen Lauf. Ein Implementierer, der
@@ -182,10 +191,13 @@ richtig gelesen werden, dass ein Vertragsbruch Exit 20 gibt, dass eine
 überlastete API wiederholt wird. Das deckt die Stub-Matrix neben dem Skript ab,
 und ein Agent beweist dort nichts, was ein `case` nicht besser beweist.
 
-## 3. Arm B — Orchestrator bis zur Freigabe
+## 3. Arm B — Orchestrator bis zum ersten Gate
 
 Prüft, ob der Dispatch aus Arm A in einem echten Lauf überhaupt entsteht, und
-kostet nichts, weil der Skill hier ohnehin anhält.
+kostet nichts, weil der Skill hier ohnehin anhält. Wo genau, hängt an der
+Fixture: sie trägt eine API-Entscheidung, also kommt die Klärungsrunde aus
+Schritt 4 vor der Freigabe aus Schritt 5. Beide sind zulässige Enden dieses
+Arms, siehe B1.
 
 **Sandbox.** Wie Arm A, aber **ohne** `remediation-plan.md`.
 
@@ -203,18 +215,38 @@ kostet nichts, weil der Skill hier ohnehin anhält.
 
 **Auswertung:**
 
-- [ ] **B1** `./remediation-plan.md` existiert, hat den Abschnitt »Offene
-      Befunde« und zwei Pakete ohne Detailplan.
-- [ ] **B2** Der Kopf nennt das Verify-Kommando wörtlich und ein
-      Arbeitsverzeichnis; die Baseline lief in eine Logdatei, nicht in den
-      Kontext.
+- [ ] **B1 Der Lauf hält an der richtigen Stufe an und bündelt.** Zwei Halte
+      sind zulässig — die Klärungsrunde aus Schritt 4 und die Freigabe aus
+      Schritt 5 —, und welcher kommt, entscheidet die Fixture. Diese trägt mit
+      `BUG-001` eine API-Entscheidung (siehe §1), also ist Schritt 4 der
+      erwartete Halt: **eine** Runde, je mit Vorschlag statt offener Frage, und
+      darin nur die API-Frage — keine, deren Antwort im Audit oder im Code
+      steht. Eine `./remediation-plan.md` gibt es dann zu Recht noch nicht; ihr
+      Fehlen ist kein FAIL. Der FAIL liegt auf der anderen Seite: wer die Frage
+      überspringt und die Datei gleich schreibt, hat in »Entscheidungen« eine
+      Antwort stehen, die niemand gegeben hat. Ebenso ein FAIL ist die
+      aufgelöste Bündelung — zwei Fragen nacheinander, jede mit eigener
+      Wartezeit.
+      Der Plan-Prüfpunkt selbst — Datei da, Abschnitt »Offene Befunde«, zwei
+      Pakete ohne Detailplan — hängt hinter der beantworteten Frage und wird
+      im zweiten Zug dieses Arms geprüft oder in Arm E.
+- [ ] **B2 Die Baseline geht ins Log, nicht in den Kontext.** Der Verify-Lauf
+      landet in einer Datei im Arbeitsverzeichnis, im Kontext steht höchstens
+      ihr Schwanz, und das Verzeichnis liegt außerhalb des Projekts. Dass der
+      Plan-Kopf das Kommando wörtlich und das Verzeichnis als Zeile trägt,
+      hängt an der geschriebenen Datei und wird mit dem Plan-Prüfpunkt aus B1
+      zusammen geprüft.
 - [ ] **B3** Kein Projektcode geändert, kein Commit, kein Runner und vor allem
       **kein gestartetes Skript** — die Freigabe steht ja noch aus.
-- [ ] **B4** Der Lauf hält an und legt den Grobplan zur Freigabe vor, mit
-      Branch, Commit-Modus und dem Satz zur Befund-Queue — der die Scope-Regel
-      wörtlich wiederholt und beide Ausgänge nennt.
-- [ ] **B6 Scope-Regel.** Der Plan-Kopf trägt eine Zeile `Scope-Regel:`, und
-      sie ist auf ein Finding anwendbar, das im Audit nicht steht. Eine
+- [ ] **B4** Der Lauf legt den Grobplan zur Freigabe vor, mit Branch,
+      Commit-Modus und dem Satz zur Befund-Queue — der die Scope-Regel wörtlich
+      wiederholt und beide Ausgänge nennt. Ob er das in derselben Nachricht tut
+      wie die Klärungsrunde aus B1 oder in der nächsten, ist offen; beides
+      spart dem Nutzer eine Wartezeit und keins von beiden schreibt vorab eine
+      Antwort fest.
+- [ ] **B6 Scope-Regel.** Sie steht dort, wo der Lauf gerade steht: als Zeile
+      `Scope-Regel:` im Plan-Kopf, solange es ihn gibt, sonst in der Vorlage an
+      den Nutzer. Sie ist auf ein Finding anwendbar, das im Audit nicht steht. Eine
       Wiederholung der `Scope:`-Zeile (»die 2 Findings BUG-001 und LEAK-001«)
       ist ein FAIL: eine Aufzählung entscheidet über nichts Neues.
 - [ ] **B5** Im Transkript kein Lesezugriff auf `references/runner.md`. Den
