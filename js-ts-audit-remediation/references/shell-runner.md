@@ -222,6 +222,17 @@ schreibt der, der als Einziger weiß, wann er fertig ist.
 Wer das Fenster trotzdem selbst verlässt, stört nichts: fehlt das Zeichen und
 ist das Fenster weg, geht es weiter wie sonst auch. Die Marke entscheidet.
 
+**Diesen einen Aufruf gibt das Skript vorab frei.** Zug 0 bekommt sonst keine
+Allowlist — die Rechte sind die des Nutzers, es ist seine Session —, aber das
+Feierabendzeichen ist ein `Bash`-Aufruf, und ohne Freigabe stünde davor ein
+Dialog, und zwar zu dem Zeitpunkt, zu dem der Nutzer seine Fragen längst
+beantwortet hat und nicht mehr hinsieht. Gemessen ohne die Freigabe: fünf
+Bash-Aufrufe eines Planers, fünf Ablehnungen. Der Preis dafür steht im Skript:
+in einem `-p`-Prozess schaltet *irgendein* Bash-Muster in der Allowlist Bash
+insgesamt frei, für die TUI ist das nicht nachgemessen. Wer Zug 0 strikt auf
+die Rechte des Nutzers festnageln will, nimmt die Zeile heraus und nimmt den
+Dialog in Kauf.
+
 Es gibt nichts zu parsen: **die Marke im Plan** sagt, wie es weitergeht.
 
 | Marke danach | Heißt | Die Schleife |
@@ -371,7 +382,10 @@ Zug 0 und Zug 1:
   **Deine letzte Handlung ist `touch <arbeitsdir>/paket-N.zug0.done`**, und
   zwar erst, wenn Detailplan und Marke im Plan stehen. Danach läuft eine Uhr:
   die Schleife schließt dein Fenster. Was zu diesem Zeitpunkt nur in deinem
-  Kontext steht und nicht im Plan, hat es nie gegeben.
+  Kontext steht und nicht im Plan, hat es nie gegeben. Genau dieser eine
+  Aufruf ist vorab freigegeben — buchstabengetreu, mit dem Pfad aus deinem
+  Brief. Wer ihn umschreibt, umformuliert oder in ein anderes Kommando packt,
+  bekommt eine Rückfrage, und die beantwortet um diese Zeit niemand mehr.
 - **B** führt die Züge 1 bis 5 aus: Implementierer beauftragen, Report
   entgegennehmen, Review, Fehlerkette, Verify, Commit, Plan fortschreiben.
   **B wiederholt Zug 0 nicht.** Der Detailplan steht unter dem Paket; er ist
