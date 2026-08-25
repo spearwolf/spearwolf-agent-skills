@@ -196,13 +196,30 @@ tool_args() { # füllt TOOL_ARGS; die Muster enthalten Leerzeichen und dürfen
   fi
 }
 
-tool_args_zug0() { # für Zug 0 im Terminal: nichts entziehen, nichts erlauben
-  local t old=$IFS                                  # — das entscheidet der Nutzer
+tool_args_zug0() { # $1 = Paketnummer. Für Zug 0 im Fenster: nichts entziehen und
+  local t old=$IFS                                  # nur eine einzige Sache erlauben
   TOOL_ARGS=()
   TOOL_ARGS[${#TOOL_ARGS[@]}]=--add-dir             # seine beiden Referenzdateien
   TOOL_ARGS[${#TOOL_ARGS[@]}]=$SKILL_DIR
   TOOL_ARGS[${#TOOL_ARGS[@]}]=--add-dir             # und das Arbeitsverzeichnis
   TOOL_ARGS[${#TOOL_ARGS[@]}]=$WORK
+  # Das Feierabendzeichen ist ein Bash-Aufruf, und Zug 0 bekommt sonst keine
+  # Allowlist: die Rechte sind die des Nutzers, das ist seine Session. Genau
+  # dieser eine Aufruf ist aber nicht seine Idee, sondern die Forderung dieses
+  # Skripts — und er kommt als Letztes, wenn der Nutzer seine Fragen längst
+  # beantwortet hat und nicht mehr hinsieht. Ohne die Zeile stünde dort ein
+  # Freigabe-Dialog, und der Lauf hinge wieder an einem Menschen, nur eine
+  # Handlung später als vorher. Gemessen ohne diese Zeile: fünf Bash-Aufrufe
+  # eines Planers, fünf Ablehnungen.
+  #
+  # Das Muster nennt genau ein Kommando, wirkt aber breiter, als es aussieht:
+  # gemessen an einem -p-Prozess schaltet *irgendein* Bash-Muster in der
+  # Allowlist Bash insgesamt frei — »echo« lief mit, obwohl nur der touch
+  # gelistet war. Für die TUI ist das nicht nachgemessen. Wer Zug 0 strikt auf
+  # die Rechte des Nutzers festnageln will, muss diese Zeile also wieder
+  # herausnehmen und den Freigabe-Dialog in Kauf nehmen.
+  TOOL_ARGS[${#TOOL_ARGS[@]}]=--allowedTools
+  TOOL_ARGS[${#TOOL_ARGS[@]}]="Bash(touch $WORK/paket-$1.zug0.done)"
   if [ -n "$EXTRA_ARGS" ]; then
     IFS=','; for t in $EXTRA_ARGS; do TOOL_ARGS[${#TOOL_ARGS[@]}]=$t; done; IFS=$old
   fi
@@ -408,7 +425,7 @@ close_zug0_window() { # $1 = tmux-Fenster; erst höflich, dann bestimmt
 dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
   local pkg=$1 brief win wname done_file brieffile starter a waited=0
   brief=$(brief_for A "$pkg")
-  tool_args_zug0
+  tool_args_zug0 "$pkg"
 
   if [ "$DRY" = 1 ]; then
     say "--- Runner A · Paket $pkg · $MODEL_A/$EFFORT_A · eigenes tmux-Fenster"

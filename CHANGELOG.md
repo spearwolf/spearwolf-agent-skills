@@ -2,6 +2,11 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-08-25
+
+### Geändert
+- **Das Feierabendzeichen von Zug 0 ist vorab freigegeben.** Der `touch`, mit dem der Planer sein Ende meldet, ist ein `Bash`-Aufruf, und Zug 0 bekam bewusst keine Allowlist — mit der Folge, dass vor seiner letzten Handlung ein Freigabe-Dialog stand, genau dann, wenn der Nutzer seine Fragen längst beantwortet hat und nicht mehr hinsieht. Der Lauf hing damit wieder an einem Menschen, nur eine Handlung später als vor dem Umbau. Gemessen an einem echten Planer: fünf Bash-Aufrufe, fünf Ablehnungen. Die Schleife gibt jetzt genau dieses eine Kommando frei, buchstabengetreu mit dem Pfad aus dem Brief; alles andere bleibt, wie der Nutzer es eingestellt hat. Der Preis steht dabei: in einem `-p`-Prozess schaltet irgendein Bash-Muster in der Allowlist Bash insgesamt frei, für die TUI ist das nicht nachgemessen — wer Zug 0 strikt auf die Rechte des Nutzers festnageln will, nimmt die Zeile heraus und nimmt den Dialog in Kauf.
+
 ## 2026-08-24
 
 ### Hinzugefügt
