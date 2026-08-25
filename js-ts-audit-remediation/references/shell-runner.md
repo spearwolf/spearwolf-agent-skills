@@ -145,7 +145,7 @@ deshalb läuft nie einer parallel zum anderen.
 | Exit | Heißt | Was folgt |
 | --- | --- | --- |
 | 0 | Kein Paket mehr offen | Schritt 7, `references/semver-and-closeout.md` |
-| 10 | Es braucht eine Entscheidung — oder Zug 0 stand unbeaufsichtigt in einer Frage | Antwort datiert in »Entscheidungen«, dann erneut starten. Sagt die Meldung »unbeaufsichtigt«, war niemand am Fenster: anhängen und noch einmal starten |
+| 10 | Es braucht eine Entscheidung — oder Zug 0 stand in einer Frage, ohne dass jemand erreichbar war | Antwort datiert in »Entscheidungen«, dann erneut starten. Sagt die Meldung »ohne jede Erreichbarkeit«, war weder ein Client am Fenster noch ein Remote-Control-Kanal offen: einen der beiden Wege herstellen und noch einmal starten |
 | 11 | Ein Paket steht auf `[~]` | `references/resume.md`, nicht dieses Skript |
 | 20 | Die Rückgabe passt nicht zum Repo — oder Zug 0 hat Entscheidungen notiert, die niemand getroffen hat | Plan und `git log` ansehen. Nicht blind wiederholen. Bei »ohne Nutzer«: die neuen Zeilen unter »Entscheidungen« herausnehmen, dann erreichbar sein und erneut starten — am Fenster oder über Remote Control |
 | 21 | Ein Runner hing an einer Rechteschranke | Die Meldung nennt die abgelehnten Werkzeuge; sie gehören in `ALLOW_TOOLS` |
@@ -216,11 +216,13 @@ Verbotsliste. Es ist deine Session: deine MCP-Server, deine Skills, deine
 Einstellungen, `AskUserQuestion`. Weitergereicht wird nur, was in `EXTRA_ARGS`
 steht, plus Modell und Effort.
 
-Der Grund ist nicht Großzügigkeit. Ein Planer, der nicht nachfragen kann, plant
-gegen einen Code-Stand, den er nur zur Hälfte versteht, und der Detailplan ist
-das Dokument, gegen das anschließend alles gebaut wird. Ein Fehlurteil dort
+Der Grund ist nicht Großzügigkeit. Ein Planer, dem die Werkzeuge fehlen, plant
+gegen einen Code-Stand, den er nur zur Hälfte gelesen hat, und der Detailplan
+ist das Dokument, gegen das anschließend alles gebaut wird. Ein Fehlurteil dort
 schlägt auf jedes Folgepaket durch — das ist die teuerste Stelle im Lauf, um
-sparsam zu sein.
+sparsam zu sein. Gemeint ist damit das Nachsehen, nicht das Nachfragen: die
+Antwort steht fast immer im Repository, und wer sie dort holt, statt den Nutzer
+zu fragen, ist schneller und liegt öfter richtig.
 
 **Zug 0 läuft in einem eigenen Fenster und sagt selbst, wann er fertig ist.**
 Das Skript öffnet `<session>:p<N>-plan`, startet den Planer dort und sieht
@@ -348,8 +350,9 @@ abgelehnter Aufrufe: alles hängt daran, dass ein Prozess ein Ergebnis-JSON
 liefert und einen Exit-Code hat. Eine Terminal-Session liefert beides nicht.
 
 Die Trennung folgt also nicht der Bequemlichkeit, sondern der Frage, ob jemand
-antworten kann. Zug 0 fragt, weil der Nutzer beim Planen ohnehin gebraucht wird;
-alles danach arbeitet gegen einen Detailplan, in dem die Antworten schon stehen.
+antworten kann. Zug 0 könnte fragen, falls es der seltene Fall verlangt, der die
+Richtung umwirft; alles danach arbeitet gegen einen Detailplan, in dem die
+Entscheidungen schon stehen.
 
 ### Implementierer und Reviewer: eigene Prozesse
 
@@ -394,9 +397,11 @@ Zug 0 und Zug 1:
   gehört auf diesem Weg eine Zeile mehr: `- Effort:`, siehe unten. Danach steht
   das Paket auf `[~]`, und A hört auf. **A schreibt keine Zeile Projektcode und
   startet keinen Implementierer.**
-  Der Nutzer sitzt in deinem Fenster: was der Code nicht hergibt, fragst du.
-  Nicht als Ausnahme, sondern als der Zweck dieses Zuges — ein Detailplan auf
-  halbem Verständnis kostet später mehr als jede Rückfrage.
+  Der Nutzer ist erreichbar — als Einziger im ganzen Lauf. Das ist eine
+  Rückfallebene, kein Arbeitsmittel: Verständnis holst du dir aus Code und
+  Audit, und was sich begründen lässt, entscheidest du mit dem Grund daneben.
+  Wann eine Frage die Unterbrechung wert ist, steht in `runner.md` unter »Wo du
+  anhältst«; die Liste dort ist abschließend und gilt hier unverändert.
   **Deine letzte Handlung ist `touch <arbeitsdir>/paket-N.zug0.done`**, und
   zwar erst, wenn Detailplan und Marke im Plan stehen. Danach läuft eine Uhr:
   die Schleife schließt dein Fenster. Was zu diesem Zeitpunkt nur in deinem
@@ -469,8 +474,12 @@ sind. Fällt eine dieser Proben, endet der Lauf mit Exit 20:
   niemanden, der sie hätte geben können. Eine Instruktion hilft dagegen nicht,
   ein Beleg schon: eine Entscheidung des Nutzers setzt einen Nutzer voraus.
   Erreichbar heißt auf zwei Wegen, und beide zählen gleich — ein Client am
-  Fenster, den tmux sieht, oder ein offener Remote-Control-Kanal, den die
-  Mitschrift bezeugt. Der zweite ist kein Sonderfall: Zug 0 startet
+  Fenster, den tmux sieht, oder ein offener Remote-Control-Kanal, den Mitschrift
+  oder Scrollback des Fensters bezeugen. An derselben Erreichbarkeit hängt die
+  Uhr aus `ZUG0_TIMEOUT`: solange einer der Wege offen ist, wartet der Lauf, so
+  lange der Nutzer braucht. Die Frist richtet sich gegen den blinden Lauf, den
+  niemand beaufsichtigt, nicht gegen den langsamen Menschen — wer nicht mehr
+  antworten will, beendet den Lauf selbst. Der zweite ist kein Sonderfall: Zug 0 startet
   ausdrücklich mit `--remote-control`, damit dieselbe Frage vom Handy zu
   beantworten ist, und wer so antwortet, hängt an keinem tmux-Client. Ihn nur
   am Client zu messen hieße, den Weg anzubieten und jede Antwort darüber für

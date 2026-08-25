@@ -80,9 +80,12 @@ EXTRA_ARGS=${EXTRA_ARGS:-}
 # also auf »warten, solange es dauert«. Das war richtig gedacht und in der Praxis
 # falsch: ein Lauf, den niemand beaufsichtigt, stand damit bis ans Ende aller
 # Tage, und von außen sah das aus wie Arbeit. Deshalb jetzt eine endliche Zahl —
-# und eine Uhr, die stillsteht, solange ein Client an der Session hängt. Wer im
-# Fenster sitzt, wird nie abgeschnitten; wer nicht da ist, bekommt einen sauberen
-# Abbruch statt eines Hängers. 0 stellt das alte Verhalten wieder her.
+# und eine Uhr, die stillsteht, solange der Nutzer erreichbar ist: ein Client am
+# Fenster, oder ein offener Remote-Control-Kanal, über den ihn die Frage auch
+# unterwegs erreicht. Wer erreichbar ist, wird nie abgeschnitten und braucht so
+# lange, wie er braucht; wer es auf keinem Weg ist, bekommt einen sauberen
+# Abbruch statt eines Hängers. Die Frist richtet sich also gegen den blinden
+# Lauf, nicht gegen den langsamen Menschen. 0 nimmt auch sie weg.
 ZUG0_POLL=${ZUG0_POLL:-5}           # Sekunden zwischen zwei Blicken auf die Datei
 ZUG0_GRACE=${ZUG0_GRACE:-20}        # Gnadenfrist, bevor das Fenster zugeht
 ZUG0_CLOSE=${ZUG0_CLOSE:-20}        # wie lange /exit Zeit bekommt, bevor kill-window folgt
@@ -141,10 +144,23 @@ entscheidungen() { # der Abschnitt »Entscheidungen« aus dem Plan, roh
 # oder vom Handy. Ein solcher Nutzer taucht in list-clients nicht auf. Die CLI
 # schreibt aber beim Verbinden eine feste Zeile ins Fenster — »/remote-control
 # is active · Continue here, on your phone, or at https://claude.ai/code/…« —,
-# und die steht in der Mitschrift. Gesucht wird tolerant: das Terminal rendert
-# die Zeile je nach Umbruch auch ohne die Leerzeichen darin.
-rc_offen() { # $1 = Paketnummer; wahr, sobald der Kanal einmal offen stand
-  grep -Eqa 'remote-control *is *active' "$WORK/paket-$1.zug0.pane.log" 2>/dev/null
+# und die ist der Beleg. Gesucht wird tolerant: das Terminal rendert die Zeile
+# je nach Umbruch auch ohne die Leerzeichen darin.
+#
+# Gesucht wird an zwei Orten, und der zweite ist kein Luxus. pipe-pane lässt
+# sich erst einschalten, wenn das Fenster schon läuft; was der Prozess in
+# dieser Lücke schreibt, steht in keiner Mitschrift. Gemessen an einem Stub,
+# der sofort schreibt: die ersten beiden Zeilen fehlten, und mit ihnen der
+# Beleg — ein Nutzer, der geantwortet hat, wäre als Erfinder dagestanden. Die
+# echte CLI meldet den Kanal erst nach ihrem Handshake und fällt selten in
+# diese Lücke, aber »selten« ist hier zu wenig. Der Scrollback des Fensters
+# kennt auch, was vor pipe-pane geschah; er lebt nur so lange wie das Fenster,
+# und genau dort wird gefragt.
+rc_offen() { # $1 = Paketnummer, $2 = tmux-Fenster; wahr, sobald der Kanal stand
+  grep -Eqa 'remote-control *is *active' "$WORK/paket-$1.zug0.pane.log" 2>/dev/null \
+    && return 0
+  "$TMUX_BIN" capture-pane -p -S - -t "$2" 2>/dev/null \
+    | grep -Eqa 'remote-control *is *active'
 }
 
 journal() { # eine Zeile je Paket, damit ein Lauf nachvollziehbar bleibt
@@ -413,7 +429,7 @@ Steht alles im Plan, tust du als allerletzte Handlung genau dies:
   touch $WORK/paket-$pkg.zug0.done
 Das ist dein Feierabendzeichen, und es ist das Einzige, worauf die Schleife wartet. Sie schließt dieses Fenster ${ZUG0_GRACE} Sekunden später selbst und fährt fort; niemand muss dafür etwas tippen, und /exit brauchst du nicht. Vor dem touch sagst du dem Nutzer in einem Satz, dass du fertig bist und das Fenster gleich zugeht.
 Die Reihenfolge ist keine Förmlichkeit: nach dem touch läuft eine Uhr, und was danach noch in deinem Kontext steht statt im Plan, ist verloren.
-Der Nutzer sitzt in diesem Fenster und ist ansprechbar: was sich aus Audit und Code nicht ergibt, fragst du ihn, statt es zu setzen." ;;
+Der Nutzer ist erreichbar, am Fenster oder unterwegs — aber seine Aufmerksamkeit ist der teuerste Posten dieses Laufs, und du bist hier, damit er sie nicht braucht. Was sich begründen lässt, entscheidest du, und der Grund steht im Detailplan. Gefragt wird allein, was die Richtung umwirft; die Liste dafür ist »Wo du anhältst« in runner.md, und sie ist abschließend. Hast du eine Empfehlung, hast du entschieden." ;;
     B) rueckgabe="Deine Rückgabe ist ein JSON-Objekt nach dem Schema, das dir mitgegeben wurde, und
 sie ist der einzige Kanal zwischen uns. Niemand fragt dich nach deinem Stand, und
 es gibt keine Adresse, an die du etwas anderes schicken könntest. Was den Lauf
@@ -523,8 +539,10 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
   say "  Schließen musst du nichts. Wenn er fertig ist, hinterlegt er ein"
   say "  Zeichen, die Schleife macht das Fenster zu und läuft weiter."
   if [ "$ZUG0_TIMEOUT" -gt 0 ]; then
-    say "  Hängt niemand an der Session, hört der Lauf nach $((ZUG0_TIMEOUT / 60)) min"
-    say "  von selbst auf, statt auf eine Antwort zu warten, die nicht kommt."
+    say "  Solange du erreichbar bist — am Fenster oder über Remote Control —,"
+    say "  wartet der Lauf, so lange du brauchst. Ist beides zu, hört er nach"
+    say "  $((ZUG0_TIMEOUT / 60)) min von selbst auf, statt auf eine Antwort zu warten, die"
+    say "  niemand geben kann. ZUG0_TIMEOUT=0 nimmt auch diese Frist weg."
   fi
   say ""
 
@@ -566,23 +584,23 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
          | grep -q .; then
       waited=0
       saw_client=1
+    elif rc_offen "$pkg" "$win"; then
+      # Der Kanal steht: die Frage erreicht den Nutzer, auch wenn niemand im
+      # Fenster sitzt. Dann ist Warten kein Hänger, sondern Warten, und die Uhr
+      # hat nichts zu suchen — sie war gegen den Lauf gerichtet, den niemand
+      # beaufsichtigt, nicht gegen den, der auf eine Antwort wartet, die
+      # kommen kann. Wer nicht mehr antworten will, beendet den Lauf selbst.
+      waited=0
+      saw_client=1
     else
-      # Zwei verschiedene Fragen, zwei verschiedene Belege. Die Uhr fragt »wartet
-      # hier jemand vergeblich?« — dafür taugt nur ein Client, der sichtbar im
-      # Fenster sitzt; ein offener Kanal beweist kein hingehaltenes Handy, und
-      # sonst stünde der Lauf wieder bis ans Ende aller Tage. Der Vorwurf unten
-      # fragt etwas anderes: »konnte überhaupt jemand antworten?« Dafür genügt
-      # der Kanal, denn wer erreichbar ist, hat womöglich geantwortet — und wer
-      # es nicht ist, kann es nicht gewesen sein.
       waited=$((waited + ZUG0_POLL))
-      rc_offen "$pkg" && saw_client=1
     fi
     if [ "$ZUG0_TIMEOUT" -gt 0 ] && [ "$waited" -ge "$ZUG0_TIMEOUT" ]; then
       close_zug0_window "$win"
       journal "paket=$pkg rolle=A abgebrochen unbeaufsichtigt nach ${waited}s"
-      die $EX_ASK "Zug 0 für Paket $pkg stand ${waited}s ohne angehängten Client und ohne Feierabendzeichen — vermutlich wartet er auf eine Antwort, die niemand gibt. Das Fenster ist zu, der Plan trägt, was der Planer geschrieben hat. Die Mitschrift liegt in $WORK/paket-$pkg.zug0.pane.log."
+      die $EX_ASK "Zug 0 für Paket $pkg stand ${waited}s ohne jede Erreichbarkeit — kein Client am Fenster, kein offener Remote-Control-Kanal — und ohne Feierabendzeichen — vermutlich wartet er auf eine Antwort, die niemand gibt. Das Fenster ist zu, der Plan trägt, was der Planer geschrieben hat. Die Mitschrift liegt in $WORK/paket-$pkg.zug0.pane.log."
     fi
-    [ $((waited % 600)) -ge "$ZUG0_POLL" ] || say "  … Zug 0 wartet seit $((waited / 60)) min unbeaufsichtigt"
+    [ $((waited % 600)) -ge "$ZUG0_POLL" ] || say "  … Zug 0 wartet seit $((waited / 60)) min, und niemand ist erreichbar"
   done
 
   # Eine Entscheidung des Nutzers setzt einen Nutzer voraus. War er während des

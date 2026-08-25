@@ -218,9 +218,26 @@ aus wie drei unabhängige Pakete.
 
 ### Wo du anhältst
 
-Hier änderst du nichts, sondern schreibst deinen Vorschlag in die Rückgabe und
-brichst ab. Der Orchestrator legt es dem Nutzer vor und startet dich oder einen
-Nachfolger mit der Antwort neu:
+Die Schwelle ist hoch, und sie ist es mit Absicht. Angehalten wird, was die
+Richtung umwirft, nicht was eine Wahl offenlässt. Ein Detail, für das zwei Wege
+gangbar sind, ist kein Anhaltegrund: dann wählst du den, der zu diesem Projekt
+passt, und schreibst den Grund daneben. Der Prüfstein ist nicht »könnte er das
+anders wollen« — das könnte er fast überall —, sondern: sähe der Detailplan
+anders aus, wenn die Antwort umgekehrt ausfiele? Nur dann.
+
+**Hast du eine Empfehlung, hast du entschieden.** Eine Frage, deren Optionen
+eine davon als empfohlen ausweisen, ist keine Frage, sondern eine Entscheidung,
+die sich absichern will. Sie kostet den Nutzer eine Unterbrechung und bringt
+ihm nichts, was nicht schon in deinem Kopf stand — er antwortet dir mit deinem
+eigenen Vorschlag. Trag ihn stattdessen in den Detailplan ein, mit dem Grund,
+der ihn zur Empfehlung gemacht hat, und geh weiter.
+
+Bei den Punkten unten dagegen änderst du nichts, sondern schreibst deinen
+Vorschlag in die Rückgabe und brichst ab. Der Orchestrator legt es dem Nutzer
+vor und startet dich oder einen Nachfolger mit der Antwort neu. Läuft dein Zug 0
+in einem eigenen Fenster, hast du keine Rückgabe: dann fragst du dort direkt und
+trägst die Antwort datiert in »Entscheidungen« ein. Die Liste gilt in beiden
+Fällen unverändert, und sie ist abschließend:
 
 - Etwas, das eine Zeile aus »Entscheidungen« umkehren würde.
 - Ein anderer Lösungs- oder Architekturweg als der freigegebene.
@@ -601,6 +618,7 @@ Das Modell des Reviewers wählst du nach dem Diff, nicht nach dem Paket.
 | »Das ist mir nicht aufgefallen« | In einer Datei, die du geändert hast, ist das keine Auskunft über deine Aufmerksamkeit, sondern darüber, dass du sie nicht gelesen hast. Der Nebenbefund vier Zeilen unter deinem Fix ist der billigste, den dieser Lauf je bekommt. |
 | »Der Nebenbefund fällt unter die Scope-Regel, also nehme ich ihn gleich mit« | Die Regel entscheidet, ob er in diesen Lauf gehört, nicht ob er in dein Paket gehört. Ohne gemeinsame Ursache bekommt er ein eigenes Paket, und das schneidet der Abschluss. |
 | »Ich fixe ihn nicht selbst, ich schneide nur schon mal ein Paket dafür« | Dieselbe Grenze, eine Ebene höher. Pakete schneidest du für Folgen, nicht für Nebenbefunde; die Drain-Runde tut es mit allen Befunden vor Augen und du mit einem. |
+| »Ich frage lieber einmal zu viel als einmal zu wenig« | Einmal zu viel kostet ihn eine Unterbrechung, und du bekommst als Antwort deine eigene Empfehlung zurück — gemessen an einem Lauf, in dem zwei von zwei Fragen mit »Option 1 (Empfehlung)« beantwortet wurden. Du bist hier, damit er nicht mitdenken muss. Die Liste oben ist abschließend, alles andere entscheidest du und schreibst den Grund daneben. |
 | »Ich lege dem Nutzer die Wahl vor, ob es ein Paket wird oder in die Queue geht« | Eine Frage, deren Optionen einen vom Skill ausgeschlossenen Weg enthalten, macht den Nutzer zu dem, der die Regel bricht — und er merkt es nicht, weil die Option von dir kommt und damit erlaubt aussieht. Vorgelegt wird, was der Code nicht hergibt, nicht was die Regel schon entschieden hat. |
 | »Die Regel passt nicht so recht, ich schiebe ihn ins Audit« | Genau dafür gibt es `→ Rückfrage`. Ein Befund, den du im Zweifel hinausbuchst, ist der einzige der drei Ausgänge, den niemand mehr nachprüft. |
 | »Das andere Problem fixe ich gleich mit« | War es auch ohne dich falsch, ist es ein Nebenbefund mit Datei und Zeile und geht in die Queue. Hat deine Änderung es erzeugt, ist es kein anderes Problem, sondern deins. |
