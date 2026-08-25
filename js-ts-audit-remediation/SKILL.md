@@ -1,6 +1,6 @@
 ---
 name: js-ts-audit-remediation
-description: Use when the user wants the findings of an existing project audit actually fixed rather than reported — "arbeite die Issues aus dem Audit ab", "behebe die Findings", "setz die Empfehlungen um", "Backlog abarbeiten", "Schritt für Schritt beheben", "fix the audit findings", "work through the audit". Also triggers when a `./audit.html` sits in the project root and the user asks for the problems in it to be resolved, and for resuming an interrupted run ("mach mit dem Plan weiter") when `./remediation-plan.md` still has open items. Producing the audit itself is a different job — that is `js-ts-project-audit`.
+description: Use when the user wants the findings of an existing project audit actually fixed rather than reported — "arbeite die Issues aus dem Audit ab", "behebe die Findings", "setz die Empfehlungen um", "Backlog abarbeiten", "Schritt für Schritt beheben", "fix the audit findings", "work through the audit". Also triggers when a `./audit.html` sits in the project root and the user asks for the problems in it to be resolved. Equally for picking a run back up after it stopped, crashed or was aborted by the user — "nimm die Arbeit am Remediation-Plan wieder auf", "mach mit dem Plan weiter", "führe den Lauf fort", "der Lauf ist abgebrochen, mach weiter", "resume the remediation run", "continue where we left off" — whenever a `./remediation-plan.md` with open packages or open findings lies in the project, no matter why the previous run ended. Producing the audit itself is a different job — that is `js-ts-project-audit`.
 ---
 
 # Audit-Remediation
@@ -25,7 +25,7 @@ entsteht im Runner, gegen den Code, der dann tatsächlich dasteht.
 
 | Datei | Wann |
 | --- | --- |
-| `references/resume.md` | vor Schritt 1 — nur wenn schon ein `./remediation-plan.md` existiert |
+| `references/resume.md` | **vor allem anderen**, sobald ein `./remediation-plan.md` im Projekt liegt — egal ob der Nutzer »arbeite das Audit ab« oder nur »mach weiter« sagt |
 | `references/runner.md` | **nie von dir.** Den Pfad kennt das Skript |
 | `references/shell-runner.md` | vor Schritt 6 — einmal, bevor du das Skript startest |
 | `references/semver-and-closeout.md` | Schritt 7 — nach dem letzten Paket |
@@ -68,6 +68,17 @@ Diese Regeln stehen über jeder Abwägung im Einzelfall:
 
 ### 1. Findings laden
 
+**Zuerst nachsehen, ob es diesen Lauf schon gibt.** Liegt ein
+`./remediation-plan.md` im Projekt, wird nichts neu geplant, sondern
+`references/resume.md` gelesen, bevor irgendetwas Weiteres passiert — auch
+nicht die `audit.html` geöffnet. Das gilt unabhängig davon, wie der Nutzer
+fragt: »nimm die Arbeit am Plan wieder auf« und »arbeite die Findings ab«
+landen beide hier, und der zweite Satz meint fast nie einen zweiten Lauf,
+sondern den, der noch offen ist. Wie der vorige Lauf geendet hat — sauber
+durchgelaufen, an einem Exit-Code stehengeblieben, vom Nutzer abgewürgt oder
+mit der Maschine gestorben —, ändert daran nichts; das steht in der Datei,
+nicht in der Frage.
+
 Quelle ist die JSON-Insel `<script id="audit-data" type="application/json">` in
 `./audit.html`. Daraus: Findings, `summary`, `acknowledged`.
 
@@ -78,10 +89,6 @@ Quelle ist die JSON-Insel `<script id="audit-data" type="application/json">` in
   `js-ts-project-audit` laufen soll, oder wo die Issue-Liste liegt.
 - `acknowledged` bleibt draußen. Diese Punkte hat der Nutzer bewusst
   zurückgestellt; sie werden weder geplant noch gefixt, bis er sie widerruft.
-
-Liegt bereits ein `./remediation-plan.md` mit offenen Paketen im Projekt, ist
-das ein Wiederaufnahmefall: `references/resume.md` lesen, bevor irgendetwas
-Weiteres passiert.
 
 ### 2. Baseline messen
 
