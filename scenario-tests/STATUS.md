@@ -27,7 +27,7 @@ Jede Zeile Ausgabe heißt: fällig.
 | `install-drift.md` | `global-behavior/INSTALL.md` | unbekannt (vor Einführung dieser Datei) | — |
 | `audit-followup.md` | `js-ts-project-audit/` | unbekannt (vor Einführung dieser Datei) | **fällig** — am 2026-08-07 kamen Domain-Trennung und responsives Layout dazu, am 2026-08-13 volle Desktop-Breite, Sektions-Faltung und Farbdisziplin, am 2026-08-22 das mitgeführte Feld `github` samt Rendering, alles ungetestet |
 | `es-frequency.md` | Abschnitt `## ES` in `global-behavior/CLAUDE.md` | unbekannt (vor Einführung dieser Datei) | **fällig** — Regel und Test am 2026-07-26 neu geschrieben und am 2026-07-29 erneut umgebaut, beides ungetestet |
-| `remediation-plan.md` | `js-ts-audit-remediation/` | 2026-08-24, `1925c3c` | **fällig** — zuletzt bestanden nach fünf Anläufen, Arm A 12/12, Arm B 7/7, Arm C 5/5. Der erste echte Lauf des Skript-Wegs gegen die CLI statt gegen den Stub hat fünf Defekte gefunden, die kein Stub finden konnte, jeder davon ein Totalausfall: `--json-schema` bekam den Pfad statt des Schemas (jeder Runner B starb sofort, die Züge 1–5 waren nie gelaufen); die Runner hatten keinen Lesezugriff auf die beiden Referenzdateien, die ihr Brief ihnen aufgibt; die Allowlist stand auf Präfixmustern, an denen `claude -p "$(cat brief)" > report.json` scheitert, worauf der Runner auf Subagenten zurückfiel; das Arbeitsverzeichnis bekam kein `--add-dir`, worauf er mit Diffs und Logs in den Arbeitsbaum auswich; und der Vorgabewert `.git/remediation` ist für einen Runner überhaupt nicht beschreibbar. Dazu ein Hänger ohne Fehlermeldung: die interaktive Zug-0-Session endet nicht von selbst, die Schleife wartet aber auf das Prozessende. Alles behoben, danach lief das Paket durch: Zug 0 hält an und fragt nach dem Wert, der nirgends steht, Zug 1 wiederholt ihn nicht, Implementierer und Reviewer laufen als eigene Prozesse, der Wert kommt über beide Prozessgrenzen im Code an, roter Vorlauf belegt, ein Commit ohne Finding-IDs, Nebenbefunde in der Queue. Sechster Defekt im Test selbst: die Frage-Fixture `CFG-001` beschrieb Code, den es im Fixture nicht gibt, und die vorgeschriebene Antwort stand ohnehin schon darin — repariert, Antwort ist jetzt `7500`. Nicht gefahren: Arm E (voller Loop). Danach am selben Tag: Zug 0 läuft nicht mehr im Vordergrund der Schleife, sondern in einem eigenen tmux-Fenster und meldet sein Ende über eine Datei. Der Weg durch Zug 0 ist damit ungeprüft — die Mechanik ist gegen einen Stub und gegen eine echte TUI gemessen, der Planer selbst hat sie noch nie gefahren |
+| `remediation-plan.md` | `js-ts-audit-remediation/` | 2026-08-25, `824bccd` | **teilweise** — gefahren wurde allein der Weg durch Zug 0 und sein Ende. Die Mechanik gegen einen Stub in vier Fällen, alle grün: Zeichen gesetzt und die TUI wartet → Frist, `/exit`, Fenster zu, Schleife läuft weiter; Zeichen gesetzt und die TUI reagiert nicht → Warnung, `kill-window`, weiter; kein Zeichen und der Nutzer verlässt das Fenster selbst → die Marke entscheidet wie zuvor; Hänger mit `ZUG0_TIMEOUT` → Fenster zu, Exit 10, Grund im Journal. Dazu drei Läufe eines echten Planers (opus/xhigh) gegen die `pixel-cart`-Fixture, und die beantworten den teuren Punkt: **A setzt das Zeichen wirklich zuletzt.** In drei von vier Zügen hat er es zurückgehalten, weil eine Frage offen war — beim letzten Mal, obwohl der Detailplan schon stand und die Marke auf `[~]`: »Ja oder nein — danach mache ich das Feierabendzeichen«. Erst nach der Antwort kam der `touch`, elf Sekunden nach dem letzten Schreibzugriff auf den Plan. Nebenbei hat er die Inkonsistenz gefunden, die der Testaufbau selbst hatte (Paket 1 auf `[x]` bei unverändertem Code), und sich geweigert, sie stillschweigend zu reparieren. **Ein Befund:** das Feierabendzeichen ist ein Bash-Aufruf, und `tool_args_zug0()` gibt Zug 0 weder Allowlist noch Permission-Modus — bewusst, denn das ist die Session des Nutzers. Gemessen wurden in einem Lauf fünf abgelehnte Bash-Aufrufe des Planers (`npm test`, Leseproben); in der TUI wären das fünf Freigabe-Dialoge, und der `touch` ist der letzte davon — er kommt, wenn der Nutzer seine Fragen längst beantwortet hat und weg ist. Den Plan selbst schreibt A mit `Edit`, dafür braucht er nichts. **Nicht gefahren:** Arm A, B, C und E; sie stehen weiter auf dem Stand vom 2026-08-24 (`1925c3c`, bestanden nach fünf Anläufen, Arm A 12/12, B 7/7, C 5/5, Arm E ausgelassen). **Nicht prüfbar:** eine interaktive `claude`-TUI ließ sich im Testcontainer nicht anmelden (Onboarding, dann Login-Abfrage); Zug 0 lief als Stand-in headless. Damit bleibt unbestätigt, dass `send-keys '/exit' Enter` eine echte TUI beendet — dafür steht nur die Einzelmessung aus dem Commit — und ebenso, dass der Nutzer im Fenster tatsächlich antworten kann |
 | — | `audit-github-sync/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-22 angelegt |
 | — | `testing-on-mac-safari/` | **Test existiert nicht** | kein Szenario-Test. Die Ad-hoc-Prüfung vom 2026-07-30 ist durch den seitherigen Ausbau überholt |
 
@@ -162,14 +162,17 @@ Läufe geändert. Praktisch heißt das: fällig, sobald es jemandem wichtig ist.
   wie beim Kontextverfall eines Runners, nur dass sie hier mitten im Paket
   gestellt wird und nicht an seinem Ende.
   Ebenfalls am 2026-08-24 hat Zug 0 sein eigenes Fenster bekommen und beendet
-  sich über ein `touch` statt über einen Menschen an der Tastatur. Der teure
-  Prüfpunkt ist nicht die Mechanik — die ist gemessen —, sondern die
-  Reihenfolge: Setzt A das Zeichen wirklich zuletzt, oder gleich nachdem er
-  weiß, dass er fertig *wird*, und schreibt den Rest des Detailplans in ein
-  Fenster, dessen Uhr schon läuft? Ein Fixture dafür braucht ein Paket, dessen
-  Detailplan lang genug ist, dass die Frist dazwischenpasst. Der zweite Punkt
-  ist die Gegenprobe: verlässt der Nutzer das Fenster selbst, darf das nichts
-  ändern — kein Zeichen, kein Fenster, und die Marke entscheidet wie sonst.
+  sich über ein `touch` statt über einen Menschen an der Tastatur. Beide
+  Prüfpunkte sind am 2026-08-25 gefahren und beide halten: die Reihenfolge (A
+  setzt das Zeichen zuletzt und hält es zurück, solange eine Frage offen ist —
+  auch dann noch, wenn der Detailplan längst steht) und die Gegenprobe (verlässt
+  der Nutzer das Fenster selbst, entscheidet die Marke wie sonst). Offen bleibt
+  eine Stelle, die kein Fixture erzwingt: das Zeichen ist ein Bash-Aufruf, und
+  Zug 0 bekommt bewusst keine Allowlist. In der TUI steht damit vor der letzten
+  Handlung des Planers ein Freigabe-Dialog, und zwar zu dem Zeitpunkt, zu dem
+  der Nutzer seine Fragen längst beantwortet hat und nicht mehr hinsieht. Wer
+  das prüfen will, braucht eine anmeldbare interaktive TUI — im Testcontainer
+  vom 2026-08-25 gab es die nicht.
 
 - Der erste Lauf von `remediation-plan.md` am 2026-08-23 hat die
   Architektur-Prüfpunkte bestätigt: der Runner delegiert wirklich, sein
