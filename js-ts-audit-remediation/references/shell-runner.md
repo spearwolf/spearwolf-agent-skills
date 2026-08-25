@@ -147,7 +147,7 @@ deshalb läuft nie einer parallel zum anderen.
 | 0 | Kein Paket mehr offen | Schritt 7, `references/semver-and-closeout.md` |
 | 10 | Es braucht eine Entscheidung — oder Zug 0 stand unbeaufsichtigt in einer Frage | Antwort datiert in »Entscheidungen«, dann erneut starten. Sagt die Meldung »unbeaufsichtigt«, war niemand am Fenster: anhängen und noch einmal starten |
 | 11 | Ein Paket steht auf `[~]` | `references/resume.md`, nicht dieses Skript |
-| 20 | Die Rückgabe passt nicht zum Repo — oder Zug 0 hat Entscheidungen notiert, die niemand getroffen hat | Plan und `git log` ansehen. Nicht blind wiederholen. Bei »ohne Nutzer«: die neuen Zeilen unter »Entscheidungen« herausnehmen, anhängen, erneut starten |
+| 20 | Die Rückgabe passt nicht zum Repo — oder Zug 0 hat Entscheidungen notiert, die niemand getroffen hat | Plan und `git log` ansehen. Nicht blind wiederholen. Bei »ohne Nutzer«: die neuen Zeilen unter »Entscheidungen« herausnehmen, dann erreichbar sein und erneut starten — am Fenster oder über Remote Control |
 | 21 | Ein Runner hing an einer Rechteschranke | Die Meldung nennt die abgelehnten Werkzeuge; sie gehören in `ALLOW_TOOLS` |
 | 30 | Der Runner-Prozess selbst ist gescheitert | `paket-N.*.stderr` im Arbeitsverzeichnis |
 | 31 | Die API blieb überlastet | Nichts ist kaputt, nichts hat sich bewegt: später erneut starten |
@@ -460,17 +460,22 @@ sind. Fällt eine dieser Proben, endet der Lauf mit Exit 20:
   `role` nennt die Rolle, in der du beauftragt wurdest. Wer sich für die andere
   hält, hat womöglich den falschen Zug gefahren.
 - Kein Aufruf ist an einer Rechteschranke gescheitert.
-- **Zug 0 hat »Entscheidungen« nur fortgeschrieben, wenn jemand da war.** Hing
-  während des ganzen Zuges kein Client an der Session und ist der Abschnitt
-  trotzdem gewachsen, endet der Lauf mit Exit 20. Der Grund ist gemessen: ein
-  Planer, den niemand beantwortet hat, notierte »Vorgabewert 30000 ms« — eine
-  Zahl, die weder im Code noch im Audit steht — und der Mitschnitt behauptete
-  dazu »User answered Claude's questions«. Aus seiner Sicht hat er eine Antwort
-  bekommen; es gab nur niemanden, der sie hätte geben können. Eine Instruktion
-  hilft dagegen nicht, ein Beleg schon: eine Entscheidung des Nutzers setzt
-  einen Nutzer voraus, und ob einer da war, weiß tmux. Das wiegt schwerer als
-  jeder Hänger — die Zeile trägt ein Datum, und ein späterer Lauf behandelt sie
-  laut Regel als beschlossen.
+- **Zug 0 hat »Entscheidungen« nur fortgeschrieben, wenn der Nutzer erreichbar
+  war.** War er es auf keinem Weg und ist der Abschnitt trotzdem gewachsen,
+  endet der Lauf mit Exit 20. Der Grund ist gemessen: ein Planer, den niemand
+  beantwortet hat, notierte »Vorgabewert 30000 ms« — eine Zahl, die weder im
+  Code noch im Audit steht — und der Mitschnitt behauptete dazu »User answered
+  Claude's questions«. Aus seiner Sicht hat er eine Antwort bekommen; es gab nur
+  niemanden, der sie hätte geben können. Eine Instruktion hilft dagegen nicht,
+  ein Beleg schon: eine Entscheidung des Nutzers setzt einen Nutzer voraus.
+  Erreichbar heißt auf zwei Wegen, und beide zählen gleich — ein Client am
+  Fenster, den tmux sieht, oder ein offener Remote-Control-Kanal, den die
+  Mitschrift bezeugt. Der zweite ist kein Sonderfall: Zug 0 startet
+  ausdrücklich mit `--remote-control`, damit dieselbe Frage vom Handy zu
+  beantworten ist, und wer so antwortet, hängt an keinem tmux-Client. Ihn nur
+  am Client zu messen hieße, den Weg anzubieten und jede Antwort darüber für
+  erfunden zu erklären. Das wiegt schwerer als jeder Hänger — die Zeile trägt
+  ein Datum, und ein späterer Lauf behandelt sie laut Regel als beschlossen.
 
 Bleibt nach deinem Commit etwas im Arbeitsbaum liegen, gibt es eine Warnung und
 der Lauf geht weiter. Der nächste Diff enthält es dann mit.

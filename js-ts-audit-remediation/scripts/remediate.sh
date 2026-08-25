@@ -93,12 +93,15 @@ ZUG0_TIMEOUT=${ZUG0_TIMEOUT:-1800}  # Obergrenze für einen unbeaufsichtigten Zu
 # bricht die Schleife ab und sagt, was zu tun ist — sonst wartet sie auf eine
 # Taste, die niemand drückt.
 ZUG0_TRUST_GRACE=${ZUG0_TRUST_GRACE:-60}
-# »Es hing ein Client an der Session« ist der Beleg dafür, dass ein Mensch da
-# war — und der einzige, den tmux hergibt. Wer stattdessen von außen per
-# send-keys antwortet (Szenario-Tests tun das), erzeugt keinen Client und liefe
-# in den Vorwurf, Entscheidungen erfunden zu haben. Für diesen Fall gibt es
-# diese Tür, und sie ist ausdrücklich zu öffnen: ZUG0_ASSUME_USER=1 sagt »ich
-# beantworte von außen«. Ein unbeaufsichtigter Lauf setzt das nicht.
+# »Es hing ein Client an der Session« war einmal der einzige Beleg dafür, dass
+# ein Mensch da war. Er ist es nicht mehr: Zug 0 startet mit --remote-control,
+# und der Nutzer beantwortet die Frage ausdrücklich auch vom Handy. Wer das tut,
+# hängt an keinem tmux-Client — list-clients sieht ihn nie und erklärte seine
+# Antwort zur Erfindung. Deshalb zählt der offene Remote-Control-Kanal als
+# zweiter Beleg (rc_offen). Bleibt der dritte Weg: wer von außen per send-keys
+# antwortet (Szenario-Tests tun das), erzeugt weder Client noch Kanal. Für ihn
+# gibt es diese Tür, und sie ist ausdrücklich zu öffnen: ZUG0_ASSUME_USER=1 sagt
+# »ich beantworte von außen«. Ein unbeaufsichtigter Lauf setzt das nicht.
 ZUG0_ASSUME_USER=${ZUG0_ASSUME_USER:-0}
 
 ONCE=0
@@ -131,6 +134,17 @@ die() { # $1 = Exit-Code, Rest = Meldung
 
 entscheidungen() { # der Abschnitt »Entscheidungen« aus dem Plan, roh
   sed -n '/^## Entscheidungen/,/^## /p' "$PLAN" 2>/dev/null
+}
+
+# Der zweite Antwortweg, den dieses Skript selbst öffnet: Remote Control macht
+# die Session vom Account aus erreichbar, und der Nutzer antwortet vom Browser
+# oder vom Handy. Ein solcher Nutzer taucht in list-clients nicht auf. Die CLI
+# schreibt aber beim Verbinden eine feste Zeile ins Fenster — »/remote-control
+# is active · Continue here, on your phone, or at https://claude.ai/code/…« —,
+# und die steht in der Mitschrift. Gesucht wird tolerant: das Terminal rendert
+# die Zeile je nach Umbruch auch ohne die Leerzeichen darin.
+rc_offen() { # $1 = Paketnummer; wahr, sobald der Kanal einmal offen stand
+  grep -Eqa 'remote-control *is *active' "$WORK/paket-$1.zug0.pane.log" 2>/dev/null
 }
 
 journal() { # eine Zeile je Paket, damit ein Lauf nachvollziehbar bleibt
@@ -448,7 +462,7 @@ close_zug0_window() { # $1 = tmux-Fenster; erst höflich, dann bestimmt
 }
 
 dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
-  local pkg=$1 brief win wname done_file brieffile starter a waited=0 trusted_wait=0 saw_client=0 ents_before
+  local pkg=$1 brief win wname done_file log_file brieffile starter a waited=0 trusted_wait=0 saw_client=0 ents_before
   brief=$(brief_for A "$pkg")
   tool_args_zug0 "$pkg"
 
@@ -462,9 +476,17 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
   wname="p$pkg-plan"
   win="$SESSION:$wname"
   done_file="$WORK/paket-$pkg.zug0.done"
+  log_file="$WORK/paket-$pkg.zug0.pane.log"
   brieffile="$WORK/paket-$pkg.zug0.brief.txt"
   starter="$WORK/paket-$pkg.zug0.sh"
   rm -f "$done_file"
+  # pipe-pane hängt an, und die Mitschrift ist seit dem Remote-Control-Beleg
+  # kein bloßes Protokoll mehr, sondern Beweismittel: stünde die Meldung eines
+  # früheren Laufs noch darin, gälte der Kanal als offen, obwohl diesmal
+  # niemand da ist. Ein Schritt Historie bleibt trotzdem erhalten — die
+  # Abbruchmeldung des Vorlaufs verweist auf diese Datei, und wer sie danach
+  # aufschlägt, soll nicht ins Leere greifen.
+  [ -s "$log_file" ] && mv -f "$log_file" "$log_file.vorlauf"
 
   # Der Brief wandert über eine Datei und nicht über die Kommandozeile: tmux
   # startet ein Fenster über die Shell, und ein mehrzeiliger Text mit
@@ -490,12 +512,14 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
   # Verschwinden, das nie kommt. Die Mitschrift übernimmt das Nachsehen.
   "$TMUX_BIN" set-option -t "$win" -w remain-on-exit off >/dev/null 2>&1 || true
   "$TMUX_BIN" pipe-pane -o -t "$win" \
-    "cat >> $(printf '%q' "$WORK/paket-$pkg.zug0.pane.log")" >/dev/null 2>&1 || true
+    "cat >> $(printf '%q' "$log_file")" >/dev/null 2>&1 || true
 
   say "→ Runner A · Paket $pkg · $MODEL_A/$EFFORT_A · tmux-Fenster »$wname«"
   say ""
   say "  Dort sitzt der Planer. Häng dich an und beantworte seine Fragen:"
   say "    tmux attach -t $SESSION"
+  say "  Oder vom Handy: die Sitzung meldet sich unter deinem Account, sobald"
+  say "  Remote Control steht. Beides zählt als Antwort."
   say "  Schließen musst du nichts. Wenn er fertig ist, hinterlegt er ein"
   say "  Zeichen, die Schleife macht das Fenster zu und läuft weiter."
   if [ "$ZUG0_TIMEOUT" -gt 0 ]; then
@@ -543,7 +567,15 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
       waited=0
       saw_client=1
     else
+      # Zwei verschiedene Fragen, zwei verschiedene Belege. Die Uhr fragt »wartet
+      # hier jemand vergeblich?« — dafür taugt nur ein Client, der sichtbar im
+      # Fenster sitzt; ein offener Kanal beweist kein hingehaltenes Handy, und
+      # sonst stünde der Lauf wieder bis ans Ende aller Tage. Der Vorwurf unten
+      # fragt etwas anderes: »konnte überhaupt jemand antworten?« Dafür genügt
+      # der Kanal, denn wer erreichbar ist, hat womöglich geantwortet — und wer
+      # es nicht ist, kann es nicht gewesen sein.
       waited=$((waited + ZUG0_POLL))
+      rc_offen "$pkg" && saw_client=1
     fi
     if [ "$ZUG0_TIMEOUT" -gt 0 ] && [ "$waited" -ge "$ZUG0_TIMEOUT" ]; then
       close_zug0_window "$win"
@@ -553,8 +585,9 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
     [ $((waited % 600)) -ge "$ZUG0_POLL" ] || say "  … Zug 0 wartet seit $((waited / 60)) min unbeaufsichtigt"
   done
 
-  # Eine Entscheidung des Nutzers setzt einen Nutzer voraus. Hing während des
-  # ganzen Zuges kein Client an der Session, hat niemand etwas beantwortet — und
+  # Eine Entscheidung des Nutzers setzt einen Nutzer voraus. War er während des
+  # ganzen Zuges auf keinem der beiden Wege erreichbar — kein Client am Fenster,
+  # kein offener Remote-Control-Kanal —, hat niemand etwas beantwortet, und
   # ein neuer Eintrag unter »Entscheidungen« ist dann keine Entscheidung, sondern
   # eine Erfindung. Gemessen: ein Planer, den niemand beantwortet hat, notierte
   # »Vorgabewert 30000 ms«, eine Zahl, die weder im Code noch im Audit steht.
@@ -562,7 +595,7 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
   # jedem späteren Lauf als beschlossen behandelt.
   if [ "$saw_client" = 0 ] && [ "$ZUG0_ASSUME_USER" != 1 ] && [ "$(entscheidungen)" != "$ents_before" ]; then
     journal "paket=$pkg rolle=A entscheidungen ohne nutzer"
-    die $EX_CONTRACT "Zug 0 für Paket $pkg hat »Entscheidungen« fortgeschrieben, aber es hing zu keinem Zeitpunkt ein Client an der Session — diese Antworten hat niemand gegeben. Der Plan ist unverändert zu behandeln: nimm die neuen Zeilen dort heraus, häng dich an ($TMUX_BIN attach -t $SESSION) und starte erneut. Die Mitschrift liegt in $WORK/paket-$pkg.zug0.pane.log."
+    die $EX_CONTRACT "Zug 0 für Paket $pkg hat »Entscheidungen« fortgeschrieben, aber der Nutzer war zu keinem Zeitpunkt erreichbar — kein Client am Fenster, kein offener Remote-Control-Kanal. Diese Antworten hat niemand gegeben. Der Plan ist unverändert zu behandeln: nimm die neuen Zeilen dort heraus, sei erreichbar — am Fenster ($TMUX_BIN attach -t $SESSION) oder über Remote Control — und starte erneut. Die Mitschrift liegt in $WORK/paket-$pkg.zug0.pane.log."
   fi
 
   # Es gibt keine Rückgabe zum Parsen. Der Plan trägt den Stand, und die Marke
