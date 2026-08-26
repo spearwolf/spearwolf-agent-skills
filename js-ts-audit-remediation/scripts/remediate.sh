@@ -267,21 +267,16 @@ stand() { # eine Zeile Paketstand, für jede Meldung dieselbe Form
 }
 
 # Was der Lauf verbraucht hat, steht nicht in dieser Schleife, sondern in den
-# Reportdateien. Der Zähler, den der Prozess selbst mitführt, kennt nur die
-# Runner — nicht die Implementierer und Reviewer, die diese starten, und die
-# sind der größere Posten: gemessen am 2026-08-26 an Paket 4 eines Laufs über
-# shadow-objects kostete der Runner 3,82 und sein Implementierer 6,26. Gezählt
-# wird deshalb aus »$WORK/paket-*.json«. Das überlebt jeden Neustart, weil das
-# Arbeitsverzeichnis im Kopf des Plans steht und nicht am Prozess hängt.
+# Reportdateien. Ein mitlaufender Zähler kennt nur die Runner — nicht die
+# Implementierer und Reviewer, die diese starten, und die sind der größere
+# Posten. Gezählt wird deshalb am Ende aus »$WORK/paket-*.json«. Das überlebt
+# jeden Neustart, weil das Arbeitsverzeichnis im Kopf des Plans steht und nicht
+# am Prozess hängt.
 #
 # Gelesen wird »modelUsage« und nicht »usage«. Die beiden sehen austauschbar
 # aus und sind es nicht: usage trägt den letzten Zug, modelUsage die ganze
-# Sitzung. Am selben Runner sind das 3.380 gegen 16.177 Ausgabe-Token.
-#
-# Eine Lücke bleibt und wird unten benannt statt verschwiegen: Zug 0 läuft als
-# TUI im tmux-Fenster und hinterlässt kein Ergebnis-JSON. Der Planer ist der
-# teuerste einzelne Prozess des Laufs, und keine Zahl hier enthält ihn.
-kosten_zeilen() { # je Modell und Prozess eine Zeile: paket, rolle, modell, tokens, kosten
+# Sitzung. An einem gemessenen Runner sind das 3.380 gegen 16.177 Ausgabe-Token.
+verbrauch_zeilen() { # je Prozess und Modell eine Zeile: paket, rolle, modell, tokens
   local f name pkg rolle
   # Vor der Vorprüfung steht das Arbeitsverzeichnis noch nicht fest; ein Abbruch
   # von dort hat auch nichts zu zählen.
@@ -298,19 +293,14 @@ kosten_zeilen() { # je Modell und Prozess eine Zeile: paket, rolle, modell, toke
         (.value.inputTokens // 0),
         (.value.outputTokens // 0),
         (.value.cacheReadInputTokens // 0),
-        (.value.cacheCreationInputTokens // 0),
-        (.value.costUSD // 0) ] | @tsv' "$f" 2>/dev/null || true
+        (.value.cacheCreationInputTokens // 0) ] | @tsv' "$f" 2>/dev/null || true
   done
   zug0_zeilen
 }
 
-# Zug 0 ist die Ausnahme, und zwar in beide Richtungen. Er hat kein
-# Ergebnis-JSON, weil er eine TUI ist; sein Verbrauch steht allein in der
-# Mitschrift der Session, die er unter der Kennung aus »paket-N.zug0.session«
-# führt. Und diese Mitschrift kennt keine Kosten — nur Tokens. Der Betrag
-# bleibt deshalb leer, und die Tabelle setzt dafür ein »+« hinter jede Summe,
-# in der ein solcher Prozess steckt. Eine geschätzte Zahl wäre hier schlimmer
-# als keine: Preise ändern sich, eine hart eingetragene Tabelle veraltet still.
+# Zug 0 ist die Ausnahme: er hat kein Ergebnis-JSON, weil er eine TUI ist. Sein
+# Verbrauch steht allein in der Mitschrift der Session, die er unter der
+# Kennung aus »paket-N.zug0.session« führt.
 #
 # Zwei Fallen stecken in der Datei. Erstens erscheint dieselbe Antwort mehrfach,
 # einmal je Inhaltsblock unter derselben »message.id« — wer stumpf summiert,
@@ -334,22 +324,22 @@ zug0_zeilen() {
             (map(.message.usage.input_tokens // 0) | add),
             (map(.message.usage.output_tokens // 0) | add),
             (map(.message.usage.cache_read_input_tokens // 0) | add),
-            (map(.message.usage.cache_creation_input_tokens // 0) | add),
-            "" ] | @tsv' "$tf" 2>/dev/null || true
+            (map(.message.usage.cache_creation_input_tokens // 0) | add) ] | @tsv' \
+        "$tf" 2>/dev/null || true
     done
   done
 }
 
-kosten_report() {
+verbrauch_report() {
   local rows
   [ -n "${WORK:-}" ] || return 0
-  rows=$(kosten_zeilen)
+  rows=$(verbrauch_zeilen)
   if [ -z "$rows" ]; then
-    say "Tokens und Kosten: keine auswertbare Reportdatei in $WORK."
+    say "Tokens: keine auswertbare Reportdatei in $WORK."
     return 0
   fi
   say ""
-  say "Tokens und Kosten, gezählt aus den Reportdateien in $WORK:"
+  say "Tokens, gezählt aus den Reportdateien in $WORK:"
   say ""
   printf '%s\n' "$rows" | LC_ALL=C sort -t "$(printf '\t')" -k1,1V -k2,2 | awk -F'\t' '
     function h(n) {
@@ -362,45 +352,40 @@ kosten_report() {
       if (!(pkg in seen))                  { order[++np] = pkg; seen[pkg] = 1 }
       if (!((pkg SUBSEP rolle) in proc))   { proc[pkg SUBSEP rolle] = 1; nproc[pkg]++; gproc++ }
       if (!(modell in mseen))              { morder[++nm] = modell; mseen[modell] = 1 }
-      ein[pkg] += $4; aus[pkg] += $5; crd[pkg] += $6; cne[pkg] += $7; kos[pkg] += $8
-      gein += $4; gaus += $5; gcrd += $6; gcne += $7; gkos += $8
-      mkos[modell] += $8
-      # Ein leeres Kostenfeld heißt »gezählt, aber nicht bepreist« und ist
-      # etwas anderes als null. Das »+« trägt diesen Unterschied durch jede
-      # Summe, in die so eine Zeile eingegangen ist.
-      if ($8 == "") { unk[pkg] = 1; munk[modell] = 1; gunk = 1; zug0 = 1 }
+      if (rolle == "zug0")                 { zug0 = 1 }
+      ein[pkg] += $4; aus[pkg] += $5; crd[pkg] += $6; cne[pkg] += $7
+      gein += $4; gaus += $5; gcrd += $6; gcne += $7
+      maus[modell] += $5
     }
     END {
-      fmt = "  %-6s %8s %9s %9s %11s %11s %9s\n"
-      printf fmt, "Paket", "Prozesse", "Eingabe", "Ausgabe", "Cache gel.", "Cache neu", "$"
+      fmt = "  %-6s %8s %9s %9s %11s %11s\n"
+      printf fmt, "Paket", "Prozesse", "Eingabe", "Ausgabe", "Cache gel.", "Cache neu"
       for (i = 1; i <= np; i++) {
         p = order[i]
-        printf fmt, p, nproc[p], h(ein[p]), h(aus[p]), h(crd[p]), h(cne[p]),
-               sprintf("%.2f%s", kos[p], (p in unk) ? "+" : "")
+        printf fmt, p, nproc[p], h(ein[p]), h(aus[p]), h(crd[p]), h(cne[p])
       }
-      printf "  %s\n", "------ -------- --------- --------- ----------- ----------- ---------"
-      printf fmt, "gesamt", gproc, h(gein), h(gaus), h(gcrd), h(gcne),
-             sprintf("%.2f%s", gkos, gunk ? "+" : "")
+      printf "  %s\n", "------ -------- --------- --------- ----------- -----------"
+      printf fmt, "gesamt", gproc, h(gein), h(gaus), h(gcrd), h(gcne)
       printf "\n"
-      zeile = "  Je Modell: "
+      zeile = "  Ausgabe je Modell: "
       for (i = 1; i <= nm; i++)
-        zeile = zeile sprintf("%s%s %.2f%s", (i > 1 ? " · " : ""),
-                              morder[i], mkos[morder[i]], (morder[i] in munk) ? "+" : "")
+        zeile = zeile sprintf("%s%s %s", (i > 1 ? " · " : ""), morder[i], h(maus[morder[i]]))
       print zeile
-      if (zug0)
-        print "  Das »+« ist Zug 0: seine Tokens sind gezählt, sein Betrag nicht.\n" \
-              "  Der Planer ist eine TUI, und seine Mitschrift führt keine Kosten."
-      else
+      if (!zug0)
         print "  Ohne Zug 0: keine Mitschrift des Planers gefunden. Läufe von vor dem\n" \
               "  2026-08-26 haben keine Session-Kennung vergeben und bleiben ungezählt."
     }'
 }
 
-# Nur die Schlusszahl, für Meldungen, in die keine Tabelle passt.
-kosten_summe() {
-  kosten_zeilen | awk -F'\t' '
-    { s += $8; if ($8 == "") u = 1 }
-    END { printf "%.2f%s", s + 0, u ? "+" : "" }'
+# Nur die Ausgabe-Token, für Meldungen, in die keine Tabelle passt.
+verbrauch_summe() {
+  verbrauch_zeilen | awk -F'\t' '
+    function h(n) {
+      if (n >= 1000000) return sprintf("%.1fM", n / 1000000)
+      if (n >= 1000)    return sprintf("%.1fk", n / 1000)
+      return sprintf("%d", n)
+    }
+    { s += $5 } END { printf "%s", h(s + 0) }'
 }
 
 # Der Lauf schreibt seinen eigenen Zustand in den Kopf des Plans, und zwar
@@ -1103,7 +1088,7 @@ hand_over() { # $1 = Rolle, $2 = Paketnummer, $3 = Status
   say "Die Schleife hält an. Antwort datiert in »Entscheidungen« im Plan eintragen,"
   say "dann dieses Skript erneut starten."
   say "Wortlaut nachlesbar in $RAW und $WORK/remediate.log."
-  kosten_report
+  verbrauch_report
   exit $EX_ASK
 }
 
@@ -1304,7 +1289,7 @@ main() {
     if [ "$ONCE" = "1" ] && [ "$PACKAGES_DONE" -ge 1 ]; then
       say ""
       say "--once: nach einem Paket angehalten."
-      kosten_report
+      verbrauch_report
       # Auch das ist ein Exit 0 mit offener Arbeit, und ohne diese Zeile sähe er
       # im Plan aus wie ein durchgelaufener Lauf.
       plan_status "nach --once angehalten ($(date '+%Y-%m-%d %H:%M')) · $(stand) · erneut starten setzt fort"
@@ -1323,7 +1308,7 @@ main() {
   # hielt den Lauf für unvollständig.
   say "Kein Paket mehr offen. $gesamt erledigt (davon $PACKAGES_DONE in diesem Lauf), $blocked blockiert."
   [ "$blocked" = "0" ] || say "Blockiert: $(sed -En 's/^### \[!\] ([0-9]+[a-z]?)\..*/\1/p' "$PLAN" | tr '\n' ' ')"
-  kosten_report
+  verbrauch_report
   plan_status "Schleife durch ($(date '+%Y-%m-%d %H:%M')) · Abschluss offen — Schritt 7 der SKILL.md mit references/semver-and-closeout.md"
   say ""
   say "Der Abschluss folgt: Schritt 7 der SKILL.md, mit references/semver-and-closeout.md."
@@ -1334,7 +1319,7 @@ main() {
   # Das saubere Ende meldet sich selbst: der Trap schweigt bei Code 0, und
   # gerade dieses Ende will jemand wissen — es ist das, auf das er wartet.
   notify "Remediation durch" \
-    "$gesamt Paket(e) erledigt, $blocked blockiert, \$$(kosten_summe) · jetzt der Abschluss"
+    "$gesamt Paket(e) erledigt, $blocked blockiert, $(verbrauch_summe) Ausgabe-Token · jetzt der Abschluss"
   exit $EX_OK
 }
 

@@ -258,22 +258,19 @@ deshalb läuft nie einer parallel zum anderen.
 Entstehen im Abschluss neue Pakete — die Drain-Runde schneidet welche —, läuft
 das Skript danach noch einmal. Es fasst den Abschluss selbst nie an.
 
-Jeder dieser Ausgänge außer 40 legt eine Tabelle nach: Tokens und Kosten je
-Paket, dazu eine Summe und eine Aufteilung nach Modell. Gezählt wird nicht
-mitlaufend, sondern am Ende aus den Reportdateien `paket-*.json` im
-Arbeitsverzeichnis — und damit über jeden Neustart hinweg, denn das Verzeichnis
-steht im Kopf des Plans und nicht am Prozess. Enthalten sind Runner,
-Implementierer und Reviewer mit Tokens und Betrag.
+Jeder dieser Ausgänge außer 40 legt eine Tabelle nach: Tokens je Paket —
+Eingabe, Ausgabe, gelesener und neu angelegter Cache —, dazu eine Summe und die
+Ausgabe je Modell. Beträge stehen nicht darin. Gezählt wird nicht mitlaufend,
+sondern am Ende aus den Reportdateien `paket-*.json` im Arbeitsverzeichnis, und
+damit über jeden Neustart hinweg, denn das Verzeichnis steht im Kopf des Plans
+und nicht am Prozess.
 
-Zug 0 ist zur Hälfte dabei. Er hat kein Ergebnis-JSON, weil er eine TUI ist;
-seine Tokens holt die Tabelle aus der Mitschrift seiner Session, die er seit
-dem 2026-08-26 unter einer vom Skript vergebenen Kennung führt
-(`paket-N.zug0.session` im Arbeitsverzeichnis). Kosten führt diese Mitschrift
-nicht, und geschätzt wird hier nichts — eine Preistabelle im Skript veraltet
-still, und eine stille falsche Zahl ist schlechter als eine offene Lücke. Statt
-dessen trägt jede Summe, in der ein solcher Prozess steckt, ein `+`. Läufe, die
-vor diesem Datum begonnen haben, haben keine Kennung vergeben; dort fehlt Zug 0
-ganz, und die letzte Zeile der Tabelle sagt es.
+Zug 0 ist dabei, obwohl er kein Ergebnis-JSON hat: er ist eine TUI, und seine
+Tokens holt die Tabelle aus der Mitschrift seiner Session, die er seit dem
+2026-08-26 unter einer vom Skript vergebenen Kennung führt
+(`paket-N.zug0.session` im Arbeitsverzeichnis). Läufe, die vorher begonnen
+haben, haben keine Kennung vergeben; dort fehlt Zug 0 ganz, und die letzte
+Zeile der Tabelle sagt es.
 
 ## Wenn die API überlastet ist
 
