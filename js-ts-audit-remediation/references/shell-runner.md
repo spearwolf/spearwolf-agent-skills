@@ -505,18 +505,35 @@ Was dabei zu tun ist:
   `$ARBEITSDIR/paket-N.review-<runde>.json` für den Reviewer.
 - Die Dateinamen sind kein Ordnungssinn, sondern der Beleg: die Schleife zählt
   sie, weil ein eigener Prozess in `subagent_stats` nicht mehr auftaucht.
-- **Gewartet wird im Vordergrund, mit langer Frist.** Der Aufruf blockiert, bis
-  der Prozess endet, und `claude -p` endet von allein — anders als eine
-  interaktive Session, die am Prompt stehenbleibt. Setz die Frist des
-  Bash-Aufrufs auf das Maximum, das dein Werkzeug hergibt; ein Implementierer
-  läuft Minuten, nicht Sekunden. Schick ihn **nicht** in den Hintergrund, um
-  danach auf seine Reportdatei zu pollen: das ist ein zweiter Mechanismus für
-  dieselbe Frage, er kostet einen Zug je Runde, und er hat schon einen Lauf
-  gekostet — ein Runner, der zum Warte-Werkzeug griff, lief in die
-  Rechteschranke, während sein Implementierer weiterarbeitete. Reicht die Frist
-  wirklich nicht, ist der zweite Weg ein Warte-Werkzeug auf **eine** Bedingung,
-  die den Prozess selbst meint, nicht seine Datei; ein Pollen im Sekundentakt
-  ist es nie.
+- **Der Prozess wird abgekoppelt, das Warten wird begrenzt.** Das sind zwei
+  Dinge, und sie zusammenzulegen hat schon ein Paket gekostet. Die Frist deines
+  Bash-Werkzeugs gehört dem Werkzeug, nicht der Arbeit: sie liegt bei zehn
+  Minuten, sie ist nicht erhöhbar, und wenn sie abläuft, erschlägt sie die
+  Prozessgruppe des Aufrufs. Ein Implementierer, der darin hängt, stirbt mit
+  Exit 143 mitten im Umbau und hinterlässt einen halb geänderten Arbeitsbaum,
+  den du zurücksetzen und ganz von vorn beauftragen musst. Gemessen am
+  2026-08-26 an Paket 4 eines Laufs über `shadow-objects`: gestartet 13:55,
+  erschlagen 14:06, elf Minuten für nichts.
+  Also startest du ihn abgekoppelt — `setsid` davor, Ausgabe in die
+  Reportdatei, Exit-Code in `$ARBEITSDIR/paket-N.impl-<runde>.exit`, der
+  Aufruf kehrt sofort zurück. Danach wartest du im Vordergrund in Blöcken,
+  jeder Block eine Spanne unter deiner Werkzeugfrist:
+
+      timeout 540 bash -c 'until [ -f "$ARBEITSDIR/paket-N.impl-1.exit" ]; do sleep 5; done'
+
+  Läuft der Block ab, ohne dass die Datei da ist, rufst du ihn erneut auf. Das
+  kostet einen Zug je neun Minuten statt einen je Sekunde, und der Prozess
+  merkt von deinen Fristen nichts, weil er in keiner davon mehr steckt.
+- **Deinen Zug lässt du nicht enden, solange der Prozess läuft.** Abkoppeln
+  heißt nicht weggehen. In `-p` gibt es keinen Prompt, an dem du stehenbleiben
+  könntest: ein Zug ohne laufenden Werkzeugaufruf ist ein fertiger Zug, und die
+  CLI erzwingt dann deine Rückgabe. Derselbe Lauf, dasselbe Paket: der zweite
+  Anlauf kam sauber durch, der Runner war zu dem Zeitpunkt aber schon zur
+  Rückgabe gezwungen, und die Züge 3 bis 5 haben nie stattgefunden — Review,
+  Fehlerkette, Verify und Commit fehlten, das Paket stand auf `[~]`, die
+  Arbeit lag uncommittet im Baum. Der Warteblock oben ist genau das Mittel
+  dagegen: solange er läuft, läuft dein Zug. Auf eine Benachrichtigung zu
+  setzen, die dich später wieder aufweckt, ist es nicht.
 - Den Report liest du aus der Datei. Er steht damit auch noch da, wenn dein
   eigener Kontext längst weg ist.
 - Modelle setzt du weiter ausdrücklich, nach der Dreistufen-Tabelle in
