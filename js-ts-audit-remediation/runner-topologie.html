@@ -322,6 +322,7 @@
   .sw { width: 22px; height: 9px; border-radius: 2px; display: inline-block; }
   .sw-agent { background: var(--accent); opacity: .82; }
   .sw-long { background: var(--signal); opacity: .8; }
+  .sw-wait { background: var(--accent); opacity: .42; height: 5px; }
   .sw-shell { border: 1.5px solid var(--good); height: 9px; }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -336,24 +337,25 @@
     <h1>Runner-Topologie</h1>
     <p class="standfirst">Wer startet wen, wer lebt wie lange, und wie der Skill <code>js-ts-audit-remediation</code> seine Paketschleife fährt — als Agent oder als Prozess.</p>
     <div class="meta">
-      <span><b>Stand</b> 2026-08-25</span>
+      <span><b>Stand</b> 2026-08-26</span>
       <span><b>Beschreibt</b> <code>scripts/remediate.sh</code> · <code>references/shell-runner.md</code></span>
-      <span><b>Gemessen</b> gegen CLI 2.1.241</span>
+      <span><b>Gemessen</b> gegen CLI 2.1.241–2.1.246</span>
       <span><b>Umgesetzt</b> 2026-08-24 · Branch <code>claude/audit-remediation-orchestration-660ebh</code></span>
-      <span><b>Gefahren</b> Szenario-Test, fünf Arme, 2026-08-25</span>
+      <span><b>Gefahren</b> Szenario-Test 2026-08-25 · zwei echte Läufe 2026-08-26</span>
     </div>
   </header>
 
   <section>
     <p class="kicker">Bestand</p>
-    <h2>Fünf Prozesse, keine Subagenten</h2>
+    <h2>Sechs Prozesse, keine Subagenten</h2>
     <div class="prose">
-      <p>Der Lauf hat fünf Rollen, und jede ist ein eigener Betriebssystem-Prozess. Nichts davon läuft parallel: das Skript fährt je Paket erst Zug 0, dann die Züge 1 bis 5, und B hält immer nur einen Implementierer offen. Sie teilen sich einen Arbeitsbaum, und der Konflikt kostete mehr als die gesparte Zeit.</p>
+      <p>Der Lauf hat sechs Rollen, und jede ist ein eigener Betriebssystem-Prozess. Nichts davon läuft parallel: das Skript fährt je Paket erst Zug 0, dann die Züge 1 bis 5, und B hält immer nur einen Implementierer offen. Sie teilen sich einen Arbeitsbaum, und der Konflikt kostete mehr als die gesparte Zeit.</p>
+      <p>Die sechste ist die Session, aus der heraus gestartet wurde. Sie stand lange nicht in dieser Liste, weil sie nach der Freigabe fertig zu sein schien. Sie ist es nicht: sie hält den Wachposten und macht den Abschluss.</p>
     </div>
 
     <figure class="fig">
       <div class="fig-scroll">
-        <svg viewBox="0 0 940 480" role="img" aria-label="Aufrufgraph: die Session startet remediate.sh, das Skript fährt je Paket Zug 0 im Terminal und die Züge 1 bis 5 als eigenen Prozess, der wiederum Implementierer und Reviewer als Prozesse startet.">
+        <svg viewBox="0 0 940 480" role="img" aria-label="Aufrufgraph: die Session startet remediate.sh und bleibt am Wachposten, das Skript fährt je Paket Zug 0 im Terminal und die Züge 1 bis 5 als eigenen Prozess, der wiederum Implementierer und Reviewer als abgekoppelte Prozesse startet.">
           <defs>
             <marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
               <path class="mk" d="M0,0 L10,5 L0,10 z" />
@@ -374,12 +376,15 @@
           <text class="t-edge" x="288" y="70">./audit.html</text>
 
           <rect class="box-agent" x="400" y="46" width="290" height="56" rx="3" />
-          <text class="t-strong" x="416" y="70">Session · Schritt 1–5 und 7</text>
-          <text class="t-sub" x="416" y="88">plant, fragt, gibt frei, schließt ab</text>
+          <text class="t-strong" x="416" y="70">Session · Schritt 1–5, Wachposten, 7</text>
+          <text class="t-sub" x="416" y="88">plant, gibt frei, meldet, schließt ab</text>
 
-          <path class="edge" d="M545,102 V162" marker-end="url(#ah1)" />
-          <text class="t-edge" x="556" y="124">startet nach der Freigabe</text>
-          <text class="t-edge" x="556" y="140">und ist danach fertig</text>
+          <path class="edge" d="M500,102 V162" marker-end="url(#ah1)" />
+          <text class="t-edge" x="490" y="124" text-anchor="end">startet nach</text>
+          <text class="t-edge" x="490" y="140" text-anchor="end">der Freigabe</text>
+          <path class="edge edge-dot" d="M600,162 V102" marker-end="url(#ah1)" />
+          <text class="t-edge" x="612" y="124">Journal weckt sie</text>
+          <text class="t-edge" x="612" y="140">nach jedem Paket</text>
 
           <rect class="box-shell" x="400" y="166" width="290" height="56" rx="3" />
           <text class="t-strong" x="416" y="190">scripts/remediate.sh</text>
@@ -405,15 +410,15 @@
 
           <rect class="box-agent" x="420" y="406" width="192" height="52" rx="3" />
           <text class="t-strong" x="434" y="428">Implementierer</text>
-          <text class="t-sub" x="434" y="446">claude -p</text>
+          <text class="t-sub" x="434" y="446">setsid claude -p</text>
           <rect class="box-agent" x="690" y="406" width="192" height="52" rx="3" />
           <text class="t-strong" x="704" y="428">Reviewer</text>
-          <text class="t-sub" x="704" y="446">claude -p</text>
+          <text class="t-sub" x="704" y="446">setsid claude -p</text>
 
           <text class="t-sub" x="20" y="466">Jede Ebene ist ein eigener Prozess · niemand ist Subagent von jemandem</text>
         </svg>
       </div>
-      <figcaption><b>Abb. 1 · Aufrufgraph.</b> Durchgezogene Kanten sind Prozessstarts, die gepunktete ist eine Artefakt-Übergabe. Die Session plant und startet das Skript; ab da läuft alles als eigener Prozess, keiner als Subagent eines anderen. Genau daran hängt die Reichweite: ein Prozess erbt MCP-Server, Skills und Einstellungen wie jede Session, ein Subagent nicht.</figcaption>
+      <figcaption><b>Abb. 1 · Aufrufgraph.</b> Durchgezogene Kanten sind Prozessstarts, die gepunkteten sind Übergaben ohne Prozessstart — einmal das Audit als Datei, einmal das Journal, an dem die Session hängt. Ab dem Skript läuft alles als eigener Prozess, keiner als Subagent eines anderen. Genau daran hängt die Reichweite: ein Prozess erbt MCP-Server, Skills und Einstellungen wie jede Session, ein Subagent nicht.</figcaption>
     </figure>
 
     <div class="table-wrap">
@@ -423,28 +428,40 @@
         </thead>
         <tbody>
           <tr>
-            <td class="who">Orchestrator</td>
-            <td>Paket-Runner, Triage-Runner</td>
-            <td>1 je Paket, sequentiell; 0–1 im Abschluss</td>
-            <td>erst mit dem ganzen Lauf</td>
+            <td class="who">Steuernde Session</td>
+            <td><code>remediate.sh</code>, danach den Wachposten</td>
+            <td>1 je Lauf</td>
+            <td>mit dem Abschluss, nicht mit der Freigabe</td>
           </tr>
           <tr>
-            <td class="who">Paket-Runner</td>
+            <td class="who">remediate.sh</td>
+            <td>Runner A, Runner B</td>
+            <td>je 1 pro Paket, sequentiell</td>
+            <td>hat keinen — Shell</td>
+          </tr>
+          <tr>
+            <td class="who">A · Zug 0</td>
+            <td>nichts</td>
+            <td>1 je Paket</td>
+            <td>mit dem Detailplan im Plan</td>
+          </tr>
+          <tr>
+            <td class="who">B · Züge 1–5</td>
             <td>Implementierer, Reviewer</td>
-            <td>1–2 Implementierer, 1–3 Reviewer</td>
+            <td>bis zu 5 Runden, je Runde einer von beiden</td>
             <td>mit der Rückgabe von neun Zeilen</td>
           </tr>
           <tr>
             <td class="who">Implementierer</td>
             <td>nichts</td>
-            <td>—</td>
-            <td>mit seinem Report</td>
+            <td>1 je Runde</td>
+            <td>mit seinem Report als Datei</td>
           </tr>
           <tr>
             <td class="who">Reviewer</td>
             <td>nichts</td>
-            <td>—</td>
-            <td>mit seinem Urteil</td>
+            <td>1 je Runde</td>
+            <td>mit seinem Urteil als Datei</td>
           </tr>
           <tr>
             <td class="who">js-ts-project-audit</td>
@@ -480,7 +497,7 @@
     </blockquote>
 
     <div class="prose">
-      <p>Drei Symptome, ein Muster: Prozesssteuerung, die als Prosa formuliert werden musste und deshalb nur galt, solange ein Modell sie befolgte. Die Ausreden-Tabelle in <code>runner.md</code> zählt 25 Zeilen, mehrere davon halten einen Agenten davon ab, auf einen anderen zu pollen.</p>
+      <p>Drei Symptome, ein Muster: Prozesssteuerung, die als Prosa formuliert werden musste und deshalb nur galt, solange ein Modell sie befolgte. Die Ausreden-Tabelle in <code>runner.md</code> zählt inzwischen 29 Zeilen, mehrere davon halten einen Agenten davon ab, auf einen anderen zu pollen.</p>
       <p>Dazu kam eine Grenze, die keine Prosa beheben konnte: in einem Subagenten ist ein MCP-Server in der Regel nicht exponiert. Ein Implementierer, der den Browser des Projekts nicht erreicht, ist für die Hälfte aller Pakete nutzlos.</p>
       <p>Beides fällt weg, sobald jede Rolle ein eigener Prozess ist. Ein Prozess ist beendet oder nicht — es gibt keinen zweiten Kanal, in dem man nachfragen könnte — und er erbt die Konfiguration der Maschine wie jede Session.</p>
     </div>
@@ -495,18 +512,20 @@
 
     <figure class="fig">
       <div class="fig-scroll">
-        <svg viewBox="0 0 940 330" role="img" aria-label="Dieselbe Zeitleiste nach dem Umbau: statt einer durchgehenden Orchestrator-Spur zwei kurze Agenten-Sessions am Anfang und Ende und eine kontextlose Shell-Schleife dazwischen.">
+        <svg viewBox="0 0 940 330" role="img" aria-label="Zeitleiste eines Laufs: die steuernde Session plant, startet und wacht bis zum Abschluss, darunter die kontextlose Shell-Schleife, darunter je Paket A und B, darunter Implementierer und Reviewer, unten die Meldungen nach jedem Paket.">
           <line class="grid" x1="170" y1="34" x2="894" y2="34" />
 
-          <text class="t-lane" x="152" y="64" text-anchor="end">Schritt 1–5 · Session</text>
+          <text class="t-lane" x="152" y="64" text-anchor="end">Steuernde Session</text>
           <rect class="bar-agent" x="170" y="48" width="92" height="22" rx="2" />
-          <text class="t-sub" x="272" y="64">Schritt 1–5, endet mit der Freigabe</text>
+          <rect class="bar-agent-soft" x="266" y="55" width="572" height="8" rx="2" />
+          <rect class="bar-agent" x="842" y="48" width="52" height="22" rx="2" />
+          <text class="t-sub" x="272" y="45">Schritt 1–5 · dann Wachposten: schläft, wird vom Journal geweckt · Schritt 7</text>
 
           <text class="t-lane" x="152" y="106" text-anchor="end">remediate.sh</text>
           <rect class="bar-shell" x="262" y="92" width="580" height="22" rx="2" />
           <text class="t-sub" x="276" y="107">grep · dispatch · wait · parse · verify · printf</text>
 
-          <text class="t-lane" x="152" y="150" text-anchor="end">A im Fenster · B als Prozess</text>
+          <text class="t-lane" x="152" y="150" text-anchor="end">Zug 0 · Züge 1–5</text>
           <rect class="bar-agent" x="176" y="136" width="32" height="22" rx="2" />
           <rect class="bar-agent" x="212" y="136" width="76" height="22" rx="2" />
           <rect class="bar-agent" x="298" y="136" width="32" height="22" rx="2" />
@@ -517,7 +536,7 @@
           <rect class="bar-agent" x="648" y="136" width="76" height="22" rx="2" />
           <rect class="bar-agent" x="734" y="136" width="28" height="22" rx="2" />
           <rect class="bar-agent" x="766" y="136" width="64" height="22" rx="2" />
-          <text class="t-sub" x="838" y="150">A: eigenes Fenster</text>
+          <text class="t-sub" x="838" y="150">A: im Fenster</text>
 
           <text class="t-lane" x="152" y="190" text-anchor="end">Impl. + Review</text>
           <rect class="bar-agent-soft" x="190" y="178" width="46" height="14" rx="2" />
@@ -534,9 +553,14 @@
           <rect class="bar-agent-soft" x="792" y="178" width="30" height="14" rx="2" />
           <text class="t-sub" x="838" y="190">eigene Prozesse</text>
 
-          <text class="t-lane" x="152" y="228" text-anchor="end">Schritt 7 · Session</text>
-          <rect class="bar-agent" x="842" y="214" width="52" height="22" rx="2" />
-          <text class="t-sub" x="836" y="228" text-anchor="end">Drain, Semver, Bericht</text>
+          <text class="t-lane" x="152" y="228" text-anchor="end">Meldung raus</text>
+          <circle class="bar-agent" cx="298" cy="222" r="4" />
+          <circle class="bar-agent" cx="420" cy="222" r="4" />
+          <circle class="bar-agent" cx="612" cy="222" r="4" />
+          <circle class="bar-agent" cx="734" cy="222" r="4" />
+          <circle class="bar-agent" cx="842" cy="222" r="4" />
+          <circle class="bar-agent" cx="894" cy="222" r="4" />
+          <text class="t-sub" x="170" y="242">Push aus der Session · Desktop aus der Schleife · »Lauf-Status:« im Plan</text>
 
           <line class="axis" x1="170" y1="252" x2="894" y2="252" />
           <line class="axis" x1="176" y1="252" x2="176" y2="258" />
@@ -552,12 +576,13 @@
           <text class="t-tick" x="782" y="272" text-anchor="middle">Paket 5</text>
           <text class="t-tick" x="866" y="272" text-anchor="middle">Drain</text>
 
-          <text class="t-sub" x="170" y="312">Gleiche Achse wie Abb. 2 · die rostige Spur ist ersetzt, alles darunter bleibt, wie es ist</text>
+          <text class="t-sub" x="170" y="312">Eine Session oben und unten, dazwischen eine Schleife ohne Kontext — und sie reden nur über Dateien miteinander</text>
         </svg>
       </div>
-      <figcaption><b>Abb. 2 · Die Lebensdauern.</b> Dieselbe Zeitachse wie in Abb. 2: aus einem durchgehenden Kontext werden zwei kurze Sessions und eine Schleife ohne Kontext. Ein Paket zerfällt in zwei Prozesse — A führt Zug 0 in einem eigenen Fenster und kann dich fragen, B fährt die Züge 1 bis 5 ohne dich. Implementierer und Reviewer sind darunter eigene Prozesse mit voller Werkzeugreichweite.</figcaption>
+      <figcaption><b>Abb. 2 · Die Lebensdauern.</b> Aus einem durchgehenden Orchestrator-Kontext wird eine Schleife ohne Kontext, und die Session darüber wird dünn statt kurz: sie plant, gibt frei, schläft am Journal und wacht für den Abschluss wieder auf. Ein Paket zerfällt in zwei Prozesse — A führt Zug 0 in einem eigenen Fenster und kann dich fragen, B fährt die Züge 1 bis 5 ohne dich. Implementierer und Reviewer sind darunter eigene, abgekoppelte Prozesse mit voller Werkzeugreichweite.</figcaption>
       <div class="legend">
         <span><i class="sw sw-agent"></i> Agentenprozess</span>
+        <span><i class="sw sw-wait"></i> wach, aber untätig</span>
         <span><i class="sw sw-shell"></i> Shell, kein Kontext, kein Modell</span>
       </div>
     </figure>
@@ -656,6 +681,7 @@ PLAN=./remediation-plan.md
 BRANCH=$(git branch --show-current)
 WORK=${ARBEITSDIR:?Arbeitsverzeichnis fehlt}
 SKILL=$HOME/.agents/skills/js-ts-audit-remediation
+DENY=<span class="c-str">'AskUserQuestion,SendMessage,ScheduleWakeup,CronCreate,Edit(.git/**),…'</span>
 
 <span class="c-kw">while</span> :; <span class="c-kw">do</span>
   <span class="c-cmt"># oberste Paketüberschrift ohne Erledigt-Marke; Nummer kann 3a sein</span>
@@ -674,12 +700,14 @@ SKILL=$HOME/.agents/skills/js-ts-audit-remediation
         --session-id <span class="c-str">"$(uuidgen)"</span> \
         --output-format json \
         --json-schema <span class="c-str">"$SKILL/assets/runner-return.schema.json"</span> \
-        --permission-mode acceptEdits \
-        --max-budget-usd 12) || <span class="c-kw">exit</span> 30
+        --permission-mode bypassPermissions \
+        --disallowedTools <span class="c-str">"$DENY"</span> \
+        --max-budget-usd 50) || <span class="c-kw">exit</span> 30
 
-  <span class="c-cmt"># der Runner hat nicht behauptet zu delegieren, er ist dabei gezählt worden</span>
-  jq -e <span class="c-str">'.subagent_stats.spawned &gt;= 2'</span> &lt;&lt;&lt;<span class="c-str">"$out"</span> &gt;/dev/null || <span class="c-kw">exit</span> 21
-  jq -e <span class="c-str">'.permission_denials == []'</span>      &lt;&lt;&lt;<span class="c-str">"$out"</span> &gt;/dev/null || <span class="c-kw">exit</span> 22
+  <span class="c-cmt"># der Runner hat nicht behauptet zu delegieren, es liegen zwei Reports da</span>
+  [ <span class="c-str">"$(find "$WORK" -name "paket-$pkg.impl-*.json"   | wc -l)"</span> -ge 1 ] || <span class="c-kw">exit</span> 20
+  [ <span class="c-str">"$(find "$WORK" -name "paket-$pkg.review-*.json" | wc -l)"</span> -ge 1 ] || <span class="c-kw">exit</span> 20
+  jq -e <span class="c-str">'.permission_denials == []'</span> &lt;&lt;&lt;<span class="c-str">"$out"</span> &gt;/dev/null || <span class="c-kw">exit</span> 21
 
   r=$(jq -r .result &lt;&lt;&lt;<span class="c-str">"$out"</span>)   <span class="c-cmt"># Form garantiert das Schema, nicht die Prosa</span>
   status=$(jq -r .status &lt;&lt;&lt;<span class="c-str">"$r"</span>)
@@ -698,11 +726,12 @@ SKILL=$HOME/.agents/skills/js-ts-audit-remediation
 <span class="c-kw">done</span></code></pre>
 
     <div class="prose">
-      <p>Vierzig Zeilen ersetzen die Aufgabe, für die heute ein Modell auf der stärksten Stufe über zwölf Pakete wach bleiben muss. Die Flags sind gegen die CLI 2.1.241 geprüft. Drei davon verändern den Entwurf gegenüber dem naiven Skript:</p>
+      <p>Vierzig Zeilen ersetzen die Aufgabe, für die vorher ein Modell auf der stärksten Stufe über zwölf Pakete wach bleiben musste. Die Flags sind gegen die CLI geprüft. Vier davon verändern den Entwurf gegenüber dem naiven Skript:</p>
       <ul>
         <li><code>--json-schema</code> validiert die Rückgabe auf der Werkzeugebene. Der ganze Zweig »Rückgabeblock unlesbar« fällt weg, und mit ihm die Möglichkeit, dass ein Runner neun Zeilen frei formuliert.</li>
-        <li>Das Ergebnis-JSON führt <code>subagent_stats</code> mit <code>spawned</code>, <code>completed</code>, <code>failed</code> und <code>refused.depth_limit</code>. Damit wird »wer committet, hat delegiert« von einer Zeile in der Ausreden-Tabelle zu einer Ungleichung. <code>permission_denials</code> zeigt daneben, ob der Runner an einer Rechteschranke hing statt an der Aufgabe.</li>
-        <li><code>--max-budget-usd</code> setzt je Paket eine harte Obergrenze. Ein Runner, der sich in einer Fehlerkette festbeißt, kostet dann ein Budget und nicht einen Abend.</li>
+        <li><b>Die Reportdateien sind der Delegationsbeleg.</b> Der Entwurf zählte hier einmal <code>subagent_stats.spawned</code> — das ging verloren, als Implementierer und Reviewer eigene Prozesse wurden, denn ein eigener Prozess taucht in dieser Zahl nicht auf. Der Ersatz ist besser als das Original: zwei Reports auf der Platte sind ein Beleg, der den Runner überlebt, ein hochgezählter Zähler nicht.</li>
+        <li><code>permission_denials</code> zeigt, ob der Runner an einer Rechteschranke hing statt an der Aufgabe. Unter <code>bypassPermissions</code> ist das die Ausnahme geworden, und genau deshalb wiegt eine Meldung dort schwer: es ist dann keine zu enge Liste, sondern etwas, das kein Modus je bewilligt.</li>
+        <li><code>--max-budget-usd</code> setzt je Runner-Prozess eine harte Obergrenze, voreingestellt 50 Dollar. Sie stand einmal bei 15 und passte damit zum Planer, nicht zum Implementierer, der ein Paket mit mehreren Befunden samt Testlauf und Fehlerkette durchzieht. Ein Prozess, der am Budget stirbt, hinterlässt dasselbe Trümmerfeld wie jeder harte Abbruch — die Grenze soll den Amoklauf fangen, nicht die Arbeit.</li>
       </ul>
       <p>Die Stufe steht hier noch pauschal am Runner. Der Abschnitt »Regler« teilt sie.</p>
       <h3>Wenn die API überlastet ist</h3>
@@ -727,19 +756,24 @@ done</code></pre>
     <h2>Wie ein Lauf aussieht</h2>
     <div class="prose">
       <p>Er beginnt nicht im Skript. Er beginnt wie immer in einer offenen Session im Projekt, und dort laufen die Schritte 1 bis 5: Findings laden, Baseline messen, Scope klären, offene Entscheidungen abfragen, Grobplan schreiben, Freigabe. Erst danach übernimmt die Schleife, und für Schritt 7 geht es zurück in eine Session.</p>
-      <p>Gestartet wird die Schleife vom Agenten selbst, ungefragt, sobald der Grobplan freigegeben ist. Niemand muss ein Terminal öffnen: der Lauf hängt sich in eine abgelöste tmux-Session und läuft dort unabhängig weiter, auch wenn die Session, die ihn gestartet hat, längst zu ist.</p>
+      <p>Gestartet wird die Schleife vom Agenten selbst, ungefragt, sobald der Grobplan freigegeben ist. Niemand muss ein Terminal öffnen: der Lauf hängt sich in eine abgelöste tmux-Session und läuft dort weiter, auch wenn die Session, die ihn gestartet hat, längst zu ist. Die bleibt trotzdem besser offen — nicht für den Lauf, sondern für den Abschluss danach. Wie das zusammengeht, steht unter »Rückweg«.</p>
     </div>
 
     <pre><code><span class="c-cmt"># in einer Session, im Projekt</span>
 &gt; arbeite die Findings aus dem audit.html ab
   <span class="c-cmt">… Schritt 1–5, Grobplan nach ./remediation-plan.md, Freigabe …</span>
 
-<span class="c-cmt"># der Agent startet die Schleife abgelöst</span>
-$ remediate.sh
+<span class="c-cmt"># der Agent startet die Schleife abgelöst und nennt dabei seine eigene Session</span>
+$ ORCHESTRATOR_SESSION=e41fbeee-7e8b-… remediate.sh
 Läuft in tmux-Session »remediate-mein-projekt«.
+
   tmux attach -t remediate-mein-projekt   ansehen und antworten
-  Ctrl-b d                                wieder ablösen
-Journal: .git/remediation/remediate.log
+  Ctrl-b d                                wieder ablösen, der Lauf läuft weiter
+
+Mitschrift: .git/remediation/remediate.pane.log
+Journal:    .git/remediation/remediate.log
+Sperre:     .git/remediation/.remediate.lock  (existiert, solange die Schleife läuft)
+Gefahren:   .git/remediation/remediate.sh     (Kopie des Skripts, Stand dieses Laufs)
 
 <span class="c-cmt"># drinnen, wenn du dich anhängst</span>
 Pakete:    12 offen · 0 erledigt · 0 blockiert
@@ -767,9 +801,9 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
         <tbody>
           <tr><td class="who">Schritt 1–5</td><td>gewöhnliche Session</td><td>alles, was eingestellt ist</td><td>ja</td></tr>
           <tr><td class="who">A · Zug 0</td><td>eigenes tmux-Fenster</td><td>alles, was eingestellt ist</td><td>ja</td></tr>
-          <tr><td class="who">B · Zug 1–5</td><td><code>claude -p</code></td><td>Allowlist erweitert, vier Werkzeuge entzogen</td><td>nein, Status <code>question</code></td></tr>
-          <tr><td class="who">Implementierer</td><td><code>claude -p</code> von B</td><td>erbt die Konfiguration wie jede Session</td><td>nein, meldet an B</td></tr>
-          <tr><td class="who">Reviewer</td><td><code>claude -p</code> von B</td><td>erbt die Konfiguration wie jede Session</td><td>nein, meldet an B</td></tr>
+          <tr><td class="who">B · Zug 1–5</td><td><code>claude -p</code></td><td><code>bypassPermissions</code> · alles außer der Verbotsliste</td><td>nein, Status <code>question</code></td></tr>
+          <tr><td class="who">Implementierer</td><td><code>setsid claude -p</code> von B</td><td>erbt die Konfiguration wie jede Session</td><td>nein, meldet über eine Datei</td></tr>
+          <tr><td class="who">Reviewer</td><td><code>setsid claude -p</code> von B</td><td>erbt die Konfiguration wie jede Session</td><td>nein, meldet über eine Datei</td></tr>
           <tr><td class="who">Schritt 7</td><td>gewöhnliche Session</td><td>alles, was eingestellt ist</td><td>ja</td></tr>
         </tbody>
       </table>
@@ -783,7 +817,16 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
       <h3>Jede Session hat einen Namen</h3>
       <p>Zug 0 startet mit <code>--remote-control &quot;&lt;session&gt;-p&lt;N&gt;-plan&quot;</code>. Der Name macht sie in der Session-Liste auffindbar, Remote Control macht sie vom Account aus erreichbar — dieselbe Rückfrage lässt sich dann vom Handy beantworten, statt sich per SSH an tmux zu hängen. Die Züge 1–5 tragen <code>--name &quot;&lt;session&gt;-p&lt;N&gt;-lauf&quot;</code>: nicht interaktiv, aber auffindbar.</p>
 
-      <p>Entzogen sind B genau vier Werkzeuge, und nur solche, mit denen ein Prozess auf eine Antwort warten (<code>AskUserQuestion</code>, <code>SendMessage</code>) oder sich selbst überleben könnte (<code>ScheduleWakeup</code>, <code>CronCreate</code>). Dazu die Kommandos, die der Lauf ohnehin nicht kennt: <code>git push</code>, <code>git tag</code>, <code>npm publish</code>. Die Allowlist daneben nimmt nichts weg, sie hebt an, was <code>acceptEdits</code> nicht abdeckt — gemessen liefen <code>echo</code> und <code>python3 --version</code>, obwohl nur <code>Bash(git *)</code> gelistet war.</p>
+      <h3>Die Grenze steht in einer Verbotsliste, nicht in einer Erlaubnisliste</h3>
+      <p>B lief einmal unter <code>acceptEdits</code> mit einer gepflegten Allowlist, und das war die falsche Richtung. Ein Werkzeug, das weder erlaubt noch verboten ist, erzeugt einen Dialog, und ein Prozess ohne Terminal stirbt daran. Die Liste müsste also jedes Werkzeug kennen, das ein Runner je anfassen könnte — die eingebauten, die jedes MCP-Servers, die jedes Plugins, auf einer fremden Maschine, in einer künftigen Version. Diese Liste ist nicht schreibbar, und jeder fehlende Name kostet einen ganzen Lauf. Am 2026-08-26 kostete genau das einen: <code>Monitor</code> fehlte, Exit 21 mitten in Paket 3.</p>
+      <p>Die Dokumentation macht den Gegenweg möglich — »Deny rules block in every mode, including bypassPermissions«, und Erlaubnisregeln wirken dort gar nicht. Also läuft B unter <code>bypassPermissions</code>, und die ganze Grenze des Laufs steht in einer einzigen Zeile. Vier Gruppen: Werkzeuge, mit denen ein Prozess auf eine Antwort warten (<code>AskUserQuestion</code>, <code>SendMessage</code>) oder sich selbst überleben könnte (<code>ScheduleWakeup</code>, <code>CronCreate</code>); die Kommandos, die der Lauf laut <code>SKILL.md</code> nicht kennt (<code>git push</code>, <code>git tag</code>, <code>npm publish</code> samt pnpm und yarn); die geschützten Pfade, die der Modus sonst freigibt (<code>.git</code>, <code>.claude</code>); und nichts weiter.</p>
+      <p>Der Preis wird genannt und nicht verschwiegen: der Modus nimmt den eingebauten Pfadschutz weg, und die Verbotsliste holt ihn zurück. Was er darüber hinaus wirklich erweitert, ist wenig — <code>Bash</code> stand schon vorher ohne Präfixmuster in der Erlaubnisliste. Sperrt eine Maschine den Modus per <code>disableBypassPermissionsMode</code>, startet kein Runner, und das Skript sagt es als Vorbedingung statt es zu verschleiern; <code>PERM=acceptEdits</code> ist dann der Rückfallweg, und die Allowlist wird dort sofort wieder tragend. Deshalb bleibt sie gepflegt, obwohl sie im Normalbetrieb wirkungslos ist.</p>
+
+      <h3>Die Zehn-Minuten-Frist</h3>
+      <p>B startet Implementierer und Reviewer nicht einfach, er koppelt sie ab. Der Grund gehört dem Werkzeug und nicht der Arbeit: die Frist des Bash-Werkzeugs liegt bei zehn Minuten, sie ist nicht erhöhbar, und wenn sie abläuft, erschlägt sie die Prozessgruppe des Aufrufs. Ein Implementierer, der darin hängt, stirbt mit Exit 143 mitten im Umbau und hinterlässt einen halb geänderten Arbeitsbaum. Gemessen am 2026-08-26 an Paket 4 eines Laufs über <code>shadow-objects</code>: gestartet 13:55, erschlagen 14:06, elf Minuten für nichts.</p>
+      <p>Also <code>setsid</code> davor, Ausgabe in die Reportdatei, Exit-Code in eine Datei daneben — der Aufruf kehrt sofort zurück. Danach wartet B im Vordergrund in Blöcken von neun Minuten, bis die Exit-Datei da ist, und ruft den Block erneut auf, wenn sie fehlt. Das kostet einen Zug je neun Minuten statt einen je Sekunde, und der Prozess steckt in keiner Frist mehr.</p>
+      <p>Die zweite Hälfte desselben Fehlers ist die feinere: <b>abkoppeln heißt nicht weggehen.</b> In <code>-p</code> gibt es keinen Prompt, an dem ein Agent stehenbleiben könnte — ein Zug ohne laufenden Werkzeugaufruf ist ein fertiger Zug, und die CLI erzwingt dann die Rückgabe. Im selben Lauf kam der zweite Anlauf sauber durch, der Runner war aber längst zur Rückgabe gezwungen: Review, Fehlerkette, Verify und Commit fanden nie statt, das Paket stand auf <code>[~]</code>, die Arbeit lag uncommittet im Baum. Der Warteblock ist genau das Mittel dagegen — solange er läuft, läuft der Zug.</p>
+      <p>Für den Reviewer gilt dieselbe Regel, und dass es ihn seltener trifft, macht sie nicht kleiner. Vier Reviewer aus demselben Lauf über kleine bis mittlere Diffs: 39 s, 1:42, 1:47, 3:24. Der längste hat ein Drittel der Frist verbraucht, und alle Größen, die ihn treiben, wachsen nach oben — ein Diff über 147 kB statt 40, eine Fehlerkette, die ihn in Runde 2 und 3 eine Modellstufe höher noch einmal fahren lässt.</p>
 
       <h3>Wo ein Lauf anhält</h3>
     </div>
@@ -796,12 +839,51 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
           <tr><td class="who">10</td><td>ein Runner legt etwas vor</td><td>Antwort in »Entscheidungen«, neu starten</td></tr>
           <tr><td class="who">11</td><td>ein Paket steht auf <code>[~]</code></td><td><code>resume.md</code>, nicht das Skript</td></tr>
           <tr><td class="who">20</td><td>die Rückgabe passt nicht zum Repo</td><td>Plan und <code>git log</code> ansehen</td></tr>
-          <tr><td class="who">21</td><td>Rechteschranke</td><td>die Meldung nennt die abgelehnten Werkzeuge</td></tr>
+          <tr><td class="who">21</td><td>Rechteschranke</td><td>unter <code>bypassPermissions</code> selten und nie eine zu enge Liste: eine <code>ask</code>-Regel dieser Maschine, ein Connector auf »ask«, ein MCP-Tool mit <code>requiresUserInteraction</code>. Die Meldung nennt das Abgelehnte</td></tr>
           <tr><td class="who">30</td><td>der Prozess selbst ist gescheitert</td><td><code>paket-N.*.stderr</code></td></tr>
           <tr><td class="who">31</td><td>API blieb überlastet</td><td>später erneut starten, nichts ist kaputt</td></tr>
           <tr><td class="who">40</td><td>Vorbedingung</td><td>die Meldung sagt, welche</td></tr>
         </tbody>
       </table>
+    </div>
+  </section>
+
+
+  <section>
+    <p class="kicker">Rückweg</p>
+    <h2>Wer sagt, dass der Lauf fertig ist</h2>
+    <div class="prose">
+      <p>Die Schleife terminiert zuverlässig. Das war nie das Problem. Das Problem ist, dass ein terminierter Prozess in einem abgelösten Pane niemanden erreicht.</p>
+      <p>Am 2026-08-26 lief ein Lauf über fünf Pakete sauber durch, schrieb seine Schlusszeile um 08:58:42 in ein Pane, und das Pane starb in derselben Sekunde. Fünf Commits im Repo, Tests grün, Arbeitsbaum sauber — und der Abschluss blieb liegen, bis der Nutzer Stunden später von selbst danach fragte. Der Vertrag hatte für diesen Weg keine Vorkehrung: Schritt 6 machte die Frage des Nutzers zum einzigen Auslöser des Abschlusses.</p>
+      <p>Das ist keine Fehlerklasse, die man mit einer Ermahnung schließt. Es braucht einen Rückweg, und es braucht ihn dreifach, weil jede der drei Ebenen anders stirbt.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Netz</th><th>Wer schickt</th><th>Überlebt</th><th>Fällt aus, wenn</th></tr></thead>
+        <tbody>
+          <tr><td class="who">Wachposten + Push</td><td>die steuernde Session</td><td>den ganzen Lauf</td><td>die Session stirbt</td></tr>
+          <tr><td class="who">Desktop-Nachricht</td><td>die Schleife selbst</td><td>jede Session</td><td>niemand an der Maschine sitzt</td></tr>
+          <tr><td class="who"><code>Lauf-Status:</code> im Plan</td><td>die Schleife selbst</td><td>die Maschine</td><td>niemand nachsieht</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose">
+      <h3>Der Wachposten</h3>
+      <p>Ein <code>Monitor</code> auf zwei Pfade, die die Startausgabe wörtlich nennt: das Journal und die Sperre. Jede neue Journalzeile weckt die steuernde Session, die Schleife läuft davon unbeeindruckt weiter. Blockieren bleibt verboten — ein Lauf dauert Stunden, und ein Kommando, das so lange im Vordergrund steht, macht genau die Session unbrauchbar, in der der Nutzer nebenher etwas anderes fragen wollte. Blockieren und Geweckt-Werden sind zwei verschiedene Dinge, und nur das erste ist der Fehler.</p>
+      <p>Warum die Sperre und nicht nur das Journal: ein fortgesetzter Lauf schreibt in dasselbe Journal, in dem der Abbruch seines Vorgängers schon steht. Wer nur nach <code>ende exit=</code> sucht, hält den frischen Lauf für längst beendet und verabschiedet sich, bevor die erste Zeile kommt. <code>.remediate.lock</code> dagegen existiert genau so lange, wie eine Schleife arbeitet — der EXIT-Trap räumt es weg. Daraus fällt der zweite Gewinn ab: verschwindet die Sperre ohne <code>ende</code>-Zeile, ist die Schleife gestorben, ohne ihren Trap zu erreichen. <code>kill -9</code>, Terminal weg, Strom weg. Genau dieser Ausgang meldet sich sonst nirgends.</p>
+
+      <h3>Warum die Schleife nicht über die API meldet</h3>
+      <p>Naheliegend wäre, die Schlussmeldung von einem kurzen <code>claude -p</code> verschicken zu lassen. Zwei Gründe dagegen, und der zweite ist der ernste. Gemessen: ein <code>claude -p</code>, das nur <code>PushNotification</code> aufruft, bekommt »Not sent — this terminal is active« zurück und schweigt. Schwerer wiegt, dass der Alarm dann an genau der API hinge, deren Ausfall er melden soll — Exit 31 heißt, dass die API über drei Versuche überlastet blieb, und die Meldung darüber per API zu verschicken ist ein Rauchmelder mit Strom aus dem brennenden Zimmer. Die Schleife nimmt deshalb <code>notify-send</code>, dazu ein frei gesetztes <code>NOTIFY_CMD</code> und die Terminalglocke. Jeder Weg hat eine Frist und schluckt seinen Fehler: eine Benachrichtigung, die den Lauf bricht, ist schlimmer als gar keine.</p>
+
+      <h3>Der Zustand gehört in den Plan</h3>
+      <p>Kein Zustand sagte vorher »Abschluss offen«. Alle Marken auf <code>[x]</code>, und <code>ende exit=0</code> sieht gleich aus, ob danach noch die halbe Arbeit wartet oder gar nichts mehr. Der Kopf des Plans trägt jetzt eine Zeile <code>Lauf-Status:</code>, geschrieben von der Schleife und gelöscht vom Abschluss. Sie überlebt die Maschine, und ein Agent, der Tage später hier einsteigt, liest sie über <code>references/resume.md</code>. Dazu die Texte, die es vorher hätten sagen müssen: die Startausgabe nennt jetzt das Ende und wer es auslöst, und die Schlussmeldung nennt den Satz, der in einer neuen Session genügt.</p>
+    </div>
+
+    <div class="note">
+      <span class="lbl">Warum drinnen eine Kopie läuft</span>
+      <p>Die Benachrichtigung, die den Fall oben auffangen sollte, lief bei ihrem ersten Einsatz nicht mit: sie kam 38 Minuten nach dem Start ins Skript, und der Lauf hatte sie nicht. Bash liest eine Skriptdatei beim Ausführen weiter — ein Prozess, der seit einer halben Stunde in einer Schleife steht, springt danach an einen Offset in einer Datei, die inzwischen jemand anders geschrieben hat. Deshalb kopiert der Start das Skript ins Arbeitsverzeichnis und fährt die Kopie; der Pfad zum Skill wandert als Umgebungsvariable mit, sonst suchte ein abgelöster Lauf sein Schema und seine <code>references</code> neben einer Kopie und fände nichts. Die Startausgabe nennt die Kopie unter »Gefahren« — sie ist der Stand, der wirklich lief, und nicht der, der jetzt im Skill steht.</p>
     </div>
   </section>
 
@@ -867,7 +949,8 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
           <tr><td class="who">Implementierer, exakter Plan</td><td>mittleres</td><td class="who">low</td><td>Zug 0 hat Signaturen und Werte hingeschrieben. Näher an Transkription als an Entwurf.</td></tr>
           <tr><td class="who">Implementierer, Bugfix</td><td>mittleres</td><td class="who">medium</td><td>Regressionstest zuerst, rot sehen, beheben. Standardfall.</td></tr>
           <tr><td class="who">Implementierer, Nebenläufigkeit oder API</td><td>stärkstes</td><td class="who">high</td><td>Blast Radius unklar.</td></tr>
-          <tr><td class="who">Implementierer, Runde 2</td><td>+1 Stufe</td><td class="who">+1 Stufe</td><td>Zwei Runden sind das ganze Budget. Ein Halbschritt verschenkt eine davon.</td></tr>
+          <tr><td class="who">Implementierer, Runde 2</td><td>+1 Stufe</td><td class="who">+1 Stufe</td><td>Ein frischer Implementierer, nicht derselbe noch einmal. Ein Halbschritt verschenkt eine Runde.</td></tr>
+          <tr><td class="who">Implementierer, Runde 3</td><td>stärkstes</td><td class="who">high</td><td>Diesmal mit der ganzen Kette vor sich: was in Runde 1 und 2 versucht wurde und woran es lag. Danach wird nicht weiter eskaliert — fünf Runden sind die Obergrenze, und eine Runde, die die Zahl der offenen Befunde nicht senkt, ist die letzte.</td></tr>
           <tr><td class="who">Reviewer, mechanischer Diff</td><td>mittleres</td><td class="who">low</td><td>Zeilen gegen den Detailplan halten.</td></tr>
           <tr><td class="who">Reviewer, Nebenläufigkeit oder Sicherheit</td><td>stärkstes</td><td class="who">max</td><td>Review ist Deliberation. Der eine Ort, an dem Effort vor Modell kommt.</td></tr>
           <tr><td class="who">Gegenprobe</td><td>—</td><td class="who">—</td><td><code>grep</code>.</td></tr>
@@ -950,7 +1033,7 @@ first=1
   <span class="c-kw">if</span> [ -n <span class="c-str">"$planned"</span> ]; <span class="c-kw">then</span>
     <span class="c-cmt"># beim allerersten Durchgang ist ein [~] ein Rest aus einem toten Lauf</span>
     [ <span class="c-str">"$first"</span> = 1 ] &amp;&amp; { echo <span class="c-str">"Paket $planned auf [~]: Wiederaufnahme"</span>; <span class="c-kw">exit</span> 11; }
-    run_b <span class="c-str">"$planned"</span> --effort low     <span class="c-cmt"># Dispatch, Review, Verify, Commit</span>
+    run_b <span class="c-str">"$planned"</span> --effort medium  <span class="c-cmt"># Dispatch, Review, Verify, Commit</span>
   <span class="c-kw">elif</span> [ -n <span class="c-str">"$open"</span> ]; <span class="c-kw">then</span>
     run_a <span class="c-str">"$open"</span>    --effort xhigh   <span class="c-cmt"># Abgleich, Triage, Detailplan</span>
     [ <span class="c-str">"$(mark '~')"</span> = <span class="c-str">"$open"</span> ] || <span class="c-kw">exit</span> 20  <span class="c-cmt"># A hat die Marke nicht gesetzt</span>
@@ -972,12 +1055,49 @@ first=1
       <p>Gebaut ist der zweite. B startet Implementierer und Reviewer über Bash als eigene <code>claude -p</code>-Prozesse und legt ihre Reports als Dateien ab; die Schleife zählt die Dateien statt der Subagenten. Wo das nicht geht, fällt B auf Subagenten zurück, und die Prüfung akzeptiert beides.</p>
 
       <h3>Wer den Wert setzt</h3>
-      <p>Nicht die Umgebung, sondern A. Auf dem Subagenten-Weg erbt jedes Kind den Effort seines Prozesses, also entscheidet <code>EFFORT_B</code> gar nicht über B, sondern über Implementierer und Reviewer. Wer ihn global setzt, setzt ihn für ein Paket, das er nicht kennt. A dagegen hat den Code gerade gelesen und schreibt eine Zeile in den Detailplan, neben <code>- Modell:</code>:</p>
+      <p>Nicht die Umgebung, sondern A. <code>EFFORT_B</code> ist nur ein Vorgabewert (<code>medium</code>), und wer ihn global setzt, setzt ihn für zwölf Pakete gleichzeitig, von denen er elf nicht kennt. A dagegen hat den Code des einen Pakets gerade gelesen und schreibt eine Zeile in den Detailplan, neben <code>- Modell:</code>:</p>
       <pre><code>- Effort: low</code></pre>
       <p>Die Schleife liest sie und gibt sie B mit; fehlt sie oder steht Unsinn darin, gilt der Vorgabewert. Damit ist der Regler dort, wo die Kenntnis über das Paket liegt, und nicht in einer Umgebungsvariablen, die für zwölf Pakete gleichzeitig gilt. <code>low</code> für den exakten Auftrag, <code>medium</code> für den gewöhnlichen Bugfix, <code>high</code>, wenn Nebenläufigkeit, Sicherheit oder die öffentliche API im Spiel sind — oder wenn allein der Reviewer der Grund ist, denn er erbt denselben Wert.</p>
 
       <h3>Was nicht heruntergedreht wird</h3>
       <p>Planung und Zug 0. Beides sind Entscheidungen, die sich auf jedes Folgepaket multiplizieren, und beides fällt selten an: die Planung einmal je Lauf, Zug 0 einmal je Paket und ohne eine Zeile Code. Wer hier spart, spart an der Stelle mit dem schlechtesten Verhältnis im ganzen Lauf. Umgekehrt gilt die bestehende Regel »im Zweifel eine Stufe höher« weiterhin fürs Modell, aber nicht für den Effort: bei einem exakten Auftrag ist mehr Nachdenken nicht besser, nur teurer und planferner.</p>
+    </div>
+  </section>
+
+
+  <section>
+    <p class="kicker">Rechnung</p>
+    <h2>Was ein Lauf verbraucht</h2>
+    <div class="prose">
+      <p>Ein mitlaufender Zähler kann diese Frage nicht beantworten, und zwar aus zwei Gründen zugleich. Er kennt nur die Runner — nicht die Implementierer und Reviewer, die diese starten, und die sind der größere Posten: an Paket 4 eines Laufs über <code>shadow-objects</code> zeigte er knapp zwei Drittel des tatsächlichen Verbrauchs. Und er fängt nach jedem Neustart bei null an.</p>
+      <p>Gezählt wird deshalb am Ende, aus den Reportdateien <code>paket-*.json</code> im Arbeitsverzeichnis. Das überlebt jeden Neustart, weil das Verzeichnis im Kopf des Plans steht und nicht am Prozess hängt. Jeder Ausgang außer 40 legt die Tabelle nach.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Spalte</th><th>Was darin steht</th></tr></thead>
+        <tbody>
+          <tr><td class="who">Paket</td><td>Nummer und Überschrift aus dem Plan, gekürzt auf 46 Zeichen. Ohne Plan bleibt die Spalte leer — eine Nummer allein zwingt jeden Leser, daneben den Plan aufzuschlagen</td></tr>
+          <tr><td class="who">Prozesse</td><td>wie viele eigene Prozesse auf dieses Paket gingen, gescheiterte Versuche mitgezählt</td></tr>
+          <tr><td class="who">Eingabe</td><td>frische Eingabe, Cache-Lesung und Cache-Anlage zusammen</td></tr>
+          <tr><td class="who">Ausgabe</td><td>Ausgabe-Token, darunter noch einmal aufgeschlüsselt je Modell</td></tr>
+          <tr><td class="who">Steuer</td><td>eine eigene Zeile über der Summe: Plan, Start und Abschluss laufen in keinem Paket</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose">
+      <p>Beträge stehen nicht darin. Vier Fallen liegen darunter, und jede war zuerst ein falscher Wert:</p>
+      <ul>
+        <li><b><code>modelUsage</code> und nicht <code>usage</code>.</b> Die beiden sehen austauschbar aus und sind es nicht: <code>usage</code> trägt den letzten Zug, <code>modelUsage</code> die ganze Sitzung. An einem gemessenen Runner sind das 3.380 gegen 16.177 Ausgabe-Token.</li>
+        <li><b>Eine Spalte für alles, was hineingeht.</b> Frische Eingabe, Cache-Lesung und Cache-Anlage sind keine Verfeinerung voneinander, sondern drei Preisklassen desselben Postens — und die frische Eingabe ist die mit Abstand kleinste: gemessen 1,2k gegen 52,4M aus dem Cache. Wer nur <code>input_tokens</code> zeigt, zeigt fast nichts.</li>
+        <li><b>Zug 0 hat kein Ergebnis-JSON</b>, weil er eine TUI ist. Er bekommt deshalb eine vom Skript vergebene <code>--session-id</code>, und seine Tokens kommen aus der Mitschrift dieser Session. Dort steht dieselbe Antwort mehrfach, einmal je Inhaltsblock unter derselben <code>message.id</code> — stumpf summiert sind das in der gemessenen Datei 1.033.306 Ausgabe-Token statt 515.596.</li>
+        <li><b>Gescheiterte Versuche bleiben stehen.</b> Ein Wiederholungsversuch schrieb einmal in dieselbe Datei und löschte damit die Spur dessen, was der Versuch davor verbraucht hatte. Er legt sie jetzt als <code>paket-N.&lt;rolle&gt;-versuch-&lt;n&gt;.json</code> beiseite, und die Tabelle zählt sie als eigenen Prozess. Was überschrieben wird, hat es nie gegeben.</li>
+      </ul>
+
+      <h3>Die Session, die niemand mitzählte</h3>
+      <p>Der größte einzelne Posten stand lange in keiner Zahl. Plan, Start und Abschluss laufen in der Session daneben, und die kennt sich selbst — das Skript kennt sie nicht. Gemessen an einem echten Lauf: 9,3M hinein, 48,4k hinaus, für einen Prozess, den die Tabelle gar nicht sah. Sie nennt sich deshalb beim Aufruf über <code>ORCHESTRATOR_SESSION</code>, der Start schreibt die Kennung nach <code>orchestrator.session</code>, und die Tabelle holt sich die Mitschrift. Mehrere Kennungen sind der Normalfall und kein Fehler: ein Lauf über Tage wird von mehreren Sessions gestartet.</p>
+      <p>Fehlt einer der beiden Mitschrift-Posten, sagt die Tabelle das in ihrer letzten Zeile, statt die Lücke in der Summe verschwinden zu lassen. Geschätzt wird nichts. Eine Zahl, die eine Lücke stillschweigend schließt, ist schlimmer als eine, die fehlt — die fehlende sucht jemand, die geschätzte glaubt jemand.</p>
     </div>
   </section>
 
@@ -995,13 +1115,17 @@ first=1
       <p>Zug 0 im eigenen Fenster hieß einmal: ein Lauf über zwölf Pakete kostet zwölf kurze Momente deiner Aufmerksamkeit. Seit die Schwelle steht, stimmt das nicht mehr. Gemessen: fünf Züge 0 am 2026-08-25, keine einzige Frage — auch nicht dort, wo die Test-Fixture ausdrücklich eine erzwingen wollte. Zwei Planer entschieden dort unabhängig voneinander dasselbe und schrieben die Begründung in den Detailplan, statt zu fragen.</p>
       <p>Der Preis ist damit auf die andere Seite gewandert. Ein Lauf geht über Nacht durch, und die Entscheidungen, die dabei fallen, findest du am Morgen als Begründung im Plan statt als Frage in deinem Fenster. Wer das umgekehrt haben will, dreht an <code>runner.md</code> — dort steht die Schwelle, und nur dort.</p>
 
+      <h3>Abgelöst heißt nicht herrenlos</h3>
+      <p>Die Schleife läuft unabhängig von der Session, die sie gestartet hat — der Lauf selbst überlebt jede geschlossene Session. Der Abschluss tut das nicht. Er ist Schritt 7, er ist Arbeit für einen Agenten, und niemand startet ihn von allein: die drei Netze im Abschnitt »Rückweg« melden, dass er ansteht, sie erledigen ihn nicht. Stirbt die steuernde Session, genügt ein Satz in einer neuen — »mach den Abschluss des Remediation-Laufs«, der Stand steht im Plan. Aber jemand muss ihn sagen.</p>
+
       <h3>Portabilität</h3>
       <p>Der Skill setzt jetzt eine POSIX-Shell, tmux und die <code>claude</code>-CLI voraus. Auf einem Host ohne diese drei läuft er nicht — bewusst: ein zweiter Weg für den Ausnahmefall kostet mehr Verwirrung, als er Fälle rettet.</p>
 
       <h3>Was geprüft ist, und was offen bleibt</h3>
       <p>Alles, was die Schleife deterministisch prüft, ist gegen einen Stub über 36 Fälle abgesichert. Die drei Stellen, an denen ein Modell entscheidet, sind seit dem 2026-08-25 mit echten Paketen gefahren, und alle drei halten: A hört nach dem Detailplan auf, statt den Fix gleich selbst zu machen; B beginnt bei Zug 1, statt Zug 0 zu wiederholen; und der Plan trägt über die Prozessgrenze, was B danach braucht. Dazu ein vollständiger Lauf über drei Pakete samt Drain-Runde und Abschluss, der terminiert hat.</p>
+      <p>Am 2026-08-26 kamen zwei echte Läufe über <code>shadow-objects</code> dazu, und sie haben mehr gefunden als der ganze Szenario-Test davor. Alles, was seither in diesem Dokument steht — die Zehn-Minuten-Frist, die Verbotsliste statt der Erlaubnisliste, der dreifache Rückweg, die Kopie des Skripts, die Tokentabelle samt der Session, die niemand mitzählte —, ist die Antwort auf einen Fehlschlag aus diesen beiden Läufen. Keiner davon lag in der Topologie. Sie lagen alle an den Rändern: an der Frist eines Werkzeugs, an der Bauart einer Rechteschranke, an einem Pane, das eine Sekunde zu früh starb.</p>
       <p>Offen bleibt der Fall, für den es keine Probe mehr gibt: ein Zug 0, der wirklich auf eine Antwort wartet. Seit die Schwelle steht, stellt er keine Frage, die eine erzwingen würde — der Arm des Szenario-Tests, der genau diesen Fall prüft, misst seither nichts. Ebenso ungeprüft: ob der Scrollback eines sehr langen Zuges 0 über sein <code>history-limit</code> hinausläuft und der Erreichbarkeitsbeleg damit aus dem Fenster fällt, und ob eine echte CLI die Kanal-Meldung in jeder Fensterbreite ungebrochen schreibt.</p>
-      <p>Und eine Lücke im Test selbst, die der Lauf sichtbar gemacht hat: geprüft wird die Rückfrage-Disziplin von Zug 0 (»höchstens eine weitere Frage«), für den Orchestrator zählt sie niemand. Vier Halte in einem Lauf haben keinen einzigen Prüfpunkt ausgelöst.</p>
+      <p>Und zwei Lücken im Test selbst. Geprüft wird die Rückfrage-Disziplin von Zug 0 (»höchstens eine weitere Frage«), für den Orchestrator zählt sie niemand — vier Halte in einem Lauf haben keinen einzigen Prüfpunkt ausgelöst. Der Rückweg wird gar nicht geprüft: kein Arm sieht nach, ob der Wachposten steht, ob eine Meldung ankommt und ob der Abschluss ohne Zutun des Nutzers beginnt. Das ist ausgerechnet die Stelle, die einen fertigen Lauf schon einmal einen halben Tag gekostet hat.</p>
     </div>
   </section>
 
@@ -1011,6 +1135,7 @@ first=1
     <p>Nach der Freigabe startet der Agent <code>scripts/remediate.sh</code>, ungefragt. Der Lauf hängt sich in eine abgelöste tmux-Session, plant jedes Paket in einem eigenen Fenster — dort kann er fragen — und führt es ohne Terminal aus. Implementierer und Reviewer sind eigene Prozesse und erreichen alles, was auf der Maschine eingestellt ist. Der Agent gibt die Startausgabe weiter und wartet auf einen Exit-Code; eine zweite Betriebsart gibt es nicht, und ohne tmux beginnt der Lauf gar nicht erst.</p>
     <p>Der Gewinn ist nicht, dass die Schleife klüger wird, sondern dass sie sich nicht herausreden kann: sie pollt nicht, sie sucht keinen Kanal, und sie erklärt keinen Prozess für beendet, der noch läuft. Was ein Prozess an Interaktivität kostet, holt Zug 0 in seinem Fenster zurück — die eine Stelle im Lauf, an der ein Agent Dinge wissen muss, die im Code nicht stehen.</p>
     <p>Am 2026-08-25 ist der Weg zum ersten Mal in voller Länge gefahren worden: Grobplan, Freigabe, Skriptstart, drei Pakete mit Implementierer, Reviewer und eigenem Verify-Lauf, Drain-Runde, Versionsanhebung, nachgeführter Report, Plan archiviert und aus dem Arbeitsbaum geräumt. Fünf Commits, sauberer Arbeitsbaum, Tests grün, kein Eingriff von Hand. Was dabei fiel, fiel an der Rückfrage-Schwelle und nicht an der Topologie.</p>
+    <p>Am Tag darauf haben zwei echte Läufe die Ränder abgetragen, die ein Szenario-Test nie berührt: eine Werkzeugfrist, die einen Implementierer mitten im Umbau erschlägt; eine Erlaubnisliste, die nur so lange trägt, wie niemand ein neues Werkzeug braucht; ein Pane, das die Schlusszeile in derselben Sekunde mitnimmt, in der sie geschrieben wird. Die Topologie hat in beiden Läufen gehalten. Gekostet haben die Stellen, an denen sie an etwas anderes grenzt.</p>
     <p>Die deterministischen Zusicherungen sind gegen einen <code>claude</code>-Stub über 36 Fälle geprüft: Marken, Hash gegen HEAD, <code>exit=0</code> im Verify-Log, Reports von Implementierer und Reviewer, Rechteschranke, unlesbare Rückgabe, falsches Paket, abgestürzter Prozess, Überlast in fünf Spielarten, der Start über tmux mit und ohne Session, der Abbruch ohne tmux, und acht Vorbedingungen. Was ein Modell entscheidet, prüft kein Stub — das steht unter »Grenzen«.</p>
   </div>
 
