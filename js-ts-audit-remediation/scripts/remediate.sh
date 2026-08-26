@@ -63,7 +63,7 @@ EFFORT_B=${EFFORT_B:-medium}   # nur der Vorgabewert; »- Effort:« im Detailpla
 # Einstellungen, gern als Organisationsvorgabe), startet kein Runner. Dann
 # PERM=acceptEdits setzen; die Erlaubnisliste unten trägt genau diesen Fall.
 PERM=${PERM:-bypassPermissions}
-BUDGET_USD=${BUDGET_USD:-15}    # harte Obergrenze je Runner-Prozess
+BUDGET_USD=${BUDGET_USD:-50}    # harte Obergrenze je Runner-Prozess
 MAX_ITER=${MAX_ITER:-200}       # Reißleine gegen eine Schleife ohne Fortschritt
 MAX_ROUNDS=${MAX_ROUNDS:-5}     # Obergrenze der Fehlerkette je Paket
 ATTEMPTS=${ATTEMPTS:-3}         # Versuche je Runner, wenn die API überlastet ist
