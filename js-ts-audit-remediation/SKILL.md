@@ -394,8 +394,16 @@ Du drehst sie nicht selbst. Sobald der Grobplan freigegeben ist, startest du
 `scripts/remediate.sh` — ungefragt, das ist die Freigabe:
 
 ```bash
-<skill>/scripts/remediate.sh
+ORCHESTRATOR_SESSION=<deine Session-Kennung> <skill>/scripts/remediate.sh
 ```
+
+Die Kennung ist die deiner eigenen Session — bei Claude Code der UUID-Abschnitt
+im Pfad deines Scratchpad-Verzeichnisses. Sie kostet nichts und beantwortet am
+Ende eine Frage, die sonst niemand beantworten kann: Der Lauf zählt zum Schluss
+zusammen, was er verbraucht hat, und deine Session ist der einzige Posten
+darin, den er nicht von sich aus findet — Plan, Start und Abschluss laufen ja
+bei dir. Kennst du deine Kennung nicht, lässt du die Variable weg; die Tabelle
+sagt dann selbst, dass dieser Posten fehlt.
 
 Das Skript hängt sich in eine abgelöste tmux-Session und kommt sofort zurück.
 Ab da läuft es unabhängig von dir: es liest die Marken im Plan, fährt je Paket

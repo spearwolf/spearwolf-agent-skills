@@ -270,12 +270,21 @@ sondern am Ende aus den Reportdateien `paket-*.json` im Arbeitsverzeichnis, und
 damit über jeden Neustart hinweg, denn das Verzeichnis steht im Kopf des Plans
 und nicht am Prozess.
 
-Zug 0 ist dabei, obwohl er kein Ergebnis-JSON hat: er ist eine TUI, und seine
-Tokens holt die Tabelle aus der Mitschrift seiner Session, die er seit dem
-2026-08-26 unter einer vom Skript vergebenen Kennung führt
-(`paket-N.zug0.session` im Arbeitsverzeichnis). Läufe, die vorher begonnen
-haben, haben keine Kennung vergeben; dort fehlt Zug 0 ganz, und die letzte
-Zeile der Tabelle sagt es.
+Zwei Posten haben kein Ergebnis-JSON, weil sie keine `-p`-Prozesse sind, und
+beide stehen trotzdem in der Tabelle — ihre Tokens kommen aus der Mitschrift
+ihrer Session. Zug 0 führt seine unter einer Kennung, die das Skript ihm beim
+Start zuteilt (`paket-N.zug0.session` im Arbeitsverzeichnis). Die steuernde
+Session kann sich das Skript nicht zuteilen, sie muss sich nennen: über
+`ORCHESTRATOR_SESSION` beim Aufruf, worauf der Start die Kennung nach
+`orchestrator.session` schreibt. Sie steht dann als eigene Zeile »Steuer« über
+der Summe — Plan, Start und Abschluss laufen dort und in keinem Paket. Mehrere
+Zeilen in der Datei sind der Normalfall: ein Lauf über Tage wird von mehreren
+Sessions gestartet, und jede zählt einmal.
+
+Fehlt einer der beiden, sagt die Tabelle es in ihrer letzten Zeile, statt die
+Lücke in der Summe verschwinden zu lassen. Bei Zug 0 trifft das Läufe, die vor
+dem 2026-08-26 begonnen haben; bei der Steuerung jeden Aufruf ohne die
+Variable.
 
 ## Wenn die API überlastet ist
 

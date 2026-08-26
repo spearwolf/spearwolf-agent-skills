@@ -296,16 +296,14 @@ verbrauch_zeilen() { # je Prozess und Modell eine Zeile: paket, rolle, modell, t
         (.value.cacheCreationInputTokens // 0) ] | @tsv' "$f" 2>/dev/null || true
   done
   zug0_zeilen
+  orchestrator_zeilen
 }
 
 # Zug 0 ist die Ausnahme: er hat kein Ergebnis-JSON, weil er eine TUI ist. Sein
 # Verbrauch steht allein in der Mitschrift der Session, die er unter der
 # Kennung aus »paket-N.zug0.session« führt.
 #
-# Zwei Fallen stecken in der Datei. Erstens erscheint dieselbe Antwort mehrfach,
-# einmal je Inhaltsblock unter derselben »message.id« — wer stumpf summiert,
-# zählt in der gemessenen Mitschrift 1.033.306 Ausgabe-Token statt 515.596.
-# Zweitens ist der Ablageort nicht der Projektpfad, sondern ein daraus
+# Der Ablageort der Mitschrift ist nicht der Projektpfad, sondern ein daraus
 # gebildeter Name; gesucht wird deshalb über die Kennung, die eindeutig ist.
 zug0_zeilen() {
   local sf pkg sid tf
@@ -316,18 +314,47 @@ zug0_zeilen() {
     [ -n "$sid" ] || continue
     for tf in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/projects/*/"$sid".jsonl; do
       [ -s "$tf" ] || continue
-      jq -s -r --arg pkg "$pkg" '
-        [ .[] | select(.type == "assistant" and .message.usage != null) ]
-        | group_by(.message.id) | map(.[0])
-        | group_by(.message.model)[]
-        | [ $pkg, "zug0", (.[0].message.model // "unbekannt"),
-            (map(.message.usage.input_tokens // 0) | add),
-            (map(.message.usage.output_tokens // 0) | add),
-            (map(.message.usage.cache_read_input_tokens // 0) | add),
-            (map(.message.usage.cache_creation_input_tokens // 0) | add) ] | @tsv' \
-        "$tf" 2>/dev/null || true
+      mitschrift_zeilen "$tf" "$pkg" "zug0"
     done
   done
+}
+
+# Die Session, die den Lauf steuert, ist der zweite Prozess ohne Ergebnis-JSON:
+# sie liest das Audit, schreibt den Plan, startet dieses Skript und macht den
+# Abschluss. Sie kennt sich selbst, dieses Skript kennt sie nicht — also nennt
+# sie sich beim Start über ORCHESTRATOR_SESSION, und der Start schreibt die
+# Kennung hierher. Mehrere Zeilen sind der Normalfall und kein Fehler: ein Lauf,
+# der über Tage geht, wird von mehreren Sessions gestartet.
+orchestrator_zeilen() {
+  local sf sid tf
+  sf="$WORK/orchestrator.session"
+  [ -s "$sf" ] || return 0
+  while read -r sid; do
+    sid=$(printf '%s' "$sid" | tr -d '[:space:]')
+    [ -n "$sid" ] || continue
+    for tf in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/projects/*/"$sid".jsonl; do
+      [ -s "$tf" ] || continue
+      # Die Kennung steht in der Rollenspalte: zwei Sessions sind zwei Prozesse,
+      # dieselbe zweimal genannt ist einer.
+      mitschrift_zeilen "$tf" '#S' "$sid"
+    done
+  done < "$sf"
+}
+
+# Eine Mitschrift, aufaddiert. Dieselbe Antwort steht mehrfach darin, einmal je
+# Inhaltsblock unter derselben »message.id« — wer stumpf summiert, zählt in der
+# gemessenen Datei 1.033.306 Ausgabe-Token statt 515.596.
+mitschrift_zeilen() { # $1 = Mitschrift, $2 = Paket oder '#S', $3 = Rolle
+  jq -s -r --arg pkg "$2" --arg rolle "$3" '
+    [ .[] | select(.type == "assistant" and .message.usage != null) ]
+    | group_by(.message.id) | map(.[0])
+    | group_by(.message.model)[]
+    | [ $pkg, $rolle, (.[0].message.model // "unbekannt"),
+        (map(.message.usage.input_tokens // 0) | add),
+        (map(.message.usage.output_tokens // 0) | add),
+        (map(.message.usage.cache_read_input_tokens // 0) | add),
+        (map(.message.usage.cache_creation_input_tokens // 0) | add) ] | @tsv' \
+    "$1" 2>/dev/null || true
 }
 
 # Die Überschrift des Pakets, gekürzt auf Terminalbreite. Eine Nummer allein
@@ -362,6 +389,16 @@ verbrauch_report() {
     printf '%s\n' "$rows" | LC_ALL=C sort -t "$(printf '\t')" -k1,1V -k2,2
   } | awk -F'\t' '
     $1 == "#T" { titel[$2] = $3; next }
+    # Die Steuerung gehört keinem Paket. Sie bekommt eine eigene Zeile über der
+    # Summe und geht in die Summe ein.
+    $1 == "#S" {
+      if (!($2 in sseen))     { sseen[$2] = 1; snproc++; gproc++ }
+      if (!($3 in mseen))     { morder[++nm] = $3; mseen[$3] = 1 }
+      sein += $4 + $6 + $7; saus += $5
+      gein += $4 + $6 + $7; gaus += $5
+      maus[$3] += $5
+      next
+    }
     function h(n) {
       if (n >= 1000000) return sprintf("%.1fM", n / 1000000)
       if (n >= 1000)    return sprintf("%.1fk", n / 1000)
@@ -393,6 +430,8 @@ verbrauch_report() {
         if (p in titel) printf fmt,  p, nproc[p], h(ein[p]), h(aus[p]), titel[p]
         else            printf kopf, p, nproc[p], h(ein[p]), h(aus[p])
       }
+      if (snproc)
+        printf fmt, "Steuer", snproc, h(sein), h(saus), "Plan, Start, Abschluss — die Session daneben"
       printf "  %s\n", "------ -------- ---------- ----------"
       printf kopf, "gesamt", gproc, h(gein), h(gaus)
       printf "\n"
@@ -403,6 +442,9 @@ verbrauch_report() {
       if (!zug0)
         print "  Ohne Zug 0: keine Mitschrift des Planers gefunden. Läufe von vor dem\n" \
               "  2026-08-26 haben keine Session-Kennung vergeben und bleiben ungezählt."
+      if (!snproc)
+        print "  Ohne die steuernde Session: sie hat sich beim Start nicht genannt\n" \
+              "  (ORCHESTRATOR_SESSION). Plan, Start und Abschluss fehlen in der Summe."
     }'
 }
 
@@ -471,7 +513,9 @@ Optionen:
 
 Umgebung:
   PLAN MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER MAX_ROUNDS
-  ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS
+  ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS NOTIFY_CMD
+  ORCHESTRATOR_SESSION  Kennung der startenden Session; ohne sie fehlen Plan,
+                        Start und Abschluss in der Schlusstabelle
   SESSION TMUX_BIN ZUG0_POLL ZUG0_GRACE ZUG0_CLOSE ZUG0_TIMEOUT ZUG0_TRUST_GRACE ZUG0_ASSUME_USER
 EOF
 }
@@ -649,7 +693,8 @@ launch_tmux() { # $@ = die Argumente, mit denen der Lauf drinnen starten soll
   cmd="$cmd REMEDIATE_SKILL_DIR=$(printf '%q' "$SKILL_DIR")"
   for v in PLAN SESSION MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD \
            MAX_ITER MAX_ROUNDS ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS \
-           DENY_TOOLS EXTRA_ARGS NOTIFY_CMD ZUG0_POLL ZUG0_GRACE ZUG0_CLOSE ZUG0_TIMEOUT \
+           DENY_TOOLS EXTRA_ARGS NOTIFY_CMD ORCHESTRATOR_SESSION \
+           ZUG0_POLL ZUG0_GRACE ZUG0_CLOSE ZUG0_TIMEOUT \
            ZUG0_TRUST_GRACE ZUG0_ASSUME_USER; do
     eval "[ -n \"\${$v:-}\" ]" && cmd="$cmd $v=$(eval printf '%q' "\"\$$v\"")"
   done
@@ -728,6 +773,15 @@ preflight() {
   [ -n "$WORK" ] || WORK=${ARBEITSDIR:-${TMPDIR:-/tmp}/remediation-$(basename "$(pwd)")}
   mkdir -p "$WORK" || die $EX_PRE "Arbeitsverzeichnis nicht anlegbar: $WORK"
   WORK=$(cd -- "$WORK" && pwd)
+
+  # Wer das Skript gestartet hat, wird hier notiert, sofern er sich nennt. Die
+  # Schlusstabelle holt sich darüber seine Mitschrift; ohne die Zeile fehlen
+  # Plan, Start und Abschluss in jeder Summe. Zweimal dieselbe Kennung ist kein
+  # zweiter Prozess, deshalb nur, wenn sie noch nicht dasteht.
+  if [ -n "${ORCHESTRATOR_SESSION:-}" ]; then
+    grep -qxF "$ORCHESTRATOR_SESSION" "$WORK/orchestrator.session" 2>/dev/null \
+      || printf '%s\n' "$ORCHESTRATOR_SESSION" >> "$WORK/orchestrator.session"
+  fi
 
   local d
   d=$(dirty_paths)
