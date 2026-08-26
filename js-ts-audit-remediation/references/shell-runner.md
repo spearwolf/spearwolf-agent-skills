@@ -258,9 +258,13 @@ deshalb läuft nie einer parallel zum anderen.
 Entstehen im Abschluss neue Pakete — die Drain-Runde schneidet welche —, läuft
 das Skript danach noch einmal. Es fasst den Abschluss selbst nie an.
 
-Jeder dieser Ausgänge außer 40 legt eine Tabelle nach: Tokens je Paket —
-Eingabe, Ausgabe, gelesener und neu angelegter Cache —, dazu eine Summe und die
-Ausgabe je Modell. Beträge stehen nicht darin. Gezählt wird nicht mitlaufend,
+Jeder dieser Ausgänge außer 40 legt eine Tabelle nach: Tokens je Paket, eine
+Spalte hinein und eine hinaus, dazu eine Summe und die Ausgabe je Modell.
+Beträge stehen nicht darin. »Eingabe« ist die Summe aus frischer Eingabe,
+Cache-Lesung und Cache-Anlage — drei Preisklassen desselben Postens, und die
+frische Eingabe ist die mit Abstand kleinste davon: in einem gemessenen Lauf
+1,2k gegen 52,4M aus dem Cache. Wer nur `input_tokens` zeigt, zeigt fast
+nichts. Gezählt wird nicht mitlaufend,
 sondern am Ende aus den Reportdateien `paket-*.json` im Arbeitsverzeichnis, und
 damit über jeden Neustart hinweg, denn das Verzeichnis steht im Kopf des Plans
 und nicht am Prozess.

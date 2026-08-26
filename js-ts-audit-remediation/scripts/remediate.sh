@@ -353,19 +353,24 @@ verbrauch_report() {
       if (!((pkg SUBSEP rolle) in proc))   { proc[pkg SUBSEP rolle] = 1; nproc[pkg]++; gproc++ }
       if (!(modell in mseen))              { morder[++nm] = modell; mseen[modell] = 1 }
       if (rolle == "zug0")                 { zug0 = 1 }
-      ein[pkg] += $4; aus[pkg] += $5; crd[pkg] += $6; cne[pkg] += $7
-      gein += $4; gaus += $5; gcrd += $6; gcne += $7
+      # Eine Zahl für alles, was hineingeht. Die drei Felder daneben sind
+      # keine Verfeinerung, sondern Preisklassen desselben Postens: frische
+      # Eingabe voll, aus dem Cache gelesen etwa ein Zehntel, neu in den Cache
+      # geschrieben ein bis zwei Mal so viel. Wer nur »input_tokens« zeigt,
+      # zeigt den kleinsten der drei — hier gemessen 1,2k gegen 52,4M.
+      ein[pkg] += $4 + $6 + $7; aus[pkg] += $5
+      gein += $4 + $6 + $7; gaus += $5
       maus[modell] += $5
     }
     END {
-      fmt = "  %-6s %8s %9s %9s %11s %11s\n"
-      printf fmt, "Paket", "Prozesse", "Eingabe", "Ausgabe", "Cache gel.", "Cache neu"
+      fmt = "  %-6s %8s %10s %10s\n"
+      printf fmt, "Paket", "Prozesse", "Eingabe", "Ausgabe"
       for (i = 1; i <= np; i++) {
         p = order[i]
-        printf fmt, p, nproc[p], h(ein[p]), h(aus[p]), h(crd[p]), h(cne[p])
+        printf fmt, p, nproc[p], h(ein[p]), h(aus[p])
       }
-      printf "  %s\n", "------ -------- --------- --------- ----------- -----------"
-      printf fmt, "gesamt", gproc, h(gein), h(gaus), h(gcrd), h(gcne)
+      printf "  %s\n", "------ -------- ---------- ----------"
+      printf fmt, "gesamt", gproc, h(gein), h(gaus)
       printf "\n"
       zeile = "  Ausgabe je Modell: "
       for (i = 1; i <= nm; i++)
