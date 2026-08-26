@@ -1111,6 +1111,14 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
     say "  API überlastet, Versuch $attempt von $ATTEMPTS. Warte ${pause}s."
     journal "paket=$pkg rolle=$role ueberlastet versuch=$attempt warte=${pause}s"
     sleep "$pause"
+
+    # Der nächste Versuch schreibt in dieselbe Datei, und ohne diese Zeile wäre
+    # der vorige damit weg — samt allem, was er verbraucht hat. Bei Überlast ist
+    # das wenig; bei einem Prozess, der nach echter Arbeit stirbt, ist es alles.
+    # Der Name trägt dieselbe Form wie die anderen Reportdateien, damit die
+    # Schlusstabelle ihn ohne Sonderregel findet und als eigenen Prozess zählt.
+    [ -s "$RAW" ] && mv -f "$RAW" "$WORK/paket-$pkg.$role-versuch-$attempt.json"
+
     attempt=$((attempt + 1))
   done
 

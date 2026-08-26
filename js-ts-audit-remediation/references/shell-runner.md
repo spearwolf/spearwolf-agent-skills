@@ -281,8 +281,15 @@ der Summe — Plan, Start und Abschluss laufen dort und in keinem Paket. Mehrere
 Zeilen in der Datei sind der Normalfall: ein Lauf über Tage wird von mehreren
 Sessions gestartet, und jede zählt einmal.
 
-Fehlt einer der beiden, sagt die Tabelle es in ihrer letzten Zeile, statt die
-Lücke in der Summe verschwinden zu lassen. Bei Zug 0 trifft das Läufe, die vor
+Gescheiterte Versuche zählen mit. Ein Wiederholungsversuch schrieb früher in
+dieselbe Datei und löschte damit die Spur dessen, was der Versuch davor
+verbraucht hatte; er legt sie jetzt als `paket-N.<rolle>-versuch-<n>.json`
+beiseite, und die Tabelle zählt sie als eigenen Prozess. Nicht einfangen lässt
+sich der Prozess, der stirbt, bevor er überhaupt schreibt — dort gibt es nichts
+zu sichern.
+
+Fehlt einer der beiden Mitschrift-Posten, sagt die Tabelle es in ihrer letzten
+Zeile, statt die Lücke in der Summe verschwinden zu lassen. Bei Zug 0 trifft das Läufe, die vor
 dem 2026-08-26 begonnen haben; bei der Steuerung jeden Aufruf ohne die
 Variable.
 
@@ -532,7 +539,10 @@ Was dabei zu tun ist:
   `$ARBEITSDIR/paket-N.impl-<runde>.json` für den Implementierer,
   `$ARBEITSDIR/paket-N.review-<runde>.json` für den Reviewer.
 - Die Dateinamen sind kein Ordnungssinn, sondern der Beleg: die Schleife zählt
-  sie, weil ein eigener Prozess in `subagent_stats` nicht mehr auftaucht.
+  sie, weil ein eigener Prozess in `subagent_stats` nicht mehr auftaucht. Aus
+  demselben Grund überschreibst du keinen: musst du innerhalb einer Runde ein
+  zweites Mal beauftragen, hängst du ein `-versuch-2` an, statt den Report des
+  ersten Anlaufs zu ersetzen. Was überschrieben wird, hat es nie gegeben.
 - **Beide werden abgekoppelt, und das Warten wird begrenzt.** Das sind zwei
   Dinge, und sie zusammenzulegen hat schon ein Paket gekostet. Die Frist deines
   Bash-Werkzeugs gehört dem Werkzeug, nicht der Arbeit: sie liegt bei zehn
