@@ -41,9 +41,25 @@ startet, hat dem Nutzer bis dahin nichts gesagt.
 
 | Blick | Was er zeigt |
 | --- | --- |
+| `grep '^Lauf-Status:' <plan>` | die Selbstauskunft der Schleife: läuft, angehalten mit Code N, durch |
 | `tmux ls` | eine Session `remediate-<projekt>` heißt: sie lebt |
 | `tail -n 5 <arbeitsdir>/remediate.log` | die Zeile `ende exit=N` heißt: sie ist durch |
 | `tmux capture-pane -p -t <session>:0` | woran sie gerade hängt |
+
+Die erste Zeile ist die billigste und steht schon vor dir, weil der Plan
+ohnehin gelesen wurde. Die Schleife schreibt sie beim Start, überschreibt sie
+bei jedem Ausgang und nimmt sie erst mit dem Abschluss-Commit wieder heraus.
+Steht dort **`Schleife durch … Abschluss offen`**, ist genau ein Weg richtig:
+`references/semver-and-closeout.md` lesen und Schritt 7 fahren. Kein Skriptstart,
+keine neue Planung, keine Rückfrage, ob der Nutzer das möchte — er hat den Lauf
+freigegeben, und der Abschluss ist dessen letzter Teil.
+
+Fehlt die Zeile ganz, stammt der Plan aus einem Lauf vor dieser Regel oder der
+Abschluss ist bereits gefahren. Dann entscheiden die drei Blicke darunter. Sie
+widerspricht nie ungestraft: sagt sie »läuft«, während `tmux ls` nichts zeigt
+und das Journal auf `ende exit=` endet, ist die Schleife gestorben, ohne ihren
+Trap zu erreichen — `kill -9`, Terminal weg, Maschine aus. Dann gilt, was
+Marken und `git status` sagen, und die Zeile ist ein Überbleibsel.
 
 Der `<arbeitsdir>` steht im Kopf des Plans. Fehlt das Journal, ist der Lauf nie
 über Schritt 5 hinausgekommen oder das Verzeichnis wurde aufgeräumt; dann
@@ -59,9 +75,20 @@ einen Abbruch.
 **Journal endet mit `ende exit=N`.** Die Zahl sagt, was fehlt, und die Tabelle
 dazu steht in `references/shell-runner.md`. Sie ist ohnehin zu lesen, bevor das
 Skript wieder startet. Kurz: `10` will eine Entscheidung, die datiert nach
-»Entscheidungen« gehört; `11` ist der `[~]`-Fall unten; `31` will nur Zeit; `20`,
-`21`, `30` und `40` wollen, dass jemand hinsieht, bevor derselbe Aufruf ein
+»Entscheidungen« gehört; `11` ist der `[~]`-Fall unten; `31` will nur Zeit;
+`20`, `30` und `40` wollen, dass jemand hinsieht, bevor derselbe Aufruf ein
 zweites Mal dasselbe tut.
+
+`21` ist ein Fall für sich, weil er zwei Dinge auf einmal hinterlässt: eine zu
+enge Allowlist **und** ein Paket, das mitten im Zug stehengeblieben ist. Die
+Meldung schreibt den Neustart mit der erweiterten Liste fertig hin; davor
+gehört das Paket nach dem `[~]`-Abschnitt unten auf `[ ]` zurück, sonst
+antwortet das Skript mit `11`. Der Runner ist hier nicht am Ende seiner Arbeit
+gestorben, sondern in der Mitte — sein Implementierer lief unter Umständen
+weiter, während die Schleife ihn schon abgeräumt hatte. Also erst `git status`
+und die Artefakte im Arbeitsverzeichnis ansehen, dann zurücksetzen: was der
+Implementierer halb geschrieben hat, ist der schmutzige Baum aus dem
+`[~]`-Abschnitt und gehört dem Nutzer vorgelegt.
 
 **Keine Session, kein `ende`.** Die Schleife ist mitten im Satz gestorben — mit
 dem Terminal, mit der Maschine, mit `kill`. Dann gilt, was Marken und

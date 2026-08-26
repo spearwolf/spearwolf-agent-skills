@@ -202,6 +202,21 @@ liegenblieb. Ein Plan, dessen Kopf noch »Paket 7 in Zug 3« sagt, während alle
 Pakete `[x]` tragen, schickt den nächsten Agenten auf eine Suche nach Arbeit,
 die es nicht gibt.
 
+**Und die Zeile `Lauf-Status:` verschwindet.** Sie steht im Kopf, direkt unter
+`Arbeitsverzeichnis:`, und gehört der Schleife aus Schritt 6: sie sagt, dass ein
+Lauf läuft, an einem Exit-Code hängt oder durch ist und auf genau diesen
+Abschluss wartet. Mit dem Abschluss ist keine dieser Aussagen mehr wahr. Die
+Zeile ersatzlos löschen, im selben Commit — nicht auf »abgeschlossen«
+umschreiben, dafür ist `Stand:` da. Solange sie irgendwo steht, hält ein später
+einsteigender Agent den Lauf zu Recht für offen und beginnt Schritt 7 ein
+zweites Mal.
+
+Der Löschbefund ist prüfbar, und er wird geprüft:
+
+```bash
+grep -n '^Lauf-Status:' remediation-plan.md   # muss leer ausgehen
+```
+
 Ein Commit, der Versionsanhebung, CHANGELOG-Eintrag und den fortgeschriebenen
 `./remediation-plan.md` zusammenfasst. Message im Stil, den `git log` des
 Projekts zeigt.

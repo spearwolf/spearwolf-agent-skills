@@ -36,7 +36,33 @@ MODEL_A=${MODEL_A:-opus}        # Zug 0: Abgleich, Triage, Detailplan
 EFFORT_A=${EFFORT_A:-xhigh}
 MODEL_B=${MODEL_B:-opus}        # Zug 1-5: beauftragen, prüfen, verifizieren, committen
 EFFORT_B=${EFFORT_B:-medium}   # nur der Vorgabewert; »- Effort:« im Detailplan schlägt ihn
-PERM=${PERM:-acceptEdits}
+# Der Modus der Züge 1-5. Zug 0 fasst er nicht an: der läuft in einem
+# tmux-Fenster mit den Rechten des Nutzers, es ist seine Session.
+#
+# »bypassPermissions« und nicht »acceptEdits«, und der Grund ist die Bauart der
+# Rechteschranke, nicht Bequemlichkeit. Ein Werkzeug, das weder erlaubt noch
+# verboten ist, führt zu einem Dialog, und ein Prozess ohne Terminal stirbt
+# daran. Eine Erlaubnisliste müsste also jedes Werkzeug kennen, das ein Runner
+# je anfassen könnte — die eingebauten, die eines jeden MCP-Servers und die
+# jedes Plugins, auf einer fremden Maschine, in einer künftigen Version. Diese
+# Liste ist nicht schreibbar, und jeder Name, der ihr fehlt, kostet einen Lauf.
+#
+# Die Dokumentation macht den Gegenweg möglich: »Deny rules block in every
+# mode, including bypassPermissions« — und »Allow rules have no effect in
+# bypassPermissions«. Also alle Werkzeuge außer den ausdrücklich verbotenen,
+# statt keines außer den ausdrücklich erlaubten. Die Grenze steht damit dort,
+# wo dieser Skill sie ohnehin zieht: in der Verbotsliste unten.
+#
+# Der Preis wird hier genannt und nicht verschwiegen: der Modus nimmt auch den
+# Schutz der geschützten Pfade weg, ».git« und ».claude« eingeschlossen. Die
+# Verbotsliste holt ihn zurück. Was er darüber hinaus wirklich erweitert, ist
+# wenig — »Bash« stand schon vorher ohne Präfixmuster in der Erlaubnisliste,
+# beliebige Kommandos konnte ein Runner also immer schon absetzen.
+#
+# Verbietet die Maschine den Modus (»disableBypassPermissionsMode« in den
+# Einstellungen, gern als Organisationsvorgabe), startet kein Runner. Dann
+# PERM=acceptEdits setzen; die Erlaubnisliste unten trägt genau diesen Fall.
+PERM=${PERM:-bypassPermissions}
 BUDGET_USD=${BUDGET_USD:-15}    # harte Obergrenze je Runner-Prozess
 MAX_ITER=${MAX_ITER:-200}       # Reißleine gegen eine Schleife ohne Fortschritt
 MAX_ROUNDS=${MAX_ROUNDS:-5}     # Obergrenze der Fehlerkette je Paket
@@ -44,31 +70,63 @@ ATTEMPTS=${ATTEMPTS:-3}         # Versuche je Runner, wenn die API überlastet i
 BACKOFF=${BACKOFF:-60,300,900}  # Wartezeiten dazwischen, in Sekunden
 FALLBACK_MODEL=${FALLBACK_MODEL:-}  # leer lassen: lieber warten als still schwächer werden
 
-# Was ein Runner braucht. --permission-mode acceptEdits deckt Dateiänderungen
-# ab, Bash aber nicht: ohne diese Zeile wird »git add« abgefragt, und ein
-# Prozess ohne Terminal kann nicht antworten.
+# Unter bypassPermissions ist diese Zeile wirkungslos — »Allow rules have no
+# effect in bypassPermissions«. Sie steht für den Rückfallweg PERM=acceptEdits
+# und wird dort sofort wieder tragend, deshalb bleibt sie gepflegt.
 #
 # Es steht »Bash« da und keine Liste von Präfixen. Gemessen: ein Muster wie
 # Bash(claude *) greift an dem, was ein Runner wirklich absetzt, nicht mehr —
 # »claude -p "$(cat brief)" > report.json« wird abgelehnt, und der Runner fällt
 # auf Subagenten zurück, also genau auf das, wogegen der Prozess-Umbau gebaut
-# ist. Die Grenze zieht die Verbotsliste unten, nicht diese Zeile.
-ALLOW_TOOLS=${ALLOW_TOOLS:-Bash}
+# ist. »Monitor« steht daneben, weil ein Runner auf einen Prozess wartet, den
+# er selbst gestartet hat; auf dem Rückfallweg fehlte er sonst und kostete
+# denselben Lauf wie am 2026-08-26, Exit 21 mitten in Paket 3.
+ALLOW_TOOLS=${ALLOW_TOOLS:-Bash,Monitor}
 
-# Was ein Runner nicht bekommt, und zwar nur zweierlei. Erstens Werkzeuge, mit
-# denen ein Prozess auf eine Antwort warten oder sich selbst überleben kann:
-# beides bräche die Zusage, dass ein beendeter Prozess ein fertiges Paket
-# bedeutet. Zweitens die Kommandos, die der Lauf laut SKILL.md ohnehin nicht
-# kennt — kein Push, kein Tag, kein Publish.
+# Hier steht die ganze Grenze des Laufs, und nur hier. Unter bypassPermissions
+# ist alles erlaubt, was nicht in dieser Zeile steht — »Deny rules block in
+# every mode, including bypassPermissions«, und die Auswertung läuft ohnehin
+# deny vor ask vor allow.
 #
-# Alles andere bleibt: was auf dieser Maschine eingestellt ist, steht dem Runner
-# und seinen Subagenten offen. DENY_TOOLS="" schaltet auch diesen Rest ab.
-DENY_TOOLS=${DENY_TOOLS:-AskUserQuestion,SendMessage,ScheduleWakeup,CronCreate,Bash(git push*),Bash(git tag*),Bash(npm publish*),Bash(pnpm publish*),Bash(yarn publish*)}
+# Vier Gruppen, jede mit einem Grund:
+#
+# 1. Werkzeuge, mit denen ein Prozess auf eine Antwort warten oder sich selbst
+#    überleben kann. Beides bräche die Zusage, dass ein beendeter Prozess ein
+#    fertiges Paket bedeutet. AskUserQuestion wird ohnehin in keinem Modus je
+#    automatisch bewilligt; als Verbot wird daraus wenigstens eine saubere
+#    Absage, auf die ein Modell reagieren kann, statt eines Dialogs, an dem es
+#    stirbt.
+# 2. Die Kommandos, die der Lauf laut SKILL.md nicht kennt — kein Push, kein
+#    Tag, kein Publish.
+# 3. Die geschützten Pfade, die bypassPermissions freigibt. Ein Runner hat in
+#    .git und .claude nichts zu schreiben; was er an der Historie tut, tut er
+#    über git und nicht über einen Editor. Es steht Edit(...) da und nicht
+#    Write(...): Pfadregeln werden ausschließlich über Edit und Read
+#    ausgewertet, ein Write-Muster nähme die CLI entgegen und läse es nie.
+# 4. Nichts weiter. Was auf dieser Maschine sonst eingestellt ist, steht dem
+#    Runner und seinen Subagenten offen.
+#
+# Wer hier etwas hinzufügt, nimmt es einem Runner endgültig weg — anders als
+# früher gibt es keine dritte Kategorie mehr, in die ein Werkzeug fallen
+# könnte. DENY_TOOLS="" schaltet auch diesen Rest ab und ist dann wörtlich
+# gemeint: alles.
+DENY_TOOLS=${DENY_TOOLS:-AskUserQuestion,SendMessage,ScheduleWakeup,CronCreate,Edit(.git/**),Edit(.claude/**),Bash(git push*),Bash(git tag*),Bash(npm publish*),Bash(pnpm publish*),Bash(yarn publish*)}
 
 # Was sonst noch an jeden Runner durchgereicht werden soll, an Kommas getrennt:
 # --mcp-config <datei>, --add-dir <pfad>, --plugin-dir <pfad>. Braucht ein Paket
 # einen MCP-Server, ist das der Ort dafür.
 EXTRA_ARGS=${EXTRA_ARGS:-}
+
+# Der Weg aufs Telefon, und er bleibt leer, bis jemand ihn selbst legt. Hier
+# steht ein beliebiges Shell-Kommando; es bekommt REMEDIATE_TITEL und
+# REMEDIATE_TEXT in der Umgebung und darf damit tun, was es will:
+#
+#   NOTIFY_CMD='curl -s -d "$REMEDIATE_TEXT" ntfy.sh/mein-topic'
+#
+# Bewusst kein voreingestellter Dienst. Was hier durchgeht, sind Projektname,
+# Paketnummern und Commit-Hashes; wohin die gehen, entscheidet niemand außer
+# dem Nutzer. Der lokale Weg unten braucht diese Zeile nicht.
+NOTIFY_CMD=${NOTIFY_CMD:-}
 
 # Zug 0 läuft in einem eigenen tmux-Fenster und meldet sein Ende über eine
 # Datei, nicht über einen Menschen an der Tastatur. Diese Werte sagen, wie
@@ -115,11 +173,19 @@ SESSION=${SESSION:-}            # Name der tmux-Session
 TMUX_BIN=${TMUX_BIN:-tmux}      # falls tmux woanders liegt
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-SKILL_DIR=$(cd -- "$SCRIPT_DIR/.." && pwd)
+# Drinnen läuft eine Kopie des Skripts, und die liegt im Arbeitsverzeichnis
+# statt im Skill (siehe launch_tmux). Ihr Nachbarverzeichnis ist deshalb nicht
+# mehr der Skill — der Pfad wandert von draußen mit. Ohne diese Zeile suchte
+# ein abgelöster Lauf sein Schema und seine references neben einer Kopie in
+# /tmp und fände nichts.
+SKILL_DIR=${REMEDIATE_SKILL_DIR:-$(cd -- "$SCRIPT_DIR/.." && pwd)}
 SCHEMA="$SKILL_DIR/assets/runner-return.schema.json"
 
 TOTAL_COST=0
 PACKAGES_DONE=0
+AKTUELL=""       # das Paket, an dem die Schleife gerade steht; für die Meldung
+                 # beim unerwarteten Ausgang, wo sonst niemand mehr sagen kann,
+                 # wo es passiert ist
 RES=""   # die geprüfte Rückgabe des zuletzt gelaufenen Runners
 RAW=""   # der Pfad zu seinem vollständigen Ergebnis-JSON
 ERR=""   # der Pfad zu seiner Standardfehlerausgabe
@@ -166,6 +232,82 @@ rc_offen() { # $1 = Paketnummer, $2 = tmux-Fenster; wahr, sobald der Kanal stand
 journal() { # eine Zeile je Paket, damit ein Lauf nachvollziehbar bleibt
   [ -n "${WORK:-}" ] || return 0
   printf '%s\t%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*" >> "$WORK/remediate.log"
+}
+
+# Ein Lauf dauert Stunden, und niemand sitzt daneben. Diese Funktion sagt
+# Bescheid — beim fertigen Paket, am sauberen Ende, und über den Trap unten bei
+# jedem Ausgang, den keiner vorhergesehen hat.
+#
+# Bewusst über die Shell und nicht über ein Agenten-Werkzeug. Gemessen: ein
+# »claude -p«, das nur PushNotification aufruft, bekommt »Not sent — this
+# terminal is active« zurück und schweigt. Schwerer wiegt der zweite Grund: der
+# Alarm hinge an genau der API, deren Ausfall er melden soll. Exit 31 heißt,
+# dass die API über drei Versuche überlastet blieb — die Meldung darüber dann
+# per API zu verschicken, ist ein Rauchmelder mit Strom aus dem brennenden
+# Zimmer.
+#
+# Nichts hier darf den Lauf aufhalten: jeder Weg hat eine Frist und schluckt
+# seinen Fehler. Eine Benachrichtigung, die den Lauf bricht, ist schlimmer als
+# gar keine.
+notify() { # $1 = Titel, $2 = Text
+  local titel=$1 text=$2
+  if command -v notify-send >/dev/null 2>&1; then
+    timeout 5 notify-send -a remediate "$titel" "$text" >/dev/null 2>&1 || true
+  fi
+  if [ -n "${NOTIFY_CMD:-}" ]; then
+    REMEDIATE_TITEL=$titel REMEDIATE_TEXT=$text \
+      timeout 10 sh -c "$NOTIFY_CMD" >/dev/null 2>&1 || true
+  fi
+  # Die Glocke kostet nichts und erreicht den, der das Terminal noch offen hat.
+  printf '\a' 2>/dev/null || true
+}
+
+stand() { # eine Zeile Paketstand, für jede Meldung dieselbe Form
+  printf '%s offen · %s erledigt · %s blockiert' \
+    "$(count_with_marker ' ')" "$(count_with_marker 'x')" "$(count_with_marker '!')"
+}
+
+# Der Lauf schreibt seinen eigenen Zustand in den Kopf des Plans, und zwar
+# maschinenlesbar. Vorher stand er in drei Formen, die einander widersprechen
+# durften: Paketmarken, die Prosazeile »Stand (…)« und das Journal. Keine davon
+# beantwortet die Frage, an der am 2026-08-26 ein Abschluss liegenblieb — die
+# Schleife war durch, alle Pakete auf [x], und »ende exit=0« sieht genauso aus,
+# wenn hinterher noch die halbe Arbeit wartet, wie wenn nichts mehr aussteht.
+#
+# Diese Zeile sagt es in einem Satz, überlebt jede Session und jeden Neustart
+# und ist das Erste, was ein fortsetzender Agent im Kopf des Plans findet. Der
+# Abschluss-Commit räumt sie weg; solange sie dasteht, ist der Lauf nicht fertig.
+plan_status() { # $1 = Text hinter »Lauf-Status: «; leer entfernt die Zeile
+  local text=$1 tmp
+  [ -n "${PLAN:-}" ] && [ -f "$PLAN" ] || return 0
+  tmp="$PLAN.status.$$"
+  # awk statt sed: der Text trägt Klammern, Punkte und Schrägstriche, und ein
+  # Ersetzungsmuster daraus wäre eine Fehlerquelle ohne jeden Gegenwert.
+  awk -v text="$text" '
+    function emit() { if (!done && text != "") { print "Lauf-Status: " text; done = 1 } }
+    /^Lauf-Status:/ { emit(); next }
+    { print }
+    /^Arbeitsverzeichnis:/ { emit() }
+    END { if (!done && text != "") print "Lauf-Status: " text }
+  ' "$PLAN" > "$tmp" 2>/dev/null && mv -- "$tmp" "$PLAN" || rm -f -- "$tmp"
+  return 0
+}
+
+# Was der EXIT-Trap ruft. Steht als Funktion da und nicht als Einzeiler im
+# Trap, weil im Trap jedes Anführungszeichen zweimal gelesen wird und ein
+# Fehler darin erst dann auffällt, wenn er am dringendsten stört.
+#
+# Code 0 schweigt hier: das saubere Ende meldet sich an seiner eigenen Stelle,
+# mit den Zahlen, die nur dort stehen. Alles andere ist ein Ausgang, den jemand
+# wissen will.
+ende_melden() { # $1 = Exit-Code
+  [ "${1:-0}" -eq 0 ] && return 0
+  local wo
+  wo=$(stand 2>/dev/null) || wo="Stand unklar"
+  plan_status "angehalten mit Exit $1 bei Paket ${AKTUELL:-?} ($(date '+%Y-%m-%d %H:%M')) · was der Code verlangt, steht in references/shell-runner.md"
+  notify "Remediation angehalten" \
+    "Exit $1 bei Paket ${AKTUELL:-?} · $wo · $PACKAGES_DONE in diesem Lauf erledigt"
+  return 0
 }
 
 usage() {
@@ -326,17 +468,42 @@ launch_tmux() { # $@ = die Argumente, mit denen der Lauf drinnen starten soll
     die $EX_PRE "$(printf 'Es läuft schon eine Session »%s«.\n  tmux attach -t %s   ansehen\n  tmux kill-session -t %s   beenden' "$SESSION" "$SESSION" "$SESSION")"
   fi
 
+  # Drinnen läuft eine Kopie, nicht diese Datei. Der Grund ist gemessen und
+  # kostete einen ganzen Lauf: der Skill hängt als Symlink im Agenten-Ordner,
+  # eine Sitzung bessert das Skript nach, während die Schleife läuft — und Bash
+  # liest eine Skriptdatei beim Ausführen weiter, statt sie vorab zu laden. Am
+  # 2026-08-26 kamen Benachrichtigung und EXIT-Trap um 08:32 ins Skript, die
+  # Schleife war um 07:54 gestartet und hatte ihre Funktionsrümpfe längst
+  # geparst; um 08:58 endete sie, ohne die Meldung zu schicken, die genau
+  # dieses Ende hätte melden sollen. Nachweisbar an der Mitschrift: kein
+  # einziges Glockenzeichen darin, und notify() druckt bei jedem Aufruf eines.
+  #
+  # Der harmlose Ausgang. Der andere ist schlimmer: verschiebt ein Edit die
+  # Byte-Offsets, liest Bash an einer Stelle weiter, die es nicht mehr gibt,
+  # und führt die zweite Hälfte irgendeines Kommandos aus.
+  #
+  # Ein Lauf gehört deshalb dem Stand, mit dem er gestartet ist. Was am Skill
+  # danach passiert, erreicht ihn nicht mehr — und die Kopie sagt hinterher,
+  # welcher Stand das war.
+  local snap="$WORK/remediate.snapshot.sh"
+  cp -- "${BASH_SOURCE[0]}" "$snap" \
+    || die $EX_PRE "Schnappschuss des Skripts nicht anlegbar: $snap"
+  chmod +x "$snap" 2>/dev/null || true
+
   # Die Umgebung wandert ausdrücklich mit. Ein tmux-Server, der schon läuft,
   # hat seine eigene, und die kennt keine dieser Stellschrauben.
   cmd="env"
   cmd="$cmd REMEDIATE_INSIDE=1"
+  # Der Skill-Pfad muss mit: die Kopie liegt im Arbeitsverzeichnis und käme
+  # sonst über ihr Nachbarverzeichnis auf /tmp statt auf den Skill.
+  cmd="$cmd REMEDIATE_SKILL_DIR=$(printf '%q' "$SKILL_DIR")"
   for v in PLAN SESSION MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD \
            MAX_ITER MAX_ROUNDS ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS \
-           DENY_TOOLS EXTRA_ARGS ZUG0_POLL ZUG0_GRACE ZUG0_CLOSE ZUG0_TIMEOUT \
+           DENY_TOOLS EXTRA_ARGS NOTIFY_CMD ZUG0_POLL ZUG0_GRACE ZUG0_CLOSE ZUG0_TIMEOUT \
            ZUG0_TRUST_GRACE ZUG0_ASSUME_USER; do
     eval "[ -n \"\${$v:-}\" ]" && cmd="$cmd $v=$(eval printf '%q' "\"\$$v\"")"
   done
-  cmd="$cmd $(printf '%q' "$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")")"
+  cmd="$cmd $(printf '%q' "$snap")"
   for v in "$@"; do cmd="$cmd $(printf '%q' "$v")"; done
 
   log="$WORK/remediate.pane.log"
@@ -355,10 +522,26 @@ launch_tmux() { # $@ = die Argumente, mit denen der Lauf drinnen starten soll
   say ""
   say "Mitschrift: $log"
   say "Journal:    $WORK/remediate.log"
+  # Die Sperre steht hier, weil der Wachposten aus Schritt 6 sie braucht: nur an
+  # ihr ist ein frisch gestarteter Lauf von einem längst beendeten zu
+  # unterscheiden — im Journal steht beides untereinander.
+  say "Sperre:     $WORK/.remediate.lock (existiert, solange die Schleife läuft)"
+  say "Gefahren:   $snap (Kopie des Skripts, Stand dieses Laufs)"
   say ""
   say "Zug 0 macht dafür ein eigenes Fenster »p<N>-plan« auf, sobald das erste"
   say "Paket drankommt, und wartet dort auf dich. Schließen musst du es nicht:"
   say "wenn der Planer fertig ist, macht die Schleife es zu und läuft weiter."
+  say ""
+  # Wer das hier liest, soll vorher wissen, wer den Abschluss auslöst. Am
+  # 2026-08-26 stand die Startausgabe voller Zug 0 und sagte über das Ende
+  # nichts — der Lauf lief sauber durch, schrieb seine letzte Zeile in ein
+  # Pane, das im selben Moment starb, und der Abschluss blieb liegen.
+  say "Am Ende hört die Schleife auf und der Abschluss beginnt: Drain-Runde über"
+  say "die offenen Befunde, Semver, Abschluss-Commit. Den fährt nicht sie, sondern"
+  say "die Session, die sie gestartet hat. Sie meldet sich dafür von selbst —"
+  say "nach jedem Paket und am Ende. Bleibt sie stumm, weil die Session weg ist:"
+  say "»mach den Abschluss des Remediation-Laufs« in einer neuen Session genügt,"
+  say "der Stand steht im Plan."
   exit $EX_OK
 }
 
@@ -405,8 +588,19 @@ preflight() {
   if [ "$INSIDE" = 1 ] && ! mkdir "$WORK/.remediate.lock" 2>/dev/null; then
     die $EX_PRE "hier läuft schon eine Schleife ($WORK/.remediate.lock). Läuft keine mehr, das Verzeichnis von Hand entfernen."
   fi
+  # Ein einziger EXIT-Trap, und das ist keine Sparsamkeit: Bash stapelt sie
+  # nicht. Ein zweiter »trap … EXIT« ersetzt diesen hier stillschweigend, und
+  # dann bliebe das Sperrverzeichnis liegen und jeder künftige Start liefe in
+  # »hier läuft schon eine Schleife«. Was beim Ende zu tun ist, kommt deshalb
+  # hier hinein und nirgendwo sonst.
+  #
+  # Er fängt jeden Weg aus dem Skript heraus, benannt oder nicht — auch den,
+  # den niemand vorhergesehen hat: ein set -e, das irgendwo zuschlägt, ein jq
+  # über kaputtem JSON, ein Tippfehler nach einer Änderung. Genau dieser
+  # Ausgang ist der, bei dem sonst niemand Bescheid sagt. Nur kill -9 und ein
+  # Stromausfall entkommen ihm.
   if [ "$INSIDE" = 1 ]; then
-    trap 'ec=$?; journal "ende exit=$ec"; rmdir "$WORK/.remediate.lock" 2>/dev/null || true' EXIT
+    trap 'ec=$?; journal "ende exit=$ec"; rmdir "$WORK/.remediate.lock" 2>/dev/null || true; ende_melden "$ec"' EXIT
   fi
 
   if [ "$INSIDE" = 1 ] && { [ ! -t 0 ] || [ ! -t 1 ]; }; then
@@ -679,6 +873,14 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
       break
     fi
 
+    # Eine Maschine, die bypassPermissions sperrt, laesst den Runner gar nicht
+    # erst starten. Ohne diese Zeile sieht das aus wie eine kaputte API: drei
+    # Versuche, zwanzig Minuten Geduld, dann ein Exit ohne Hinweis auf die
+    # einzige Stellschraube, die hilft.
+    if [ "$PERM" = "bypassPermissions" ] && grep -qiE 'bypass.?permissions|disableBypassPermissionsMode' "$ERR" 2>/dev/null; then
+      die $EX_PRE "$(printf 'Diese Maschine erlaubt bypassPermissions nicht (disableBypassPermissionsMode).\n  Der Lauf hat nichts veraendert. Mit dem Rueckfallweg neu starten:\n    PERM=acceptEdits %s\n  Dann traegt die Erlaubnisliste wieder, und Exit 21 kann wiederkommen.\n  Meldung in %s' "$0" "$ERR")"
+    fi
+
     transient_failure \
       || die $EX_AGENT "Runner $role für Paket $pkg ist gescheitert (Exit $rc) — siehe $RAW und $ERR"
 
@@ -706,9 +908,25 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
   if [ "$denials" != "0" ]; then
     # Die abgelehnten Namen mitgeben: wer sie erst aus dem JSON suchen muss,
     # rät beim Erweitern, und der nächste Lauf scheitert an der nächsten Regel.
-    local was
+    local was wider rat
     was=$(jq -r '[(.permission_denials // [])[] | .tool_name] | unique | join(", ")' "$RAW" 2>/dev/null || true)
-    die $EX_PERM "$(printf 'Runner %s fuer Paket %s wurde %s mal von der Rechteschranke gestoppt.\n  Abgelehnt: %s\n  Das gehoert in ALLOW_TOOLS. Die Allowlist ist zu eng, nicht das Paket zu schwer.\n  Vollstaendig in %s' "$role" "$pkg" "$denials" "${was:-siehe JSON}" "$RAW")"
+    # Der Rat haengt am Modus, und der Unterschied ist keine Nuance: unter
+    # bypassPermissions ist eine Erlaubnisliste wirkungslos, wer dort ein
+    # Werkzeug nachtraegt, aendert nichts und versucht es dreimal.
+    if [ "$PERM" = "bypassPermissions" ]; then
+      rat=$(printf 'Unter bypassPermissions ist das keine zu enge Allowlist: eine Erlaubnisregel\n  wirkt hier nicht. Es bleiben die Handlungen, die kein Modus je automatisch\n  bewilligt — eine ask-Regel in den Einstellungen dieser Maschine, ein\n  Connector-Tool, das die Organisation auf »ask« gestellt hat, ein MCP-Tool mit\n  requiresUserInteraction, oder rm auf einem kritischen Pfad. Nachsehen, was\n  davon zutrifft; ein Nachtragen in ALLOW_TOOLS aendert nichts.')
+    else
+      # Die erweiterte Liste gleich fertig hinschreiben. Wer sie von Hand
+      # zusammensetzt, vergisst die schon erlaubten Werkzeuge und tauscht einen
+      # Abbruch gegen den naechsten.
+      wider=$(jq -r --arg a "$ALLOW_TOOLS" \
+        '($a | split(",")) + [(.permission_denials // [])[] | .tool_name] | unique | join(",")' \
+        "$RAW" 2>/dev/null || true)
+      rat=$(printf 'Das gehoert in ALLOW_TOOLS. Die Allowlist ist zu eng, nicht das Paket zu schwer.\n  Nach dem Zuruecksetzen:\n    ALLOW_TOOLS=%s %s\n  Dauerhaft loest das PERM=bypassPermissions, siehe Kopf des Skripts.' \
+        "${wider:-$ALLOW_TOOLS,$was}" "$0")
+    fi
+    die $EX_PERM "$(printf 'Runner %s fuer Paket %s wurde %s mal von der Rechteschranke gestoppt.\n  Abgelehnt: %s\n  %s\n\n  Paket %s steht auf [~] und gehoert vorher auf [ ] zurueck — siehe\n  references/resume.md, Abschnitt zu Exit 21.\n\n  Vollstaendig in %s' \
+      "$role" "$pkg" "$denials" "${was:-siehe JSON}" "$rat" "$pkg" "$RAW")"
   fi
 
   # Die Form garantiert das Schema; leer heißt, dass sie es trotzdem nicht tut.
@@ -850,12 +1068,15 @@ run_b() { # $1 = Paketnummer
       say "  $(git rev-parse --short HEAD) · $(field findings) · $(field rounds) Runde(n)"
       [ "$(field queue)" = "-" ] || say "  Queue: $(field queue)"
       journal "paket=$1 rolle=B status=committed hash=$(field hash) runden=$(field rounds)"
+      notify "Paket $1 committet" \
+        "$(git rev-parse --short HEAD) · $(field rounds) Runde(n) · $(stand)"
       ;;
     dropped)
       check_marker "$1" 'x'
       say "  entfallen · $(field findings)"
       PACKAGES_DONE=$((PACKAGES_DONE + 1))
       journal "paket=$1 rolle=B status=dropped"
+      notify "Paket $1 entfallen" "ohne Commit · $(stand)"
       ;;
     question|blocked)
       # Bei blocked steht das Paket auf [!] und die Schleife könnte weiterlaufen.
@@ -906,6 +1127,12 @@ main() {
     exit $EX_OK
   fi
 
+  # Sobald die Schleife wirklich losläuft, gehört der Kopf des Plans ihr. Ohne
+  # diese Zeile trüge ein fortgesetzter Lauf stundenlang den »angehalten mit
+  # Exit 21« seines Vorgängers vor sich her, und wer den Plan liest, während
+  # gearbeitet wird, sieht die Lage von gestern.
+  plan_status "läuft seit $(date '+%Y-%m-%d %H:%M') in tmux-Session »$SESSION« · $(stand)"
+
   local iter=0 planned open
   while :; do
     iter=$((iter + 1))
@@ -920,8 +1147,10 @@ main() {
         say "references/resume.md gilt, nicht dieses Skript. Der Nutzer entscheidet über den Arbeitsbaum."
         exit $EX_RESUME
       fi
+      AKTUELL=$planned
       run_b "$planned"
     elif [ -n "$open" ]; then
+      AKTUELL=$open
       run_a "$open"
     else
       break
@@ -932,16 +1161,35 @@ main() {
     if [ "$ONCE" = "1" ] && [ "$PACKAGES_DONE" -ge 1 ]; then
       say ""
       say "--once: nach einem Paket angehalten. Kosten bisher: \$$TOTAL_COST"
+      # Auch das ist ein Exit 0 mit offener Arbeit, und ohne diese Zeile sähe er
+      # im Plan aus wie ein durchgelaufener Lauf.
+      plan_status "nach --once angehalten ($(date '+%Y-%m-%d %H:%M')) · $(stand) · erneut starten setzt fort"
       exit $EX_OK
     fi
   done
 
-  local blocked
+  local blocked gesamt
   blocked=$(count_with_marker '!')
+  gesamt=$(count_with_marker 'x')
   say ""
-  say "Kein Paket mehr offen. $PACKAGES_DONE erledigt, $blocked blockiert, \$$TOTAL_COST."
+  # Zwei Zahlen, weil jede allein die falsche ist. Der Plan zählt, was je
+  # erledigt wurde, der Prozess nur, was er selbst gefahren hat. Am 2026-08-26
+  # stand hier »3 erledigt« unter einem Plan mit fünf committeten Paketen: die
+  # ersten beiden liefen vor einem Neustart. Wer die Zeile gegen den Plan hielt,
+  # hielt den Lauf für unvollständig.
+  say "Kein Paket mehr offen. $gesamt erledigt (davon $PACKAGES_DONE in diesem Lauf), $blocked blockiert, \$$TOTAL_COST."
   [ "$blocked" = "0" ] || say "Blockiert: $(sed -En 's/^### \[!\] ([0-9]+[a-z]?)\..*/\1/p' "$PLAN" | tr '\n' ' ')"
+  plan_status "Schleife durch ($(date '+%Y-%m-%d %H:%M')) · Abschluss offen — Schritt 7 der SKILL.md mit references/semver-and-closeout.md"
+  say ""
   say "Der Abschluss folgt: Schritt 7 der SKILL.md, mit references/semver-and-closeout.md."
+  say "Er läuft nicht von selbst. Die Session, die diese Schleife gestartet hat,"
+  say "wird davon geweckt; ist sie weg, genügt in einer neuen Session der Satz"
+  say "»mach den Abschluss des Remediation-Laufs«. Der Kopf des Plans trägt den"
+  say "Stand als »Lauf-Status:«, bis der Abschluss-Commit ihn wegräumt."
+  # Das saubere Ende meldet sich selbst: der Trap schweigt bei Code 0, und
+  # gerade dieses Ende will jemand wissen — es ist das, auf das er wartet.
+  notify "Remediation durch" \
+    "$gesamt Paket(e) erledigt, $blocked blockiert, \$$TOTAL_COST · jetzt der Abschluss"
   exit $EX_OK
 }
 

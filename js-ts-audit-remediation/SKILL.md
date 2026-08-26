@@ -337,6 +337,13 @@ Skill. Die Zeile `Stand:` schreiben die Runner fort, das Feld `Hash:` bleibt bis
 zum Commit des Pakets leer. Eine Modellstufe steht hier nicht: die setzt der
 Runner in seinem Zug 0, wenn er den Code gesehen hat.
 
+Eine Zeile im Kopf schreibst du **nicht**: `Lauf-Status:` gehört dem Skript aus
+Schritt 6, das sie beim Start setzt, bei jedem Ausgang überschreibt und beim
+Abschluss wieder wegnimmt. Sie steht direkt unter `Arbeitsverzeichnis:` und
+beantwortet die eine Frage, die Paketmarken nicht beantworten können: läuft
+gerade eine Schleife, hängt sie an einem Exit-Code, oder ist sie durch und nur
+der Abschluss steht noch aus. Solange sie dasteht, ist der Lauf nicht fertig.
+
 Ein Paket, dessen Ziel sich nicht in einem Satz sagen lässt, ist falsch
 geschnitten — nicht unterspezifiziert, sondern falsch geschnitten.
 
@@ -360,6 +367,16 @@ Pakets bekommt dort ein eigenes Fenster und kann den Nutzer fragen — er wird
 also gebraucht, aber nur am Anfang jedes Pakets, und schließen muss er nichts. Die Umsetzung läuft ohne ihn, mit
 den Rechten, die ihr Permission-Modus ihnen gibt. Das ist ein Tausch, und er
 wird genannt, nicht vorausgesetzt.
+
+Dazu der Satz, der ihm die Wartezeit zurückgibt: er muss nicht danebensitzen.
+Gemeldet wird jedes committete Paket, das Ende des Laufs und jeder unerwartete
+Ausgang, auf zwei voneinander unabhängigen Wegen. Diese Session schickt eine
+`PushNotification`, die bei offener Remote-Control-Verbindung auf seinem Telefon
+landet und ihn nichts kostet außer der Session, die dafür leben muss. Die
+Schleife selbst schickt zusätzlich eine Desktop-Nachricht, die auch dann noch
+kommt, wenn diese Session längst geschlossen ist; `NOTIFY_CMD` nimmt ein
+beliebiges weiteres Kommando dafür, voreingestellt ist dort nichts, und über
+den Weg entscheidet er, weil Paketnummern und Commit-Hashes hindurchgehen.
 
 Im selben Aufwasch der Verbleib des Plans, als Ansage statt als Frage: »am Ende
 nimmt ein Commit `./remediation-plan.md` mit ins Repo, und ein zweiter räumt ihn
@@ -387,21 +404,109 @@ Prozess, prüft
 jedes Ergebnis gegen `git` und das Verify-Log und hört auf, wenn kein Paket mehr
 offen ist.
 
-Deine Arbeit an der Schleife ist damit getan. Was du tust:
+Du drehst sie nicht, du begleitest sie. Vier Dinge, die ersten drei sofort:
 
 1. Die Startausgabe wörtlich an den Nutzer weitergeben — sie nennt die
-   tmux-Session, wie er sich anhängt und wo Journal und Mitschrift liegen.
+   tmux-Session, wie er sich anhängt und wo Journal, Sperre und Mitschrift
+   liegen.
 2. Ihm sagen, dass Zug 0 des ersten Pakets dort in einem eigenen Fenster auf
    ihn wartet und dass er es nicht zu schließen braucht.
-3. Auf den Exit-Code reagieren, sobald du ihn siehst. Die Tabelle steht in
+3. **Sofort danach den Wachposten auf das Journal setzen** (unten). Das ist
+   keine Kür: ohne ihn erfährt niemand, dass der Lauf fertig ist.
+4. Auf jedes Ereignis reagieren, das er meldet. Die Exit-Tabelle steht in
    `references/shell-runner.md`; nur `0` führt weiter zu Schritt 7.
 
-**Du wartest nicht auf das Ende.** Kein blockierender Aufruf, keine
-Warteschleife über das Journal, kein Aufwachen im Minutentakt: ein Lauf dauert
-Stunden, und ein Kommando, das so lange läuft, macht deine Session für diese
-Stunden unbrauchbar — genau die Session, in der der Nutzer nebenher etwas
-anderes fragen wollte. Der Exit-Code kommt zu dir, wenn du das nächste Mal
-nachsiehst, und nachgesehen wird, wenn der Nutzer danach fragt.
+**Du blockierst nicht, und du wirst geweckt.** Das sind zwei Sätze, und sie
+widersprechen einander nicht. Ein Lauf dauert Stunden; ein Kommando, das so
+lange im Vordergrund läuft, macht deine Session für diese Stunden unbrauchbar —
+genau die Session, in der der Nutzer nebenher etwas anderes fragen wollte.
+Verboten ist deshalb das Warten im Vordergrund: kein blockierender Aufruf, kein
+`ScheduleWakeup` im Minutentakt, kein Nachsehen »nur mal kurz«. Der Wachposten
+läuft nebenher und kostet dich nichts, solange nichts passiert.
+
+Was ohne ihn passiert, ist gemessen: am 2026-08-26 lief eine Schleife über fünf
+Pakete sauber durch, schrieb ihre Schlusszeile um 08:58:42 in ein abgelöstes
+Pane, und das Pane starb in derselben Sekunde. Der Abschluss blieb liegen, bis
+der Nutzer Stunden später von selbst danach fragte.
+
+#### Der Wachposten
+
+Ein `Monitor` auf Journal und Sperre. Beide Pfade nennt die Startausgabe
+wörtlich, in den Zeilen `Journal:` und `Sperre:`. Jede gemeldete Zeile weckt
+dich; die Schleife läuft davon unbeeindruckt weiter.
+
+```bash
+J='<Journal-Pfad aus der Startausgabe>'
+L='<Arbeitsverzeichnis aus der Startausgabe>/.remediate.lock'
+z() { if [ -f "$J" ]; then wc -l < "$J" | tr -d ' '; else echo 0; fi; }
+n=$(z); fertig=0
+neues() {
+  local m neu; m=$(z); [ "$m" -gt "$n" ] || return 0
+  neu=$(sed -n "$((n+1)),${m}p" "$J"); n=$m
+  printf '%s\n' "$neu" | grep -E 'status=|marke=\[x\]|marke=\[!\]|ende exit=' || true
+  case "$neu" in *'ende exit='*) fertig=1 ;; esac
+}
+i=0; while [ ! -d "$L" ] && [ "$i" -lt 30 ]; do sleep 2; i=$((i+1)); done
+[ -d "$L" ] || { echo "Nach 60s keine Sperre $L — die Schleife ist nie angelaufen."; exit 0; }
+while :; do
+  neues; [ "$fertig" = 1 ] && break
+  if [ ! -d "$L" ]; then
+    neues
+    [ "$fertig" = 1 ] || echo "Sperre weg, Journal ohne »ende exit=« — die Schleife ist gestorben, ohne ihren Trap zu erreichen."
+    break
+  fi
+  sleep 20
+done
+```
+
+`persistent: true`, denn ein Lauf überschreitet jede Frist, die der Monitor
+sonst kennt. Er beendet sich selbst — du musst ihn nicht abräumen.
+
+Warum die Sperre und nicht nur das Journal: ein fortgesetzter Lauf schreibt in
+dasselbe Journal, in dem der Abbruch des Vorgängers schon steht. Wer nur nach
+`ende exit=` sieht, hält den frischen Lauf für längst beendet und verabschiedet
+sich, bevor die erste Zeile kommt — gemessen beim Bau dieses Schnipsels, mit
+einem Journal, das auf `ende exit=21` endete. `.remediate.lock` dagegen
+existiert genau, solange eine Schleife arbeitet: der EXIT-Trap räumt es weg.
+Daraus fällt der zweite Gewinn ab — verschwindet die Sperre, ohne dass eine
+`ende`-Zeile kam, ist die Schleife gestorben, ohne ihren Trap zu erreichen
+(`kill -9`, Terminal weg, Strom weg). Genau dieser Ausgang meldet sich sonst
+nirgends. Die Minute Geduld am Anfang ist ebenfalls nötig: die Sperre entsteht
+erst im abgelösten Prozess, also ein paar Sekunden nachdem das Skript
+zurückgekommen ist.
+
+Der Filter lässt genau die Zeilen durch, auf die jemand reagiert, und er lässt
+keine Abbruchform aus: jeder benannte Ausgang endet mit `ende exit=`, jeder
+unbenannte mit der verschwundenen Sperre. Der `[~]`-Vermerk nach Zug 0 fehlt
+absichtlich — halbe Pakete sind kein Anlass, jemanden anzusprechen.
+
+#### Was du je Ereignis tust
+
+Der Nutzer hat ausdrücklich um eine Nachricht nach jedem Paket und am Ende
+gebeten. Das schlägt die übliche Zurückhaltung bei `PushNotification`: hier ist
+sie bestellt, nicht aufgedrängt. Eine Zeile, das Wichtigste zuerst, keine
+Wiederholung dessen, was der Nutzer ohnehin vor sich sieht.
+
+| Zeile im Journal | Was sie heißt | Was du tust |
+| --- | --- | --- |
+| `status=committed` | Paket ist im Repo | Push mit Paketnummer, Kurzhash und Paketstand |
+| `status=dropped`, `marke=[x]` | Paket entfiel ohne Commit | Push, knapp |
+| `status=question`, `status=blocked`, `marke=[!]` | die Schleife hält an und will eine Entscheidung | Push, der die Frage nennt, dann `references/shell-runner.md` |
+| `ende exit=0` | die Schleife ist durch | Push, und **sofort** Schritt 7 beginnen. Nicht auf ein Signal des Nutzers warten — dieses Warten ist der Fehler, gegen den der Wachposten gebaut ist |
+| `ende exit=` mit einer anderen Zahl | Abbruch | Push, der die Zahl nennt, dann die Exit-Tabelle |
+
+Sitzt der Nutzer gerade am Terminal, meldet `PushNotification` »not sent«. Das
+ist kein Fehler, sondern die eingebaute Doppelungsbremse: er liest deine
+Antwort ohnehin. Trotzdem senden, statt vorher zu raten, ob er da ist.
+
+**Stirbt deine Session, stirbt der Wachposten mit ihr.** Dafür gibt es zwei
+Auffangnetze, die keine Session brauchen: die Schleife schickt bei denselben
+Anlässen selbst eine Desktop-Nachricht (`notify-send`, und über `NOTIFY_CMD`
+auf einen beliebigen weiteren Weg), und sie schreibt ihren Zustand als Zeile
+`Lauf-Status:` in den Kopf des Plans. Ein Agent, der später hier einsteigt,
+liest sie über `references/resume.md`. Keines der drei Netze ersetzt die
+anderen: der Wachposten kennt den Kontext, die Desktop-Nachricht überlebt die
+Session, die Plan-Zeile überlebt die Maschine.
 
 **Vor dem ersten Start** `references/shell-runner.md` lesen. Danach nicht mehr:
 der Inhalt gehört den Runnern, nicht dir.

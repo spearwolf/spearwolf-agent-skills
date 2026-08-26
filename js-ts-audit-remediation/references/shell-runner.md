@@ -129,6 +129,108 @@ Das Journal endet mit `ende exit=N`, sobald der Lauf durch ist. Solange die Zeil
 fehlt, läuft er noch oder wartet auf eine Antwort. Der Agent hängt sich nicht an
 die Session an — dort sitzt der Nutzer.
 
+### Der Lauf meldet sich von selbst
+
+Niemand sitzt Stunden vor einem Pane. Die Schleife schickt deshalb eine
+Desktop-Nachricht bei drei Anlässen: ein Paket ist committet (mit Kurzhash,
+Rundenzahl und Paketstand), der Lauf ist sauber durch, und — der wichtigste —
+der Lauf endet mit einem Code ungleich null.
+
+Der dritte Anlass hängt an einem `trap … EXIT` und nicht an der `die`-Funktion,
+und der Unterschied ist der ganze Zweck. `die` deckt die *erwarteten* Abbrüche
+ab, die mit Code und Meldung. Der Ausgang, bei dem sonst niemand Bescheid sagt,
+ist der andere: ein `set -e`, das irgendwo zuschlägt, ein `jq` über kaputtem
+JSON, ein Tippfehler nach einer Änderung. Ein EXIT-Trap fängt jeden Weg hinaus,
+benannt oder nicht; nur `kill -9` und ein Stromausfall entkommen ihm.
+
+**Es gibt genau einen EXIT-Trap in diesem Skript, und das muss so bleiben.**
+Bash stapelt sie nicht — ein zweiter `trap … EXIT` ersetzt den ersten
+stillschweigend. Der vorhandene schreibt die Zeile `ende exit=N` ins Journal und
+räumt `.remediate.lock` ab; wer ihn überschreibt, lässt das Sperrverzeichnis
+liegen, und jeder künftige Start läuft in »hier läuft schon eine Schleife«. Was
+beim Ende zu tun ist, kommt in diesen einen Trap und nirgendwo sonst.
+
+Der Weg der Schleife ist bewusst die Shell und kein Agenten-Werkzeug, und das
+ist keine Absage an `PushNotification` — dieselben Anlässe gehen über die
+Orchestrator-Session zusätzlich dorthin, das steht in Schritt 6 der `SKILL.md`.
+Zwei Wege, weil sie an verschiedenen Stellen reißen.
+
+Kein Runner darf diesen Alarm auslösen. Gemessen: ein `claude -p`, das nur
+`PushNotification` aufruft, bekommt *Not sent — this terminal is active* zurück
+und schweigt. Schwerer wiegt der zweite Grund — der Alarm hinge an genau der
+API, deren Ausfall er melden soll. Exit 31 heißt, dass die API über drei
+Versuche überlastet blieb; die Meldung darüber dann per API zu verschicken, ist
+ein Rauchmelder mit Strom aus dem brennenden Zimmer. Die Shell hat diese
+Abhängigkeit nicht, und sie meldet auch dann noch, wenn die Session, die den
+Lauf gestartet hat, seit Stunden geschlossen ist.
+
+Umgekehrt kennt die Shell den Kontext nicht: sie weiß nichts von der Frage, an
+der ein Paket hängt, und sie erreicht kein Telefon, ohne dass jemand
+`NOTIFY_CMD` gelegt hat. Deshalb beide.
+
+`notify-send` erreicht den Rechner, auf dem der Lauf steht. Für alles darüber
+hinaus gibt es `NOTIFY_CMD`: ein beliebiges Kommando, das `REMEDIATE_TITEL` und
+`REMEDIATE_TEXT` in der Umgebung bekommt.
+
+```bash
+NOTIFY_CMD='curl -s -d "$REMEDIATE_TEXT" ntfy.sh/mein-topic' <skill>/scripts/remediate.sh
+```
+
+Voreingestellt ist dort nichts, und das ist Absicht: durch diese Leitung gehen
+Projektname, Paketnummern und Commit-Hashes, und wohin die gehen, entscheidet
+niemand außer dem Nutzer. Beide Wege haben eine Frist und schlucken ihren
+Fehler — eine Benachrichtigung, die den Lauf bricht, wäre schlimmer als gar
+keine.
+
+### Ein Lauf gehört dem Stand, mit dem er gestartet ist
+
+Drinnen läuft nicht diese Datei, sondern eine Kopie: `launch_tmux` legt
+`$WORK/remediate.snapshot.sh` an und startet die. Der Skill-Pfad wandert als
+`REMEDIATE_SKILL_DIR` mit, damit die Kopie Schema und `references/` weiterhin
+am Original findet und nicht neben sich in `/tmp` sucht.
+
+Der Grund ist gemessen und kostete einen ganzen Lauf. Der Skill hängt als
+Symlink im Agenten-Ordner; wer ihn bearbeitet, bearbeitet die Datei, aus der
+gerade gelesen wird. Und Bash lädt ein Skript nicht vorab, sondern liest es
+beim Ausführen weiter. Am 2026-08-26 kamen Benachrichtigung und EXIT-Trap um
+08:32 hinein, während die Schleife seit 07:54 lief und ihre Funktionsrümpfe
+längst geparst hatte; um 08:58 endete sie, ohne die Meldung zu schicken, die
+genau dieses Ende hätte melden sollen. Nachweisbar an der Mitschrift: kein
+einziges Glockenzeichen darin, und `notify()` druckt bei jedem Aufruf eines.
+
+Das war der harmlose Ausgang. Verschiebt ein Edit die Byte-Offsets, liest Bash
+an einer Stelle weiter, die es nicht mehr gibt, und führt die zweite Hälfte
+irgendeines Kommandos aus.
+
+Die Kopie sagt hinterher außerdem, welcher Stand gelaufen ist — `diff` gegen
+den Skill beantwortet die Frage, die sonst niemand mehr beantworten kann. Sie
+bleibt liegen, bis das Arbeitsverzeichnis aufgeräumt wird.
+
+Für den, der am Skill arbeitet, ändert das die Regel nur zur Hälfte: ein Edit
+während eines Laufs ist jetzt folgenlos statt gefährlich. Er wirkt eben auch
+nicht — wer eine Änderung im laufenden Lauf haben will, hält ihn an und startet
+neu.
+
+### Der Lauf-Status im Kopf des Plans
+
+Die Schleife schreibt eine Zeile `Lauf-Status:` direkt unter
+`Arbeitsverzeichnis:` und hält sie aktuell: beim Start, bei jedem Ausgang, und
+bei `--once`. Kein Agent schreibt sie von Hand; der Abschluss-Commit löscht sie.
+
+| Was dasteht | Was es heißt |
+| --- | --- |
+| `läuft seit … in tmux-Session »…«` | eine Schleife arbeitet, oder sie ist gestorben, ohne ihren Trap zu erreichen |
+| `angehalten mit Exit N bei Paket M` | die Exit-Tabelle unten gilt |
+| `Schleife durch … Abschluss offen` | kein Paket mehr offen, Schritt 7 steht aus |
+| `nach --once angehalten` | ein Paket gefahren, erneut starten setzt fort |
+| die Zeile fehlt | Lauf abgeschlossen, oder Plan aus einer Zeit vor dieser Regel |
+
+Sie existiert, weil keine der anderen Spuren die Frage beantwortet, an der am
+2026-08-26 ein Abschluss liegenblieb. Die Paketmarken standen alle auf `[x]`,
+und `ende exit=0` im Journal sieht identisch aus, ob danach noch die halbe
+Arbeit wartet oder gar nichts mehr. Ein Journal überlebt zudem kein
+aufgeräumtes `/tmp`; der Plan liegt im Projekt.
+
 ### Vorbedingungen
 
 Sie werden vor dem Ablösen geprüft: ein falscher Branch soll sofort auffallen und
@@ -148,7 +250,7 @@ deshalb läuft nie einer parallel zum anderen.
 | 10 | Es braucht eine Entscheidung — oder Zug 0 stand in einer Frage, ohne dass jemand erreichbar war | Antwort datiert in »Entscheidungen«, dann erneut starten. Sagt die Meldung »ohne jede Erreichbarkeit«, war weder ein Client am Fenster noch ein Remote-Control-Kanal offen: einen der beiden Wege herstellen und noch einmal starten |
 | 11 | Ein Paket steht auf `[~]` | `references/resume.md`, nicht dieses Skript |
 | 20 | Die Rückgabe passt nicht zum Repo — oder Zug 0 hat Entscheidungen notiert, die niemand getroffen hat | Plan und `git log` ansehen. Nicht blind wiederholen. Bei »ohne Nutzer«: die neuen Zeilen unter »Entscheidungen« herausnehmen, dann erreichbar sein und erneut starten — am Fenster oder über Remote Control |
-| 21 | Ein Runner hing an einer Rechteschranke | Die Meldung nennt die abgelehnten Werkzeuge; sie gehören in `ALLOW_TOOLS` |
+| 21 | Ein Runner hing an einer Rechteschranke | Unter der Voreinstellung `bypassPermissions` selten und nie durch eine zu enge Allowlist: es bleiben die Handlungen, die kein Modus je bewilligt — eine `ask`-Regel dieser Maschine, ein Connector-Tool, das die Organisation auf »ask« gestellt hat, ein MCP-Tool mit `requiresUserInteraction`, `rm` auf einem kritischen Pfad. Die Meldung nennt das Abgelehnte und sagt, welcher der beiden Fälle vorliegt. Das Paket steht danach auf `[~]` und will vorher nach `references/resume.md` zurückgesetzt werden — der Runner ist mitten im Zug gestorben, nicht am Ende |
 | 30 | Der Runner-Prozess selbst ist gescheitert | `paket-N.*.stderr` im Arbeitsverzeichnis |
 | 31 | Die API blieb überlastet | Nichts ist kaputt, nichts hat sich bewegt: später erneut starten |
 | 40 | Eine Vorbedingung stimmt nicht | Die Meldung sagt, welche. Auch der Vertrauensdialog landet hier: die CLI kennt das Verzeichnis nicht |
@@ -274,58 +376,87 @@ mit seinen Diffs in den Arbeitsbaum aus.
 
 ### Zug 1–5: der Prozess bekommt viel, es fehlt nur, was ihn aufhält
 
-B läuft ohne Terminal. Zwei Listen wirken dort, und beide zusammen sind kürzer, als
-sie klingen.
+B läuft ohne Terminal, und daraus folgt alles Weitere. Ein Werkzeug, das weder
+erlaubt noch verboten ist, führt zu einem Freigabe-Dialog; ein Prozess ohne
+Terminal kann darauf nicht antworten und stirbt. Die dritte Kategorie — »fragt
+nach« — ist hier keine Zwischenstufe, sondern ein Abbruch.
 
-**Die Allowlist hebt an**, was `--permission-mode acceptEdits` nicht abdeckt —
-Bash nämlich. Sie steht deshalb auf `Bash` und nicht auf einer Liste von
-Präfixen:
+**Deshalb steht der Modus auf `bypassPermissions` und die Grenze allein in der
+Verbotsliste.** Zwei Sätze der CLI-Dokumentation tragen das:
 
-```
-ALLOW_TOOLS=Bash
-```
+> Deny rules block in every mode, including `bypassPermissions`.
+> Allow rules have no effect in `bypassPermissions`.
 
-Eine Präfixliste sah lange sauberer aus und trug nicht. Gemessen mit
-`Bash(claude *)` in der Liste: `claude -p "$(cat brief)" > report.json` wird
-abgelehnt, weil das Muster an einem Kommando mit Ersetzung und Umleitung nicht
-mehr greift. Der Runner sieht die Ablehnung, hält sie für eine Grenze und fällt
-auf Subagenten zurück — also auf genau das, wogegen der Prozess-Umbau gebaut
-ist. Der Lauf endet dann mit Exit 21, nachdem er schon committet hat.
+Also alle Werkzeuge außer den ausdrücklich verbotenen. Der Gegenweg — eine
+Erlaubnisliste — müsste jedes Werkzeug kennen, das ein Runner je anfassen
+könnte: die eingebauten, die eines jeden MCP-Servers, die jedes Plugins, auf
+einer fremden Maschine, in einer künftigen Version. Diese Liste ist nicht
+schreibbar, und jeder Name, der ihr fehlt, kostet einen Lauf. Gemessen am
+2026-08-26: ein Runner griff zu `Monitor`, um auf seinen Implementierer zu
+warten, und der Lauf endete an Exit 21, während der Implementierer weiterlief.
 
-Die Grenze zieht die Verbotsliste, nicht die Allowlist. Wer sie enger will,
-setzt `ALLOW_TOOLS` selbst — und rechnet damit, dass jedes Kommando, das er
-nicht vorhergesehen hat, den Lauf an Exit 21 anhält.
+Der Preis wird genannt und nicht verschwiegen. `bypassPermissions` nimmt auch
+den Schutz der geschützten Pfade weg, `.git` und `.claude` eingeschlossen; die
+Verbotsliste holt ihn zurück. Was der Modus darüber hinaus erweitert, ist
+wenig — `Bash` stand schon vorher ohne Präfixmuster in der Erlaubnisliste,
+beliebige Kommandos konnte ein Runner also immer schon absetzen.
 
-**Die Verbotsliste** nimmt nur, was die eine Zusage bräche, auf der die Schleife
-ruht: dass ein beendeter Prozess ein fertiges Paket bedeutet.
+**Die Verbotsliste** ist damit die ganze Grenze des Laufs:
 
 | Entzogen | Weil |
 | --- | --- |
-| `AskUserQuestion` | wartet auf eine Antwort, die in einem Prozess ohne Terminal nie kommt. In `-p` gibt es das Werkzeug ohnehin nicht — der Eintrag ist der Gürtel zum Hosenträger |
+| `AskUserQuestion` | wartet auf eine Antwort, die in einem Prozess ohne Terminal nie kommt. Kein Modus bewilligt es je automatisch, auch `bypassPermissions` nicht — als Verbot wird daraus wenigstens eine saubere Absage statt eines Dialogs |
 | `SendMessage` | dito, sobald ein Runner auf eine Erwiderung wartet |
 | `ScheduleWakeup`, `CronCreate` | legen Arbeit an, die den Prozess überlebt |
+| `Edit(.git/**)`, `Edit(.claude/**)` | holt zurück, was der Modus freigibt. Was ein Runner an der Historie tut, tut er über `git` und nicht über einen Editor |
 | `Bash(git push*)`, `Bash(git tag*)`, `Bash(npm publish*)` | kennt dieser Lauf laut `SKILL.md` nicht |
+
+Bei den Pfadregeln steht `Edit(...)` und nicht `Write(...)`, und das ist kein
+Geschmack: Pfadmuster werden ausschließlich über `Edit` und `Read` ausgewertet.
+Ein `Write(…)`-Muster nähme die CLI entgegen, läse es nie und warnte beim Start.
 
 `PushNotification`, `SendUserFile` und `Artifact` stehen bewusst **nicht** dort:
 sie reichen etwas hinaus, ohne zu warten und ohne den Prozess zu überdauern.
-`DENY_TOOLS=""` schaltet auch den Rest ab.
+`DENY_TOOLS=""` schaltet auch den Rest ab und ist dann wörtlich gemeint.
 
 Zwei Eigenschaften, gemessen: ein Name ohne Entsprechung stört nicht, und ein
 entzogenes Werkzeug ist keine abgelehnte Berechtigung — `permission_denials`
 bleibt leer, eine zu strenge Liste läuft also nicht in Exit 21, sondern in einen
 Runner, der `blocked` meldet.
 
-**Welcher Permission-Modus**, gemessen:
+**Die Allowlist** wirkt unter diesem Modus nicht. Sie steht weiter im Skript,
+weil sie den Rückfallweg trägt:
+
+```
+ALLOW_TOOLS=Bash,Monitor
+```
+
+Sperrt eine Maschine den Bypass — `disableBypassPermissionsMode`, gern als
+Organisationsvorgabe —, startet kein Runner, und das Skript sagt es beim ersten
+Versuch statt nach drei. Dann `PERM=acceptEdits` setzen; ab da trägt diese Liste
+wieder, und Exit 21 kann wiederkommen. Sie steht auf `Bash` und nicht auf einer
+Liste von Präfixen: gemessen mit `Bash(claude *)` wird
+`claude -p "$(cat brief)" > report.json` abgelehnt, weil das Muster an einem
+Kommando mit Ersetzung und Umleitung nicht mehr greift. Der Runner hält die
+Ablehnung für eine Grenze und fällt auf Subagenten zurück — auf genau das,
+wogegen der Prozess-Umbau gebaut ist.
+
+**Die übrigen Modi**, gemessen oder aus der Dokumentation:
 
 | Modus | Verhalten in `-p` | Taugt |
 | --- | --- | --- |
-| `acceptEdits` | Änderungen laufen durch, Bash erst mit der Allowlist oben | **ja**, die Voreinstellung |
+| `bypassPermissions` | fragt nichts, Verbotsregeln greifen weiter | **ja**, die Voreinstellung |
+| `acceptEdits` | Änderungen laufen durch, Bash erst über die Allowlist | nur als Rückfallweg |
+| `dontAsk` | lehnt jedes Werkzeug ohne Erlaubnisregel ab | nein — dasselbe Ausprobieren, nur mit Absage statt Hänger |
 | `auto` | Lesendes läuft durch, ein gewöhnlicher `Edit` wurde abgelehnt | nein |
-| `bypassPermissions` | fragt nichts | nur ohne jede Schranke |
 
 `auto` ist ein Klassifikator und als Leitplanke nah an diesem Skill — seine
 Verbotsliste nennt Force-Push, entfernte Historie, das Entfernen von
 Sicherheitstests. Gewähren kann er nur nicht, und Gewähren ist hier die Aufgabe.
+
+**Zug 0 ist von alldem ausgenommen.** Er läuft in einem tmux-Fenster mit den
+Rechten des Nutzers — es ist seine Session, und dort sitzt er. `PERM`,
+`ALLOW_TOOLS` und `DENY_TOOLS` fassen ihn nicht an.
 
 ### Warum Implementierer und Reviewer nicht auch im Terminal laufen
 
@@ -338,11 +469,12 @@ nicht. Sobald Implementierer und Reviewer Prozesse sind — und das sind sie —
 ist die Reichweite dieselbe, ob mit Terminal oder ohne.
 
 **Für Rechte macht es die Lage schlechter.** Ein interaktiver Implementierer
-fragt bei einer fehlenden Freigabe nach, und in einem Pane, an dem niemand
-hängt, wartet er dann. Aus einem Abbruch nach zwei Sekunden, der sagt, *welches*
-Werkzeug fehlt, würde ein Lauf, der ohne sichtbaren Grund steht. Der Abbruch ist
-einmaliger Aufwand — `ALLOW_TOOLS` erweitern —, das Warten wäre einer bei jedem
-Paket.
+erbt den Modus der Session, in der er startet, statt den der Schleife, und fragt
+bei einer fehlenden Freigabe nach; in einem Pane, an dem niemand hängt, wartet
+er dann. Aus einem Abbruch nach zwei Sekunden, der sagt, *welches* Werkzeug
+fehlt, würde ein Lauf, der ohne sichtbaren Grund steht — und der Abbruch ist
+unter `bypassPermissions` ohnehin fast verschwunden, das Warten wäre einer bei
+jedem Paket.
 
 **Und die Züge 1–5 verlören ihre Zusicherungen.** Der Wiederholungsversuch bei
 Überlast, die Kostenobergrenze je Prozess, das Rückgabeschema, die Zählung
@@ -373,6 +505,18 @@ Was dabei zu tun ist:
   `$ARBEITSDIR/paket-N.review-<runde>.json` für den Reviewer.
 - Die Dateinamen sind kein Ordnungssinn, sondern der Beleg: die Schleife zählt
   sie, weil ein eigener Prozess in `subagent_stats` nicht mehr auftaucht.
+- **Gewartet wird im Vordergrund, mit langer Frist.** Der Aufruf blockiert, bis
+  der Prozess endet, und `claude -p` endet von allein — anders als eine
+  interaktive Session, die am Prompt stehenbleibt. Setz die Frist des
+  Bash-Aufrufs auf das Maximum, das dein Werkzeug hergibt; ein Implementierer
+  läuft Minuten, nicht Sekunden. Schick ihn **nicht** in den Hintergrund, um
+  danach auf seine Reportdatei zu pollen: das ist ein zweiter Mechanismus für
+  dieselbe Frage, er kostet einen Zug je Runde, und er hat schon einen Lauf
+  gekostet — ein Runner, der zum Warte-Werkzeug griff, lief in die
+  Rechteschranke, während sein Implementierer weiterarbeitete. Reicht die Frist
+  wirklich nicht, ist der zweite Weg ein Warte-Werkzeug auf **eine** Bedingung,
+  die den Prozess selbst meint, nicht seine Datei; ein Pollen im Sekundentakt
+  ist es nie.
 - Den Report liest du aus der Datei. Er steht damit auch noch da, wenn dein
   eigener Kontext längst weg ist.
 - Modelle setzt du weiter ausdrücklich, nach der Dreistufen-Tabelle in
