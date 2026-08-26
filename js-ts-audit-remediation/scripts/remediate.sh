@@ -301,6 +301,43 @@ kosten_zeilen() { # je Modell und Prozess eine Zeile: paket, rolle, modell, toke
         (.value.cacheCreationInputTokens // 0),
         (.value.costUSD // 0) ] | @tsv' "$f" 2>/dev/null || true
   done
+  zug0_zeilen
+}
+
+# Zug 0 ist die Ausnahme, und zwar in beide Richtungen. Er hat kein
+# Ergebnis-JSON, weil er eine TUI ist; sein Verbrauch steht allein in der
+# Mitschrift der Session, die er unter der Kennung aus »paket-N.zug0.session«
+# führt. Und diese Mitschrift kennt keine Kosten — nur Tokens. Der Betrag
+# bleibt deshalb leer, und die Tabelle setzt dafür ein »+« hinter jede Summe,
+# in der ein solcher Prozess steckt. Eine geschätzte Zahl wäre hier schlimmer
+# als keine: Preise ändern sich, eine hart eingetragene Tabelle veraltet still.
+#
+# Zwei Fallen stecken in der Datei. Erstens erscheint dieselbe Antwort mehrfach,
+# einmal je Inhaltsblock unter derselben »message.id« — wer stumpf summiert,
+# zählt in der gemessenen Mitschrift 1.033.306 Ausgabe-Token statt 515.596.
+# Zweitens ist der Ablageort nicht der Projektpfad, sondern ein daraus
+# gebildeter Name; gesucht wird deshalb über die Kennung, die eindeutig ist.
+zug0_zeilen() {
+  local sf pkg sid tf
+  for sf in "$WORK"/paket-*.zug0.session; do
+    [ -s "$sf" ] || continue
+    pkg=$(basename "$sf" .zug0.session); pkg=${pkg#paket-}
+    sid=$(head -n1 "$sf" | tr -d '[:space:]')
+    [ -n "$sid" ] || continue
+    for tf in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/projects/*/"$sid".jsonl; do
+      [ -s "$tf" ] || continue
+      jq -s -r --arg pkg "$pkg" '
+        [ .[] | select(.type == "assistant" and .message.usage != null) ]
+        | group_by(.message.id) | map(.[0])
+        | group_by(.message.model)[]
+        | [ $pkg, "zug0", (.[0].message.model // "unbekannt"),
+            (map(.message.usage.input_tokens // 0) | add),
+            (map(.message.usage.output_tokens // 0) | add),
+            (map(.message.usage.cache_read_input_tokens // 0) | add),
+            (map(.message.usage.cache_creation_input_tokens // 0) | add),
+            "" ] | @tsv' "$tf" 2>/dev/null || true
+    done
+  done
 }
 
 kosten_report() {
@@ -328,29 +365,42 @@ kosten_report() {
       ein[pkg] += $4; aus[pkg] += $5; crd[pkg] += $6; cne[pkg] += $7; kos[pkg] += $8
       gein += $4; gaus += $5; gcrd += $6; gcne += $7; gkos += $8
       mkos[modell] += $8
+      # Ein leeres Kostenfeld heißt »gezählt, aber nicht bepreist« und ist
+      # etwas anderes als null. Das »+« trägt diesen Unterschied durch jede
+      # Summe, in die so eine Zeile eingegangen ist.
+      if ($8 == "") { unk[pkg] = 1; munk[modell] = 1; gunk = 1; zug0 = 1 }
     }
     END {
       fmt = "  %-6s %8s %9s %9s %11s %11s %9s\n"
       printf fmt, "Paket", "Prozesse", "Eingabe", "Ausgabe", "Cache gel.", "Cache neu", "$"
       for (i = 1; i <= np; i++) {
         p = order[i]
-        printf fmt, p, nproc[p], h(ein[p]), h(aus[p]), h(crd[p]), h(cne[p]), sprintf("%.2f", kos[p])
+        printf fmt, p, nproc[p], h(ein[p]), h(aus[p]), h(crd[p]), h(cne[p]),
+               sprintf("%.2f%s", kos[p], (p in unk) ? "+" : "")
       }
       printf "  %s\n", "------ -------- --------- --------- ----------- ----------- ---------"
-      printf fmt, "gesamt", gproc, h(gein), h(gaus), h(gcrd), h(gcne), sprintf("%.2f", gkos)
+      printf fmt, "gesamt", gproc, h(gein), h(gaus), h(gcrd), h(gcne),
+             sprintf("%.2f%s", gkos, gunk ? "+" : "")
       printf "\n"
       zeile = "  Je Modell: "
       for (i = 1; i <= nm; i++)
-        zeile = zeile sprintf("%s%s %.2f", (i > 1 ? " · " : ""), morder[i], mkos[morder[i]])
+        zeile = zeile sprintf("%s%s %.2f%s", (i > 1 ? " · " : ""),
+                              morder[i], mkos[morder[i]], (morder[i] in munk) ? "+" : "")
       print zeile
+      if (zug0)
+        print "  Das »+« ist Zug 0: seine Tokens sind gezählt, sein Betrag nicht.\n" \
+              "  Der Planer ist eine TUI, und seine Mitschrift führt keine Kosten."
+      else
+        print "  Ohne Zug 0: keine Mitschrift des Planers gefunden. Läufe von vor dem\n" \
+              "  2026-08-26 haben keine Session-Kennung vergeben und bleiben ungezählt."
     }'
-  say "  Ohne Zug 0: der Planer läuft als TUI und hinterlässt kein Ergebnis-JSON."
-  say "  Seine Dauer steht im Journal, sein Verbrauch nirgends."
 }
 
 # Nur die Schlusszahl, für Meldungen, in die keine Tabelle passt.
 kosten_summe() {
-  kosten_zeilen | awk -F'\t' '{ s += $8 } END { printf "%.2f", s + 0 }'
+  kosten_zeilen | awk -F'\t' '
+    { s += $8; if ($8 == "") u = 1 }
+    END { printf "%.2f%s", s + 0, u ? "+" : "" }'
 }
 
 # Der Lauf schreibt seinen eigenen Zustand in den Kopf des Plans, und zwar
@@ -789,9 +839,18 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
   # Anführungszeichen überlebt diesen Weg nicht verlässlich. Nebenbei steht
   # danach auf der Platte, womit gestartet wurde.
   printf '%s\n' "$brief" > "$brieffile"
+  # Die Session-Kennung wird vergeben statt zugeteilt, und sie landet daneben auf
+  # der Platte. Zug 0 ist der einzige Prozess des Laufs ohne Ergebnis-JSON — er
+  # ist eine TUI, und was er verbraucht hat, steht nur in seiner Mitschrift.
+  # Ohne diese Zeile wäre sie unter allen Sitzungen des Nutzers nicht mehr
+  # auffindbar, und der teuerste Prozess des Laufs bliebe ungezählt.
+  local sid
+  sid=$(uuid)
+  printf '%s\n' "$sid" > "$WORK/paket-$pkg.zug0.session"
+
   { printf '#!/usr/bin/env bash\nexec claude "$(cat %q)"' "$brieffile"
-    printf ' --model %q --effort %q --remote-control %q' \
-      "$MODEL_A" "$EFFORT_A" "$SESSION-p$pkg-plan"
+    printf ' --model %q --effort %q --remote-control %q --session-id %q' \
+      "$MODEL_A" "$EFFORT_A" "$SESSION-p$pkg-plan" "$sid"
     for a in ${TOOL_ARGS[@]+"${TOOL_ARGS[@]}"}; do printf ' %q' "$a"; done
     printf '\n'
   } > "$starter"

@@ -263,10 +263,17 @@ Paket, dazu eine Summe und eine Aufteilung nach Modell. Gezählt wird nicht
 mitlaufend, sondern am Ende aus den Reportdateien `paket-*.json` im
 Arbeitsverzeichnis — und damit über jeden Neustart hinweg, denn das Verzeichnis
 steht im Kopf des Plans und nicht am Prozess. Enthalten sind Runner,
-Implementierer und Reviewer. Nicht enthalten ist Zug 0: der Planer läuft als
-TUI und hinterlässt kein Ergebnis-JSON, und er ist der teuerste einzelne
-Prozess des Laufs. Die Tabelle sagt das in ihrer letzten Zeile selbst, damit
-niemand die Summe für die ganze Rechnung hält.
+Implementierer und Reviewer mit Tokens und Betrag.
+
+Zug 0 ist zur Hälfte dabei. Er hat kein Ergebnis-JSON, weil er eine TUI ist;
+seine Tokens holt die Tabelle aus der Mitschrift seiner Session, die er seit
+dem 2026-08-26 unter einer vom Skript vergebenen Kennung führt
+(`paket-N.zug0.session` im Arbeitsverzeichnis). Kosten führt diese Mitschrift
+nicht, und geschätzt wird hier nichts — eine Preistabelle im Skript veraltet
+still, und eine stille falsche Zahl ist schlechter als eine offene Lücke. Statt
+dessen trägt jede Summe, in der ein solcher Prozess steckt, ein `+`. Läufe, die
+vor diesem Datum begonnen haben, haben keine Kennung vergeben; dort fehlt Zug 0
+ganz, und die letzte Zeile der Tabelle sagt es.
 
 ## Wenn die API überlastet ist
 
