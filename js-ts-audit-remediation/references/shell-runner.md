@@ -258,6 +258,16 @@ deshalb läuft nie einer parallel zum anderen.
 Entstehen im Abschluss neue Pakete — die Drain-Runde schneidet welche —, läuft
 das Skript danach noch einmal. Es fasst den Abschluss selbst nie an.
 
+Jeder dieser Ausgänge außer 40 legt eine Tabelle nach: Tokens und Kosten je
+Paket, dazu eine Summe und eine Aufteilung nach Modell. Gezählt wird nicht
+mitlaufend, sondern am Ende aus den Reportdateien `paket-*.json` im
+Arbeitsverzeichnis — und damit über jeden Neustart hinweg, denn das Verzeichnis
+steht im Kopf des Plans und nicht am Prozess. Enthalten sind Runner,
+Implementierer und Reviewer. Nicht enthalten ist Zug 0: der Planer läuft als
+TUI und hinterlässt kein Ergebnis-JSON, und er ist der teuerste einzelne
+Prozess des Laufs. Die Tabelle sagt das in ihrer letzten Zeile selbst, damit
+niemand die Summe für die ganze Rechnung hält.
+
 ## Wenn die API überlastet ist
 
 Ein langer Lauf trifft irgendwann auf ein `529`. Drei Ebenen liegen dagegen

@@ -181,7 +181,6 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 SKILL_DIR=${REMEDIATE_SKILL_DIR:-$(cd -- "$SCRIPT_DIR/.." && pwd)}
 SCHEMA="$SKILL_DIR/assets/runner-return.schema.json"
 
-TOTAL_COST=0
 PACKAGES_DONE=0
 AKTUELL=""       # das Paket, an dem die Schleife gerade steht; für die Meldung
                  # beim unerwarteten Ausgang, wo sonst niemand mehr sagen kann,
@@ -265,6 +264,93 @@ notify() { # $1 = Titel, $2 = Text
 stand() { # eine Zeile Paketstand, für jede Meldung dieselbe Form
   printf '%s offen · %s erledigt · %s blockiert' \
     "$(count_with_marker ' ')" "$(count_with_marker 'x')" "$(count_with_marker '!')"
+}
+
+# Was der Lauf verbraucht hat, steht nicht in dieser Schleife, sondern in den
+# Reportdateien. Der Zähler, den der Prozess selbst mitführt, kennt nur die
+# Runner — nicht die Implementierer und Reviewer, die diese starten, und die
+# sind der größere Posten: gemessen am 2026-08-26 an Paket 4 eines Laufs über
+# shadow-objects kostete der Runner 3,82 und sein Implementierer 6,26. Gezählt
+# wird deshalb aus »$WORK/paket-*.json«. Das überlebt jeden Neustart, weil das
+# Arbeitsverzeichnis im Kopf des Plans steht und nicht am Prozess hängt.
+#
+# Gelesen wird »modelUsage« und nicht »usage«. Die beiden sehen austauschbar
+# aus und sind es nicht: usage trägt den letzten Zug, modelUsage die ganze
+# Sitzung. Am selben Runner sind das 3.380 gegen 16.177 Ausgabe-Token.
+#
+# Eine Lücke bleibt und wird unten benannt statt verschwiegen: Zug 0 läuft als
+# TUI im tmux-Fenster und hinterlässt kein Ergebnis-JSON. Der Planer ist der
+# teuerste einzelne Prozess des Laufs, und keine Zahl hier enthält ihn.
+kosten_zeilen() { # je Modell und Prozess eine Zeile: paket, rolle, modell, tokens, kosten
+  local f name pkg rolle
+  # Vor der Vorprüfung steht das Arbeitsverzeichnis noch nicht fest; ein Abbruch
+  # von dort hat auch nichts zu zählen.
+  [ -n "${WORK:-}" ] && [ -d "${WORK:-}" ] || return 0
+  for f in "$WORK"/paket-*.json; do
+    [ -s "$f" ] || continue
+    jq -e 'type == "object"' "$f" >/dev/null 2>&1 || continue
+    name=$(basename "$f" .json)   # paket-<N>.<rolle>
+    pkg=${name#paket-}; pkg=${pkg%%.*}
+    rolle=${name#*.}
+    jq -r --arg pkg "$pkg" --arg rolle "$rolle" '
+      (.modelUsage // {}) | to_entries[] |
+      [ $pkg, $rolle, .key,
+        (.value.inputTokens // 0),
+        (.value.outputTokens // 0),
+        (.value.cacheReadInputTokens // 0),
+        (.value.cacheCreationInputTokens // 0),
+        (.value.costUSD // 0) ] | @tsv' "$f" 2>/dev/null || true
+  done
+}
+
+kosten_report() {
+  local rows
+  [ -n "${WORK:-}" ] || return 0
+  rows=$(kosten_zeilen)
+  if [ -z "$rows" ]; then
+    say "Tokens und Kosten: keine auswertbare Reportdatei in $WORK."
+    return 0
+  fi
+  say ""
+  say "Tokens und Kosten, gezählt aus den Reportdateien in $WORK:"
+  say ""
+  printf '%s\n' "$rows" | LC_ALL=C sort -t "$(printf '\t')" -k1,1V -k2,2 | awk -F'\t' '
+    function h(n) {
+      if (n >= 1000000) return sprintf("%.1fM", n / 1000000)
+      if (n >= 1000)    return sprintf("%.1fk", n / 1000)
+      return sprintf("%d", n)
+    }
+    {
+      pkg = $1; rolle = $2; modell = $3
+      if (!(pkg in seen))                  { order[++np] = pkg; seen[pkg] = 1 }
+      if (!((pkg SUBSEP rolle) in proc))   { proc[pkg SUBSEP rolle] = 1; nproc[pkg]++; gproc++ }
+      if (!(modell in mseen))              { morder[++nm] = modell; mseen[modell] = 1 }
+      ein[pkg] += $4; aus[pkg] += $5; crd[pkg] += $6; cne[pkg] += $7; kos[pkg] += $8
+      gein += $4; gaus += $5; gcrd += $6; gcne += $7; gkos += $8
+      mkos[modell] += $8
+    }
+    END {
+      fmt = "  %-6s %8s %9s %9s %11s %11s %9s\n"
+      printf fmt, "Paket", "Prozesse", "Eingabe", "Ausgabe", "Cache gel.", "Cache neu", "$"
+      for (i = 1; i <= np; i++) {
+        p = order[i]
+        printf fmt, p, nproc[p], h(ein[p]), h(aus[p]), h(crd[p]), h(cne[p]), sprintf("%.2f", kos[p])
+      }
+      printf "  %s\n", "------ -------- --------- --------- ----------- ----------- ---------"
+      printf fmt, "gesamt", gproc, h(gein), h(gaus), h(gcrd), h(gcne), sprintf("%.2f", gkos)
+      printf "\n"
+      zeile = "  Je Modell: "
+      for (i = 1; i <= nm; i++)
+        zeile = zeile sprintf("%s%s %.2f", (i > 1 ? " · " : ""), morder[i], mkos[morder[i]])
+      print zeile
+    }'
+  say "  Ohne Zug 0: der Planer läuft als TUI und hinterlässt kein Ergebnis-JSON."
+  say "  Seine Dauer steht im Journal, sein Verbrauch nirgends."
+}
+
+# Nur die Schlusszahl, für Meldungen, in die keine Tabelle passt.
+kosten_summe() {
+  kosten_zeilen | awk -F'\t' '{ s += $8 } END { printf "%.2f", s + 0 }'
 }
 
 # Der Lauf schreibt seinen eigenen Zustand in den Kopf des Plans, und zwar
@@ -826,7 +912,7 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
 }
 
 dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
-  local role=$1 pkg=$2 model effort brief rc cost denials
+  local role=$1 pkg=$2 model effort brief rc denials
 
   case "$role" in
     A) model=$MODEL_A; effort=$EFFORT_A ;;
@@ -901,9 +987,6 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
     attempt=$((attempt + 1))
   done
 
-  cost=$(jq -r '.total_cost_usd // 0' "$RAW")
-  TOTAL_COST=$(awk -v a="$TOTAL_COST" -v b="$cost" 'BEGIN { printf "%.4f", a + b }')
-
   denials=$(jq -r '(.permission_denials // []) | length' "$RAW")
   if [ "$denials" != "0" ]; then
     # Die abgelehnten Namen mitgeben: wer sie erst aus dem JSON suchen muss,
@@ -961,6 +1044,7 @@ hand_over() { # $1 = Rolle, $2 = Paketnummer, $3 = Status
   say "Die Schleife hält an. Antwort datiert in »Entscheidungen« im Plan eintragen,"
   say "dann dieses Skript erneut starten."
   say "Wortlaut nachlesbar in $RAW und $WORK/remediate.log."
+  kosten_report
   exit $EX_ASK
 }
 
@@ -1160,7 +1244,8 @@ main() {
     # nichts geprüft, was sich zu prüfen lohnt.
     if [ "$ONCE" = "1" ] && [ "$PACKAGES_DONE" -ge 1 ]; then
       say ""
-      say "--once: nach einem Paket angehalten. Kosten bisher: \$$TOTAL_COST"
+      say "--once: nach einem Paket angehalten."
+      kosten_report
       # Auch das ist ein Exit 0 mit offener Arbeit, und ohne diese Zeile sähe er
       # im Plan aus wie ein durchgelaufener Lauf.
       plan_status "nach --once angehalten ($(date '+%Y-%m-%d %H:%M')) · $(stand) · erneut starten setzt fort"
@@ -1177,8 +1262,9 @@ main() {
   # stand hier »3 erledigt« unter einem Plan mit fünf committeten Paketen: die
   # ersten beiden liefen vor einem Neustart. Wer die Zeile gegen den Plan hielt,
   # hielt den Lauf für unvollständig.
-  say "Kein Paket mehr offen. $gesamt erledigt (davon $PACKAGES_DONE in diesem Lauf), $blocked blockiert, \$$TOTAL_COST."
+  say "Kein Paket mehr offen. $gesamt erledigt (davon $PACKAGES_DONE in diesem Lauf), $blocked blockiert."
   [ "$blocked" = "0" ] || say "Blockiert: $(sed -En 's/^### \[!\] ([0-9]+[a-z]?)\..*/\1/p' "$PLAN" | tr '\n' ' ')"
+  kosten_report
   plan_status "Schleife durch ($(date '+%Y-%m-%d %H:%M')) · Abschluss offen — Schritt 7 der SKILL.md mit references/semver-and-closeout.md"
   say ""
   say "Der Abschluss folgt: Schritt 7 der SKILL.md, mit references/semver-and-closeout.md."
@@ -1189,7 +1275,7 @@ main() {
   # Das saubere Ende meldet sich selbst: der Trap schweigt bei Code 0, und
   # gerade dieses Ende will jemand wissen — es ist das, auf das er wartet.
   notify "Remediation durch" \
-    "$gesamt Paket(e) erledigt, $blocked blockiert, \$$TOTAL_COST · jetzt der Abschluss"
+    "$gesamt Paket(e) erledigt, $blocked blockiert, \$$(kosten_summe) · jetzt der Abschluss"
   exit $EX_OK
 }
 
