@@ -259,7 +259,8 @@ Entstehen im Abschluss neue Pakete — die Drain-Runde schneidet welche —, lä
 das Skript danach noch einmal. Es fasst den Abschluss selbst nie an.
 
 Jeder dieser Ausgänge außer 40 legt eine Tabelle nach: Tokens je Paket, eine
-Spalte hinein und eine hinaus, dazu eine Summe und die Ausgabe je Modell.
+Spalte hinein und eine hinaus, daneben die Überschrift des Pakets aus dem Plan,
+dazu eine Summe und die Ausgabe je Modell.
 Beträge stehen nicht darin. »Eingabe« ist die Summe aus frischer Eingabe,
 Cache-Lesung und Cache-Anlage — drei Preisklassen desselben Postens, und die
 frische Eingabe ist die mit Abstand kleinste davon: in einem gemessenen Lauf

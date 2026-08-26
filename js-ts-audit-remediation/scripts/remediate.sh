@@ -330,6 +330,23 @@ zug0_zeilen() {
   done
 }
 
+# Die Überschrift des Pakets, gekürzt auf Terminalbreite. Eine Nummer allein
+# zwingt jeden, der die Tabelle liest, daneben den Plan aufzuschlagen.
+titel_zeilen() {
+  [ -n "${PLAN:-}" ] && [ -f "${PLAN:-}" ] || return 0
+  local nr titel
+  while IFS=$'\t' read -r nr titel; do
+    [ -n "$nr" ] || continue
+    # Backticks sind Markdown und im Terminal nur Rauschen. Gekürzt wird in der
+    # Shell und nicht in awk: bash schneidet in einer UTF-8-Umgebung nach
+    # Zeichen, awk je nach Implementierung nach Bytes — und ein halbes Umlaut
+    # zerlegt die Zeile.
+    titel=${titel//\`/}
+    [ ${#titel} -le 46 ] || titel="${titel:0:45}…"
+    printf '#T\t%s\t%s\n' "$nr" "$titel"
+  done < <(sed -En 's/^### \[.\] ([0-9]+[a-z]?)\. (.*)$/\1\t\2/p' "$PLAN")
+}
+
 verbrauch_report() {
   local rows
   [ -n "${WORK:-}" ] || return 0
@@ -341,7 +358,10 @@ verbrauch_report() {
   say ""
   say "Tokens, gezählt aus den Reportdateien in $WORK:"
   say ""
-  printf '%s\n' "$rows" | LC_ALL=C sort -t "$(printf '\t')" -k1,1V -k2,2 | awk -F'\t' '
+  { titel_zeilen
+    printf '%s\n' "$rows" | LC_ALL=C sort -t "$(printf '\t')" -k1,1V -k2,2
+  } | awk -F'\t' '
+    $1 == "#T" { titel[$2] = $3; next }
     function h(n) {
       if (n >= 1000000) return sprintf("%.1fM", n / 1000000)
       if (n >= 1000)    return sprintf("%.1fk", n / 1000)
@@ -363,14 +383,18 @@ verbrauch_report() {
       maus[modell] += $5
     }
     END {
-      fmt = "  %-6s %8s %10s %10s\n"
-      printf fmt, "Paket", "Prozesse", "Eingabe", "Ausgabe"
+      kopf = "  %-6s %8s %10s %10s\n"
+      fmt  = "  %-6s %8s %10s %10s  %s\n"
+      printf kopf, "Paket", "Prozesse", "Eingabe", "Ausgabe"
       for (i = 1; i <= np; i++) {
         p = order[i]
-        printf fmt, p, nproc[p], h(ein[p]), h(aus[p])
+        # Ohne Plan bleibt die Spalte leer; die Zeile darf dann nicht mit
+        # Leerzeichen enden, sonst rauscht jeder Diff des Protokolls.
+        if (p in titel) printf fmt,  p, nproc[p], h(ein[p]), h(aus[p]), titel[p]
+        else            printf kopf, p, nproc[p], h(ein[p]), h(aus[p])
       }
       printf "  %s\n", "------ -------- ---------- ----------"
-      printf fmt, "gesamt", gproc, h(gein), h(gaus)
+      printf kopf, "gesamt", gproc, h(gein), h(gaus)
       printf "\n"
       zeile = "  Ausgabe je Modell: "
       for (i = 1; i <= nm; i++)
