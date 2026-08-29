@@ -43,18 +43,27 @@ When the user asks to **install / update / uninstall** the contents of this repo
 
 ### Skills
 
-"Install the skills" means: make this repo's skills available to the user's agents by symlinking each skill directory into the user's agent skills directory `$HOME/.agents/skills/`.
+"Install the skills" means: make this repo's skills available to the user's agents by symlinking each skill directory into **both** of the directories that host agents read.
 
-- **Target directory:** `$HOME/.agents/skills/` — create it if it does not exist yet.
-- **One symlink per skill:** for skill `<name>`, create `$HOME/.agents/skills/<name>` → the absolute path of this repo's `<name>/` directory. Example: `$HOME/.agents/skills/js-ts-project-audit` → `<repo>/js-ts-project-audit`.
-- **Granularity:** install all skills, or only the specific skill(s) the user names. "Install `js-ts-project-audit`" links only that one.
-- **Collision on first install:** if `$HOME/.agents/skills/<name>` already exists and is *not already* a symlink into this repo (i.e. it is a real directory, or a symlink pointing at some unknown/foreign folder), move that existing entry into `$HOME/.agents/skills--backupz/` first (create that backup directory if needed), then create the symlink. Never overwrite or delete foreign content — always back it up. If the entry already points at this repo's skill, the skill is already installed (treat as an update / no-op).
+- **Target directories — both of them, every time:**
+  - `$HOME/.claude/skills/` — the only place Claude Code looks for user-wide skills. Checked against Claude Code 2.1.248: the string `.agents/skills` appears nowhere in its binary, so a skill linked only there is invisible to it. Skip this link and the install is a no-op for Claude Code.
+  - `$HOME/.agents/skills/` — the cross-agent convention other hosts read.
+
+  Create either directory if it does not exist. A skill counts as installed only once **both** links are in place; if you find only one, complete the other rather than reporting success.
+- **One symlink per skill and per target directory:** for skill `<name>`, create `$HOME/.claude/skills/<name>` *and* `$HOME/.agents/skills/<name>`, each pointing at the absolute path of this repo's `<name>/` directory. Example: `$HOME/.claude/skills/js-ts-project-audit` → `<repo>/js-ts-project-audit`. Always link the repo path directly — never chain one skills directory through the other, so a moved or broken link on one side cannot take the other down with it.
+- **Granularity:** install all skills, or only the specific skill(s) the user names. "Install `js-ts-project-audit`" links only that one — in both directories.
+- **Collision on first install:** decide this per target directory. If `<dir>/<name>` already exists and is *not already* a symlink into this repo (i.e. it is a real directory, or a symlink pointing at some unknown/foreign folder), move that existing entry into the backup directory beside it — `$HOME/.claude/skills--backupz/` resp. `$HOME/.agents/skills--backupz/`, created if needed — and only then create the symlink. Never overwrite or delete foreign content — always back it up. If the entry already points at this repo's skill, that side is already installed (treat as an update / no-op).
 - **A running skill reads this repo live.** Because installation is a symlink, editing a skill here changes the files an in-flight run is using. For a skill that is just markdown, that means a runner may pick up new instructions mid-task; for `js-ts-audit-remediation/scripts/remediate.sh` it is worse, since bash re-reads a script file while executing it and a rewritten file leaves the running process at a meaningless offset. Before editing a skill, check whether one of its runs is live (`tmux ls`, `ps`), and if so either wait or stop the run first.
-- **Uninstall / remove / delete a skill:** just remove the symlink in `$HOME/.agents/skills/`. Do this per-skill when the user names specific skills. Never touch the skill source in this repo, and never delete anything that was moved to `--backupz/`.
+- **Uninstall / remove / delete a skill:** remove the symlink from *both* directories. Do this per-skill when the user names specific skills. Never touch the skill source in this repo, and never delete anything that was moved to a `--backupz/` directory.
+- **Verifying an install:** `ls -la` proves the link exists, not that the host loads it. Claude Code fixes its skill list when a session starts, so a freshly installed skill stays invisible inside the running session — do not conclude from its absence that the install failed. Check from outside instead, in a directory other than this repo:
+
+  ```bash
+  claude -p --model claude-haiku-4-5-20251001 "Antworte in einer Zeile: Nenne nur die Namen der dir verfuegbaren Skills, deren Name mit '<praefix>' beginnt. Falls keine, antworte KEINE."
+  ```
 
 ### Global behavior (the `global-behavior/` directory)
 
-This is **not** a skill and is not symlinked into `$HOME/.agents/skills/`. When the user asks to install, update, adjust, or remove Claude's *behavior* (German: *Verhalten* / *Verhaltensweisen*), follow the dedicated steps in `global-behavior/INSTALL.md` exactly — those handle the `$HOME/.claude/CLAUDE.md` block and the `spinnerVerbs` key in `$HOME/.claude/settings.json`.
+This is **not** a skill and is not symlinked into either skills directory. When the user asks to install, update, adjust, or remove Claude's *behavior* (German: *Verhalten* / *Verhaltensweisen*), follow the dedicated steps in `global-behavior/INSTALL.md` exactly — those handle the `$HOME/.claude/CLAUDE.md` block and the `spinnerVerbs` key in `$HOME/.claude/settings.json`.
 
 ### Install log (`.install-history.md`)
 

@@ -2,6 +2,11 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-08-29
+
+### Geändert
+- **Skills werden jetzt in zwei Verzeichnisse installiert statt in eines.** Die Anweisung im Repo-`CLAUDE.md` nannte bisher allein `$HOME/.agents/skills/` als Ziel — dorthin installierte Skills sieht Claude Code nie: der Pfad kommt in seinem Binary (geprüft an 2.1.248) überhaupt nicht vor, gelesen wird ausschließlich `$HOME/.claude/skills/`. Ein Install nach altem Stand war für Claude Code wirkungslos, ohne dass irgendetwas fehlschlug. Beide Ziele bekommen ab sofort je einen eigenen Symlink direkt auf den Repo-Pfad (keine Kette über das jeweils andere Verzeichnis), je eigenes `--backupz/` bei Namenskollision, und Deinstallieren entfernt beide Links. Installiert ist ein Skill erst, wenn beide Links stehen. Dazu ein Absatz zur Verifikation: `ls -la` beweist nur den Link, nicht das Laden — Claude Code friert seine Skill-Liste beim Sessionstart ein, ein frisch installierter Skill fehlt in der laufenden Session also erwartungsgemäß und muss von außen per Headless-Lauf geprüft werden.
+
 ## 2026-08-26
 
 ### Geändert
