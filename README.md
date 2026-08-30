@@ -59,6 +59,21 @@ legt für Skills Symlinks an, baut das Verhalten als markierten Block in
 `~/.claude/CLAUDE.md` ein (plus die Dateien, die dieser Block bei Bedarf
 nachlädt), sichert Backups, räumt wieder auf und führt sogar Protokoll. Carrot würde es nicht höflicher machen.
 
+### Claude Desktop
+
+Claude Desktop kennt keine Symlinks, es lädt Skills als ZIP hoch. Das Archiv
+baut man sich in einer Zeile — im Repo-Wurzelverzeichnis, `<skill>` durch den
+Verzeichnisnamen ersetzt:
+
+```bash
+zip -r -X <skill>.zip <skill> -x '*/.*'
+```
+
+Im Archiv liegt dann der Skill-Ordner mit seiner `SKILL.md` obenauf, genau so
+will es der Upload. Danach in Claude Desktop: **Settings → Capabilities →
+Skills → Upload skill**, ZIP auswählen, fertig. Die `.zip`-Dateien sind
+gitignored — sie sind Build-Ergebnis, keine Quelle.
+
 ## Eine ehrliche Warnung
 
 Das hier ist **extrem opinionated**, erhebt keinerlei Anspruch auf Perfektion,

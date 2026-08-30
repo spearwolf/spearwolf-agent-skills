@@ -8,11 +8,13 @@ Das ist der Glücksfall dieses Skills. Bei einem Standbild bleibt fast alles Sch
 
 **Das Bild kommt zuerst.** Erst Screenshot, erst hinsehen, erst klassifizieren. Wer mit dem Bundle anfängt, beschreibt am Ende die Bibliothek statt den Look.
 
-1. Seite öffnen und **Screenshot** — mit `chrome-devtools` MCP oder Playwright. Eine Sekunde warten, bevor geschossen wird; WebGL-Szenen brauchen einen Moment bis zum ersten sauberen Frame.
+1. Seite öffnen und **Screenshot** — mit dem Browser-Werkzeug, das der Host anbietet (`chrome-devtools` MCP, Playwright, eine Browser-Extension). Eine Sekunde warten, bevor geschossen wird; WebGL-Szenen brauchen einen Moment bis zum ersten sauberen Frame.
 2. Bei animierten Szenen **3–5 Screenshots im Abstand von ein bis zwei Sekunden**. Das schaltet den Layer `temporal` frei: Ghosting, Akkumulationsrauschen, Partikel-Lebensdauer, Vertex-Animation sind sonst unsichtbar.
 3. Dann erst die technische Aufklärung unten.
 
 Alles hier ist lesend. Keine Formulare, keine Klicks über das hinaus, was nötig ist, um die Szene sichtbar zu machen (Cookie-Banner wegklicken, »Start« drücken).
+
+**Kann der Host die Seite nicht fernsteuern** — kein Browser-Werkzeug, kein Netzzugriff —, ist dieser Weg zu, und das wird gesagt statt umschifft. Der User kann die Belege trotzdem liefern: zwei bis drei Screenshots, der Seiten-Quelltext, ein HAR-Export der Netzwerk-Requests und die Ausgabe der beiden Snippets unten, in die Browser-Konsole kopiert. Kommt nichts davon, bleibt die Analyse auf dem Stand eines Standbilds — dann trägt kein Befund die Stufe `belegt`, nur weil die Seite existiert.
 
 ## Framework und Kontext
 
@@ -81,7 +83,7 @@ return r ? { calls: r.info.render.calls, tris: r.info.render.triangles,
              shadowMap: r.shadowMap.enabled, toneMapping: r.toneMapping } : 'nicht exponiert';
 ```
 
-Ist er das nicht: ein Performance-Trace über die devtools-MCP-Tools zeigt GPU-Zeit pro Frame und die Zahl der Zeichenbefehle. Weniger präzise, aber immer verfügbar.
+Ist er das nicht: ein Performance-Trace über das Browser-Werkzeug zeigt GPU-Zeit pro Frame und die Zahl der Zeichenbefehle. Weniger präzise, aber unabhängig davon, ob die Anwendung etwas nach außen gibt.
 
 Weitere billige Belege aus der Konsole: WebGL-Warnungen nennen oft Extension-Namen und Texturformate, und ein `console.log` der Anwendung selbst verrät gelegentlich das komplette Setup.
 

@@ -61,15 +61,15 @@ Das Bild muss **wirklich angesehen** werden. Ein Dateiname, eine URL oder eine B
 | Was der User liefert | Was zu tun ist |
 | --- | --- |
 | Bild im Chat angehängt | Liegt vor. Direkt weiter. |
-| Lokaler Pfad | Mit dem Read-Tool öffnen (es zeigt Bilder visuell). |
-| Direkte Bild-URL | Ins Scratchpad laden (`curl -L -o`), dann mit Read öffnen. WebFetch liefert Text, kein Bild. |
-| Video oder GIF | Keyframes ziehen (`ffmpeg -i in.mp4 -vf "fps=1/2,scale=1280:-1" out_%03d.png`), 3–6 Frames ansehen. Bewegung schaltet den Layer `temporal` frei. |
+| Lokaler Pfad | Mit dem Lese-Werkzeug des Hosts öffnen, das Bilder visuell zeigt (in Claude Code: `Read`). Kann der Host keine lokalen Dateien ansehen, den User bitten, das Bild in den Chat zu hängen. |
+| Direkte Bild-URL | Ins Arbeitsverzeichnis laden (`curl -L -o`), dann ansehen. Ein Text-Fetch liefert Markup, kein Bild. Ohne Netzzugriff oder Shell: den User um den Anhang bitten. |
+| Video oder GIF | Keyframes ziehen (`ffmpeg -i in.mp4 -vf "fps=1/2,scale=1280:-1" out_%03d.png`), 3–6 Frames ansehen. Fehlt `ffmpeg` oder eine Shell, den User um 3–6 Einzelbilder aus verschiedenen Momenten bitten. Bewegung schaltet den Layer `temporal` frei. |
 | URL einer aufrufbaren Seite | **`references/live-page-recon.md` lesen.** Dort steht, wie aus Screenshot, DOM, Netzwerk-Traffic und Bundle harte Belege statt Vermutungen werden. |
 | Nur eine Beschreibung, kein Bild | Nachfragen. Ohne Material gibt es keine Dekonstruktion, und eine erfundene ist schlimmer als keine. |
 
 Bei mehreren Referenzen: **erst alle ansehen, dann klassifizieren.** Zeigen sie unterschiedliche Looks, ist das eine Design-Frage an den User (»welcher davon ist der Zielzustand, oder soll ich den gemeinsamen Nenner beschreiben?«), keine, die man stillschweigend entscheidet.
 
-Heruntergeladene Bilder bleiben im Scratchpad. Ins Projektverzeichnis wandern sie nur auf Ansage; der Report notiert stattdessen die Herkunft.
+Heruntergeladene Bilder bleiben im temporären Arbeitsverzeichnis des Hosts (in Claude Code: dem Scratchpad der Session). Ins Projektverzeichnis wandern sie nur auf Ansage; der Report notiert stattdessen die Herkunft.
 
 **Auflösung zählt.** Ein 400px-Thumbnail trägt keine Aussage über texel density, mip transitions oder das Rauschmuster eines Denoisers. Ist das Material zu klein für eine Ebene, wird das im Report unter »Offene Fragen« festgehalten, statt die Ebene zu erfinden.
 
@@ -155,7 +155,7 @@ Dazu die Performance-Ebene, konkret für diese Szene: Draw-Call-Reduktion, Textu
 
 **Zuerst `references/report-template.md` lesen.** Dort steht die Abschnittsstruktur und was in jeden Abschnitt gehört.
 
-**Pfad:** `./graphics-pipeline-analysis.md` im aktuellen Arbeitsverzeichnis.
+**Pfad:** `./graphics-pipeline-analysis.md` im aktuellen Arbeitsverzeichnis. Kann der Host keine Datei dorthin schreiben, wird derselbe Report als herunterladbare Datei ausgeliefert und, wenn auch das nicht geht, vollständig im Chat. Die Struktur ändert sich dadurch nicht — nur der Zustellweg, und der wird im Chat benannt.
 
 **Überschreiben:** Existiert die Datei bereits, deren Abschnitt 0 lesen. Beschreibt sie dieselbe Referenz, wird sie überschrieben — der neue Lauf ist die bessere Analyse. Beschreibt sie eine andere Referenz, entsteht daneben eine `./graphics-pipeline-analysis-<slug>.md` mit einem kurzen Slug aus dem neuen Motiv. Eine fremde Analyse wird nie stillschweigend zerstört.
 
