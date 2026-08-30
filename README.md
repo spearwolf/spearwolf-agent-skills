@@ -33,6 +33,13 @@ chaotisch, gelegentlich gefährlich, und der Bibliothekar sagt zu allem nur
   - [`testing-on-mac-safari`](./testing-on-mac-safari/) — Ein extrem nützlicher
     Skill, der beim Testen von Webanwendungen auf macOS/Safari und auch dem iOS-Simulator hilft.
     Er bedient sich dabei einem im lokalen Netzwerk befindlichen Mac mit `ssh` Zugang.
+  - [`deconstruct-graphics-pipeline`](./deconstruct-graphics-pipeline/) —
+    bekommt ein Referenzbild, einen Screenshot oder die URL einer Demo und
+    zerlegt den Look in die Pipeline dahinter: Render-Passes, Geometry,
+    Materials, Lighting, Post-Processing. Jeder Befund nennt das Indiz im
+    Bild, an dem er hängt, und trägt seine Konfidenz offen. Heraus kommt eine
+    `./graphics-pipeline-analysis.md` mit einer nach Wirkung sortierten
+    Roadmap für Browser, WebGPU und three.js.
 - **[`global-behavior/`](./global-behavior/)** — *kein* Skill, sondern
   Anweisungen dazu, wie sich Claude generell verhalten soll (z. B.
   Fortschritts-Meldungen im Scheibenwelt-Stil, eine Sammlung absurder

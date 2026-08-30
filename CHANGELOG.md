@@ -2,6 +2,14 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-08-30
+
+### Hinzugefügt
+- **Neuer Skill `deconstruct-graphics-pipeline`.** Er nimmt Referenzbilder, Screenshots, Video-Frames oder die URL einer laufenden Seite entgegen und zerlegt den gezeigten Look in die Grafik-Pipeline dahinter — Render-Passes, Geometry und Instancing, Materials und Texturen, Lighting und Schatten, Post-Processing, bei bewegtem Material auch die temporale Ebene. Zielplattform ist fest der Browser mit WebGPU und three.js. Ergebnis ist eine `./graphics-pipeline-analysis.md`, die mit einem Kurzurteil beginnt, jeden Befund in einer Tabelle aus Beobachtung, Schluss, Konfidenz und Gegenprobe führt und mit einer nach Wirkung statt nach Pipeline-Reihenfolge sortierten Roadmap plus lauffähigem Kern-Code endet.
+- **Der Skill trennt Beleg und Vermutung sichtbar.** Jeder Befund nennt das Indiz im Bild, an dem er hängt, und trägt eine von drei Konfidenzstufen (`belegt`, `wahrscheinlich`, `vermutet`); erklären zwei Techniken dasselbe Indiz, stehen beide da, zusammen mit dem Test, der die Fälle trennen würde. Was ein Standbild grundsätzlich nicht hergibt, landet in einem eigenen Abschnitt »Offene Fragen«, statt geraten zu werden. Damit ist die Analyse für den Leser nachprüfbar, statt eine Liste plausibler Fachbegriffe zu sein.
+- **Fachbegriffe werden nicht übersetzt.** Report und Chat laufen in der Sprache des Users, `screen-space ambient occlusion`, `roughness`, `tone mapping` und Verwandte bleiben dabei unverändert stehen — eingedeutschte Termini sind in keiner Dokumentation wiederauffindbar und machen den Report für die Umsetzung wertlos.
+- **Vier Referenzdateien, zwei davon bedingt.** `observation-cues.md` ist der Katalog vom sichtbaren Indiz zur Technik samt Verwechslungsfällen und wird immer gelesen, `threejs-webgpu-map.md` die Übersetzung nach TSL, Node-Materials und Post-Nodes ebenfalls. Nur bei modellierten Assets kommt `dcc-pipeline.md` dazu (was ein glTF nativ trägt und was zwingend Code wird), nur bei einer aufrufbaren Referenz `live-page-recon.md` — dort werden Framework, Assets, Texturformate und teils der Shader-Quelltext ausgelesen statt geschlossen, was die halbe Analyse von `vermutet` auf `belegt` hebt.
+
 ## 2026-08-29
 
 ### Geändert
