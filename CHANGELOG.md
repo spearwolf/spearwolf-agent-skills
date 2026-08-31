@@ -2,6 +2,11 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-08-31
+
+### Geändert
+- **`js-ts-audit-remediation` schnürt größere Pakete.** Schritt 5 hatte sechs Kräfte, die alle in dieselbe Richtung zeigten — »gemeinsame Ursache«, ein Deckel bei fünf Findings ohne jede Untergrenze, das Beispiel mit den drei `any` in derselben Datei, und die fünf Phasen, die nebenbei mitschnitten. Ergebnis waren Läufe mit zehn und mehr Paketen, obwohl jedes Paket einen Runner, einen Implementierer, einen Reviewer, ein volles Verify-Gate, einen Commit und ein Nutzerfenster kostet, und zwar fast unabhängig davon, wie viel drinsteckt. Jetzt ist Bündeln die Regel: zusammen kommt, was Ursache, Verifikation, fachliche Domäne, Diff-Fläche oder Voraussetzung teilt, und wer zwischen einem Paket und zweien schwankt, nimmt eines. Getrennt bleibt nur noch, was einen von drei Blockern auslöst — Severity-Sprung, ein Diff jenseits dessen, was ein Reviewer in einem Durchgang hält (Orientierung: zehn Findings, fünfzehn Dateien), oder eine echte Abhängigkeit. Die fünf Phasen sortieren ausdrücklich nur noch, statt zu schneiden: ein Paket darf sie überspannen und steht dann bei seinem schwersten Finding, und ein Test aus Phase 2 für genau die Fläche eines Phase-3-Pakets ist dessen erster Schritt statt eines eigenen Pakets.
+
 ## 2026-08-30
 
 ### Geändert

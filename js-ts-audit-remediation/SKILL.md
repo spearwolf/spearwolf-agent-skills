@@ -209,13 +209,47 @@ späterer Lauf sie nicht neu aufwirft.
 
 ### 5. Pakete, Reihenfolge, Grobplan
 
-**Bündeln** nach gemeinsamer Ursache, nicht nach Kategorie. Drei
-`any`-Findings in derselben Datei sind ein Paket; drei `any`-Findings in drei
-Subsystemen sind drei. Obergrenze etwa fünf Findings oder eine Handvoll
-Dateien. Sprengt ein einzelnes Finding das schon (`strict: true` über ein
-gewachsenes Projekt), wird es in Teilpakete zerlegt. Ein kritischer Fix wandert
-nie in ein Kosmetik-Paket, sonst versteckt sich der wichtige Commit im
-unwichtigen.
+**Bündeln ist die Regel, Trennen die Ausnahme.** Jedes Paket kostet einen
+Runner, einen Implementierer, einen Reviewer, ein volles Verify-Gate, einen
+Commit und ein Fenster, in dem der Nutzer gebraucht wird — und dieser Preis
+hängt kaum daran, wie viel im Paket steckt. Zwölf Pakete sind nicht gründlicher
+als sechs, sie sind zwölfmal dieselbe Zeremonie. Die Paketzahl ist die Zahl, an
+der ein Lauf schnell oder zäh wird.
+
+Zusammen kommt, was mindestens eines davon teilt:
+
+1. **Ursache** — ein Fehler, mehrere Symptome.
+2. **Verifikation** — derselbe Test, dieselbe Abnahme, dasselbe rote Signal.
+   Zwei Findings, die dasselbe Gate grün machen müssen, laufen einmal durch
+   dieses Gate und nicht zweimal.
+3. **Fachliche Domäne** — dasselbe Subsystem, dieselbe Zuständigkeit. Das Audit
+   liefert sie nicht als Feld: sie steht im Portrait und lässt sich aus
+   `location` ablesen.
+4. **Diff-Fläche** — der Reviewer läse ohnehin dieselben Dateien.
+5. **Voraussetzung** — beide brauchen denselben Umbau vorweg.
+
+Teilt ein Finding mit keinem anderen etwas davon, steht es allein. Zwei völlig
+verschiedene Themen zusammenzuzwingen macht den Commit unlesbar und spart
+nichts.
+
+**Im Zweifel eines.** Wer zwischen einem Paket und zweien schwankt, nimmt
+eines. Der Zweifel ist bereits der Beleg, dass die Grenze nicht trägt. Was zu
+groß geraten ist, merkt der Runner in Zug 0 und schneidet nach; was zu klein
+geschnitten wurde, bleibt den ganzen Lauf über zu klein.
+
+**Getrennt bleibt**, was einen dieser drei Blocker auslöst:
+
+- **Severity-Sprung.** Ein kritischer Fix wandert nie in ein Kosmetik-Paket,
+  sonst versteckt sich der wichtige Commit im unwichtigen.
+- **Reviewbarkeit.** Der Maßstab ist keine Findingzahl, sondern die Frage, ob
+  ein Reviewer diesen Diff in einem Durchgang hält. Als Orientierung rund zehn
+  Findings oder fünfzehn Dateien. Sprengt ein einzelnes Finding das schon
+  (`strict: true` über ein gewachsenes Projekt), wird es in Teilpakete zerlegt.
+- **Echte Abhängigkeit.** Muss A committet sein, bevor B überhaupt gebaut
+  werden kann, sind es zwei.
+
+Alles andere trennt nicht: nicht die Kategorie, nicht die Datei, nicht die
+Phase.
 
 **Reihenfolge** in fünf Phasen:
 
@@ -229,6 +263,12 @@ unwichtigen.
 4. **Typsicherheit und Struktur** — Strictness-Stufen, Architektur,
    Modulgrenzen, öffentliche API. Hier entstehen die Breaking Changes.
 5. **Konsistenz, DX, Doku, Dependency-Kosmetik.**
+
+Die Phasen sortieren, sie schneiden nicht. Ein Paket darf Phasen überspannen,
+wenn es dieselbe Fläche betrifft, und steht dann an der Stelle seines
+schwersten Findings. Ein Test aus Phase 2, der genau die Fläche eines
+Phase-3-Pakets absichert, ist kein eigenes Paket — er ist dessen erster
+Schritt, so wie es die Prinzipien für jeden Bugfix ohnehin verlangen.
 
 Drei Querregeln schlagen die Phasen: echte Abhängigkeiten gehen vor (verlangt
 ein Bugfix erst eine Umstrukturierung, kommt die Umstrukturierung zuerst);
