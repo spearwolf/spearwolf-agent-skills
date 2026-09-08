@@ -401,10 +401,16 @@ zum Commit des Pakets leer. Eine Modellstufe steht hier nicht: die setzt der
 Runner in seinem Zug 0, wenn er den Code gesehen hat, und sie steht dann in der
 Paketdatei.
 
-Eine Zeile im Kopf schreibst du **nicht**: `Lauf-Status:` gehört dem Skript aus
-Schritt 6, das sie beim Start setzt, bei jedem Ausgang überschreibt und beim
-Abschluss wieder wegnimmt. Sie steht direkt unter `Arbeitsverzeichnis:` und
-beantwortet die eine Frage, die Paketmarken nicht beantworten können: läuft
+Zwei Stellen im Plan schreibst du **nicht**, und kein Runner tut es auch: beide
+gehören dem Skript aus Schritt 6. Der Abschnitt `## Tokenverbrauch` am Ende der
+Datei trägt, was der Lauf bis dahin verbraucht hat — je Paket eine Zeile, dazu
+Summe und Ausgabe je Modell. Das Skript schreibt ihn bei jedem Ausgang neu, er
+überlebt den Abschluss, und er ist der einzige Ort, an dem diese Zahlen den Lauf
+überdauern.
+
+Die Zeile `Lauf-Status:` gehört ebenfalls dem Skript, das sie beim Start setzt,
+bei jedem Ausgang überschreibt und beim Abschluss wieder wegnimmt. Sie steht
+direkt unter `Arbeitsverzeichnis:` und beantwortet die eine Frage, die Paketmarken nicht beantworten können: läuft
 gerade eine Schleife, hängt sie an einem Exit-Code, oder ist sie durch und nur
 der Abschluss steht noch aus. Solange sie dasteht, ist der Lauf nicht fertig.
 

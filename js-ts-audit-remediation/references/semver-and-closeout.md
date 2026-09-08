@@ -202,6 +202,13 @@ liegenblieb. Ein Plan, dessen Kopf noch »Paket 7 in Zug 3« sagt, während alle
 Pakete `[x]` tragen, schickt den nächsten Agenten auf eine Suche nach Arbeit,
 die es nicht gibt.
 
+Der Abschnitt `## Tokenverbrauch` am Ende der Datei bleibt dagegen **stehen**
+und wird nicht angefasst. Er sagt, was der Lauf verbraucht hat, nicht wie er
+gerade steht — er beschreibt also etwas, das der Abschluss nicht ungültig macht,
+sondern gerade konserviert. Was der Abschluss selbst noch kostet, steht nicht
+darin; die Tabelle nennt ihren eigenen Stand. Die Zahlen für den Bericht unten
+kommen von dort, statt neu zusammengesucht zu werden.
+
 **Und die Zeile `Lauf-Status:` verschwindet.** Sie steht im Kopf, direkt unter
 `Arbeitsverzeichnis:`, und gehört der Schleife aus Schritt 6: sie sagt, dass ein
 Lauf läuft, an einem Exit-Code hängt oder durch ist und auf genau diesen
@@ -297,6 +304,10 @@ Fünf bis acht Zeilen, nicht mehr:
 - wo der Plan geblieben ist: archiviert und aus dem Arbeitsbaum entfernt, oder
   stehengeblieben und warum. Eine halbe Zeile — aber ohne sie sucht jemand eine
   Datei, die es nicht mehr gibt, oder übersieht eine, die noch etwas offen hat
+- was der Lauf verbraucht hat: **eine** Zeile, aus dem Abschnitt
+  »Tokenverbrauch« im Plan abgelesen — Prozesse und Token gesamt. Die Tabelle
+  wird nicht abgeschrieben, sie steht ja da; genannt wird sie, damit jemand
+  weiß, dass es sie gibt
 - der neue Stand der `./audit.html`, sofern es eine gibt: alter und neuer
   Score, wie viele Findings geschlossen und wie viele neu eingetragen wurden —
   eine Zeile

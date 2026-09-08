@@ -382,17 +382,16 @@ titel_zeilen() {
   done < <(sed -En 's/^### \[.\] ([0-9]+[a-z]?)\. (.*)$/\1\t\2/p' "$PLAN")
 }
 
-verbrauch_report() {
+# Die Tabelle als Text, ohne Rahmen und ohne Ausgabe. Sie geht an zwei Orte:
+# ins Pane, wo jemand sie jetzt liest, und in den Plan, wo sie den Lauf
+# überdauert. Das Pane gehört einem Terminal, das aufgeräumt wird, und das
+# Journal einem /tmp, das es irgendwann auch wird; der Plan liegt im Projekt
+# und geht am Ende mit in die Historie.
+verbrauch_tabelle() {
   local rows
   [ -n "${WORK:-}" ] || return 0
   rows=$(verbrauch_zeilen)
-  if [ -z "$rows" ]; then
-    say "Tokens: keine auswertbare Reportdatei in $WORK."
-    return 0
-  fi
-  say ""
-  say "Tokens, gezählt aus den Reportdateien in $WORK:"
-  say ""
+  [ -n "$rows" ] || return 0
   { titel_zeilen
     printf '%s\n' "$rows" | LC_ALL=C sort -t "$(printf '\t')" -k1,1V -k2,2
   } | awk -F'\t' '
@@ -454,6 +453,56 @@ verbrauch_report() {
         print "  Ohne die steuernde Session: sie hat sich beim Start nicht genannt\n" \
               "  (ORCHESTRATOR_SESSION). Plan, Start und Abschluss fehlen in der Summe."
     }'
+}
+
+# Der Abschnitt »Tokenverbrauch« am Ende des Plans, bei jedem Ausgang neu
+# geschrieben. Er ersetzt sich selbst statt sich zu stapeln: zwölf Tabellen
+# untereinander wären keine Historie, sondern zwölf Zwischenstände desselben
+# Laufs, von denen nur der letzte stimmt.
+plan_verbrauch() { # $1 = Tabellentext
+  local text=$1 tmp
+  [ -f "${PLAN:-}" ] || return 0
+  [ -n "$text" ] || return 0
+  tmp="$PLAN.tokens.$$"
+  {
+    awk '
+      /^## Tokenverbrauch/ { skip = 1; next }
+      skip && /^## / { skip = 0 }
+      skip { next }
+      { lines[++n] = $0 }
+      END {
+        last = 0
+        for (i = 1; i <= n; i++) if (lines[i] != "") last = i
+        for (i = 1; i <= last; i++) print lines[i]
+      }
+    ' "$PLAN"
+    printf '\n## Tokenverbrauch\n\n'
+    printf 'Stand %s, gezählt aus den Reportdateien in `%s`.\n' "$(date '+%Y-%m-%d %H:%M')" "$WORK"
+    printf 'Die Schleife schreibt diesen Abschnitt bei jedem Ausgang neu; er zählt, was\n'
+    printf 'bis dahin verbraucht wurde. Was der Abschluss selbst noch kostet, steht nicht\n'
+    printf 'darin — er läuft danach.\n\n'
+    printf '```\n%s\n```\n' "$text"
+  } > "$tmp" 2>/dev/null && mv -- "$tmp" "$PLAN" || rm -f -- "$tmp"
+  return 0
+}
+
+VERBRAUCH_GEMELDET=0
+verbrauch_report() {
+  local text
+  [ "$VERBRAUCH_GEMELDET" = 0 ] || return 0
+  VERBRAUCH_GEMELDET=1
+  [ -n "${WORK:-}" ] || return 0
+  text=$(verbrauch_tabelle)
+  if [ -z "$text" ]; then
+    say "Tokens: keine auswertbare Reportdatei in $WORK."
+    return 0
+  fi
+  say ""
+  say "Tokens, gezählt aus den Reportdateien in $WORK:"
+  say ""
+  printf '%s\n' "$text"
+  plan_verbrauch "$text"
+  return 0
 }
 
 # Nur die Ausgabe-Token, für Meldungen, in die keine Tabelle passt.
@@ -556,6 +605,11 @@ ende_melden() { # $1 = Exit-Code
   [ "${1:-0}" -eq 0 ] && return 0
   local wo
   wo=$(stand 2>/dev/null) || wo="Stand unklar"
+  # Auch ein Abbruch hat etwas verbraucht, und gerade dort will es jemand
+  # wissen: die Zahlen sagen, ob ein Neustart bei null anfängt oder auf halber
+  # Strecke. Der Aufruf ist gegen Doppelung gesichert — wer schon gemeldet hat,
+  # meldet hier nicht noch einmal.
+  verbrauch_report
   plan_status "angehalten mit Exit $1 bei Paket ${AKTUELL:-?} ($(date '+%Y-%m-%d %H:%M')) · was der Code verlangt, steht in references/shell-runner.md"
   notify "Remediation angehalten" \
     "Exit $1 bei Paket ${AKTUELL:-?} · $wo · $PACKAGES_DONE in diesem Lauf erledigt"

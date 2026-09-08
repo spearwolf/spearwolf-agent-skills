@@ -1107,7 +1107,8 @@ first=1
     <h2>Was ein Lauf verbraucht</h2>
     <div class="prose">
       <p>Ein mitlaufender Zähler kann diese Frage nicht beantworten, und zwar aus zwei Gründen zugleich. Er kennt nur die Runner — nicht die Implementierer und Reviewer, die diese starten, und die sind der größere Posten: an Paket 4 eines Laufs über <code>shadow-objects</code> zeigte er knapp zwei Drittel des tatsächlichen Verbrauchs. Und er fängt nach jedem Neustart bei null an.</p>
-      <p>Gezählt wird deshalb am Ende, aus den Reportdateien <code>paket-*.json</code> im Arbeitsverzeichnis. Das überlebt jeden Neustart, weil das Verzeichnis im Kopf des Plans steht und nicht am Prozess hängt. Jeder Ausgang außer 40 legt die Tabelle nach.</p>
+      <p>Gezählt wird deshalb am Ende, aus den Reportdateien <code>paket-*.json</code> im Arbeitsverzeichnis. Das überlebt jeden Neustart, weil das Verzeichnis im Kopf des Plans steht und nicht am Prozess hängt. Jeder Ausgang legt die Tabelle nach.</p>
+      <p>Sie geht an zwei Orte: ins Pane, wo sie jetzt jemand liest, und in den Plan, als Abschnitt <code>## Tokenverbrauch</code> am Ende. Der zweite ist der, der zählt — ein Pane gehört einem Terminal, das aufgeräumt wird, ein Journal einem <code>/tmp</code>, das es irgendwann auch wird, und die Frage »was hat der Lauf gekostet« stellt jemand oft erst Wochen später. Der Abschnitt ersetzt sich bei jedem Ausgang selbst statt sich zu stapeln, und der Abschluss löscht ihn nicht: anders als <code>Lauf-Status:</code> beschreibt er den Lauf und nicht seinen Zustand, und er geht mit dem Plan in die Historie.</p>
     </div>
 
     <div class="table-wrap">
