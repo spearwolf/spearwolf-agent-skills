@@ -5,37 +5,31 @@ description: Use when the user wants the findings of an existing project audit a
 
 # Audit-Remediation
 
-Aus den Findings eines Audits werden Pakete. Die Pakete fährt ein Skript, nicht
-du: `scripts/remediate.sh` bringt jedes einzeln vom Abgleich bis zum Commit, in
-einer abgelösten tmux-Session, mit einer Planung, die den Nutzer fragen kann.
-Du planst, du fragst den Nutzer, du startest das Skript, du schließt ab — den
-Rest siehst du nicht.
+Aus den Findings eines Audits werden Pakete. Die Pakete fährt
+`scripts/remediate.sh` in einer abgelösten tmux-Session, je Paket vom Abgleich
+bis zum Commit. Du planst, du fragst den Nutzer, du startest das Skript, du
+schließt ab — den Rest siehst du nicht.
 
-## Ablauf-Übersicht
+## Ablauf
 
 1. Findings laden (1), Baseline messen (2), Scope festlegen (3).
 2. Offene Entscheidungen gebündelt klären (4).
 3. Pakete schnüren, ordnen, Grobplan schreiben, Freigabe holen (5).
 4. `scripts/remediate.sh` starten und laufen lassen, bis kein Paket mehr offen ist (6).
-5. Befund-Queue leeren, `./audit.html` nachführen, Report schreiben, abschließen, tmux-Session schließen (7) — ohne weitere Rückfrage.
+5. Befund-Queue leeren, `./audit.html` nachführen, Report schreiben, tmux-Session schließen (7) — ohne Rückfrage.
 
-Geplant wird zweistufig, und die beiden Stufen wohnen in verschiedenen Dateien.
-Schritt 5 legt fest, **was** in welcher Reihenfolge passiert — das ist, was der
-Nutzer freigibt, und es steht in `./remediation-plan.md`. **Wie** ein Paket
-umgesetzt wird, entsteht im Runner, gegen den Code, der dann tatsächlich
-dasteht, und steht in `docs/remediation/paket-<N>.md`.
+Geplant wird zweistufig. Schritt 5 legt fest, **was** in welcher Reihenfolge
+passiert; das gibt der Nutzer frei, und es steht in `./remediation-plan.md`.
+**Wie** ein Paket umgesetzt wird, entsteht im Runner gegen den dann aktuellen
+Code und steht in `docs/remediation/paket-<N>.md`.
 
 | Datei | Wann |
 | --- | --- |
-| `references/resume.md` | **vor allem anderen**, sobald ein `./remediation-plan.md` im Projekt liegt — egal ob der Nutzer »arbeite das Audit ab« oder nur »mach weiter« sagt |
-| `references/runner.md` | **nie von dir.** Den Pfad kennt das Skript |
-| `references/shell-runner.md` | vor Schritt 6 — einmal, bevor du das Skript startest |
-| `references/semver-and-closeout.md` | Schritt 7 — nach dem letzten Paket |
-| `references/audit-report-update.md` | Schritt 7 — nur wenn eine `./audit.html` im Projekt liegt |
-
-Dass du `runner.md` nicht liest, ist keine Sparsamkeit am falschen Ende. Der
-Text steht im Kontext jedes Runners und verfällt mit ihm; in deinem bliebe er
-bis zum Ende des Laufs stehen, ohne dass du je etwas damit anfingest.
+| `references/resume.md` | **vor allem anderen**, sobald ein `./remediation-plan.md` im Projekt liegt — egal ob der Nutzer »arbeite das Audit ab« oder »mach weiter« sagt |
+| `references/shell-runner.md` | einmal vor Schritt 6, bevor du das Skript startest |
+| `references/runner.md` | **nie von dir.** Der Text gehört den Runnern; in deinem Kontext bliebe er bis zum Ende des Laufs stehen, ohne dass du ihn brauchst |
+| `references/semver-and-closeout.md` | Schritt 7 |
+| `references/audit-report-update.md` | Schritt 7, nur wenn eine `./audit.html` im Projekt liegt |
 
 ## Grenzen des Laufs
 
@@ -44,15 +38,11 @@ Diese Regeln stehen über jeder Abwägung im Einzelfall:
 - **Ohne Freigabe des Grobplans wird keine Zeile Projektcode geändert.** Auch
   nicht »schon mal das Triviale vorziehen«.
 - **Wer committet, hat den Verify-Lauf selbst gefahren und seine Ausgabe
-  gelesen.** Das ist der Runner, und er ist nicht der Implementierer — darauf
-  beruht die Regel. Der Report eines Implementierers ist keine Evidenz. Deine
-  Gegenprobe steht in Schritt 6.
+  gelesen.** Das ist der Runner, nicht der Implementierer. Ein Report ist keine
+  Evidenz.
 - **Ein Commit ohne Review-Beleg wird nachgeprüft, nicht verworfen und nicht
-  dir vorgelegt.** Hat ein Runner den Code selbst geschrieben oder ohne
-  Reviewer committet, zieht die Schleife den Review nach — das Paket steht
-  solange auf `[r]`, die Ausnahme steht im Plan. Es gibt hier nichts zu
-  entscheiden: die Arbeit ist getan, das Verify war grün, es fehlt der zweite
-  Blick, und den holt man nach. Weder du noch der Nutzer werden dafür
+  dir vorgelegt.** Die Schleife zieht den Review nach; das Paket steht solange
+  auf `[r]`, die Ausnahme steht im Plan. Weder du noch der Nutzer werden dafür
   gebraucht.
 - **Kein Push, kein Merge, kein Pull Request, kein Tag, kein Publish.** Der
   Lauf endet mit lokalen Commits.
@@ -63,66 +53,49 @@ Diese Regeln stehen über jeder Abwägung im Einzelfall:
   `scripts/remediate.sh`, und sonst niemand.
 - **Gefixt wird nur, was im Plan steht.** Kein Implementierer behebt etwas
   nebenbei; was ihm auffällt, meldet er. Ob ein Nebenbefund in diesen Lauf
-  gehört, entscheidet die Scope-Regel aus Schritt 3, nicht das Gefühl des
-  Runners — aber einen Fix ohne Zeile im Plan gibt es in keinem der beiden
-  Fälle.
+  gehört, entscheidet die Scope-Regel aus Schritt 3 — einen Fix ohne Zeile im
+  Plan gibt es in keinem Fall.
 - **Der Lauf ist nicht fertig, solange die Befund-Queue Einträge hat.** Offene
-  Pakete und offene Befunde sind dieselbe Bedingung. Was während des Laufs
-  auffiel, wird beschlossen, nicht vergessen.
+  Pakete und offene Befunde sind dieselbe Bedingung.
 - **Der Runner schärft den Plan, er ersetzt ihn nicht.** Freigegeben sind
-  Zielsetzung, Paketschnitt und Reihenfolge aus Schritt 5. Wer davon im Kern
-  abweichen will, hält an und legt es dir vor, und du legst es dem Nutzer vor.
+  Zielsetzung, Paketschnitt und Reihenfolge. Wer davon im Kern abweichen will,
+  hält an und legt es dir vor, und du legst es dem Nutzer vor.
 - **Eine Ansage ist keine Frage.** Gewartet wird nur, wo eine Frage steht:
   unsauberer Arbeitsbaum (2), Klärungsrunde (4), Freigabe des Grobplans (5),
-  eine Rückfrage aus der Schleife (6). Alles, was als Ansage formuliert ist,
-  wird ausgeführt, sobald es ausgesprochen ist — »widersprich, sonst mache ich
-  X« heißt: X passiert jetzt, und ein späterer Widerspruch wird dann
-  eingearbeitet. Der Abschluss (7) besteht nur aus Ansagen. Eine Meldung,
-  hinter der nichts passiert, bis der Nutzer antwortet, ist der Fehler, den
-  diese Regel verbietet.
+  eine Rückfrage aus der Schleife (6). »Widersprich, sonst mache ich X« heißt:
+  X passiert jetzt, ein späterer Widerspruch wird eingearbeitet. Der Abschluss
+  (7) besteht nur aus Ansagen.
 
 ## Workflow
 
 ### 1. Findings laden
 
 **Zuerst nachsehen, ob es diesen Lauf schon gibt.** Liegt ein
-`./remediation-plan.md` im Projekt, wird nichts neu geplant, sondern
-`references/resume.md` gelesen, bevor irgendetwas Weiteres passiert — auch
-nicht die `audit.html` geöffnet. Das gilt unabhängig davon, wie der Nutzer
-fragt: »nimm die Arbeit am Plan wieder auf« und »arbeite die Findings ab«
-landen beide hier, und der zweite Satz meint fast nie einen zweiten Lauf,
-sondern den, der noch offen ist. Wie der vorige Lauf geendet hat — sauber
-durchgelaufen, an einem Exit-Code stehengeblieben, vom Nutzer abgewürgt oder
-mit der Maschine gestorben —, ändert daran nichts; das steht in der Datei,
-nicht in der Frage.
+`./remediation-plan.md` im Projekt, wird nichts neu geplant und auch die
+`audit.html` nicht geöffnet, sondern `references/resume.md` gelesen. »Arbeite
+die Findings ab« meint fast nie einen zweiten Lauf, sondern den offenen; wie
+der vorige endete, steht in der Datei, nicht in der Frage.
 
 Quelle ist die JSON-Insel `<script id="audit-data" type="application/json">` in
-`./audit.html`. Daraus: Findings, `summary`, `acknowledged`.
+`./audit.html`: Findings, `summary`, `acknowledged`.
 
 - Insel nicht parsebar: Findings best effort aus der Backlog-Tabelle
   rekonstruieren (Titel, Severity, Location, Kategorie, Empfehlung) und im Plan
   vermerken, dass die Grundlage unvollständig ist.
-- Keine `audit.html` vorhanden: nicht raten. Fragen, ob stattdessen
-  `js-ts-project-audit` laufen soll, oder wo die Issue-Liste liegt.
-- `acknowledged` bleibt draußen. Diese Punkte hat der Nutzer bewusst
-  zurückgestellt; sie werden weder geplant noch gefixt, bis er sie widerruft.
+- Keine `audit.html`: nicht raten. Fragen, ob `js-ts-project-audit` laufen
+  soll oder wo die Issue-Liste liegt.
+- `acknowledged` bleibt draußen, bis der Nutzer es widerruft.
 
 ### 2. Baseline messen
 
-Verify-Kommandos aus `package.json#scripts` ermitteln: Lint, Typecheck, Test,
-Build. Jedes einmal laufen lassen und das Ergebnis festhalten. Die Kommandos
-kommen wörtlich in den Kopf des Plans, nicht nur ihr Ausgang: Schritt 7 fährt
-sie am Ende erneut, und wer sie dort aus `package.json` neu zusammensucht,
-prüft womöglich gegen etwas anderes als die Baseline.
+Verify-Kommandos aus `package.json#scripts` ermitteln (Lint, Typecheck, Test,
+Build), jedes einmal laufen lassen, Ergebnis festhalten. Die Kommandos kommen
+wörtlich in den Kopf des Plans: Schritt 7 fährt dieselben, nicht neu
+zusammengesuchte. Was jetzt schon fehlschlägt, wird im Plan namentlich notiert
+und blockiert später keinen Commit; ist die Baseline auf breiter Front rot,
+ist ihre Reparatur das erste Paket.
 
-Das ist keine Formalie. Ohne Baseline hängt später jeder rote Lauf in der Luft:
-war das mein Paket oder war das schon vorher kaputt? Was jetzt schon
-fehlschlägt, wird im Plan namentlich notiert und blockiert später keinen
-Commit. Ist die Baseline auf breiter Front rot, ist ihre Reparatur das erste
-Paket.
-
-Die Ausgaben gehören nicht in deinen Kontext. Umleiten und nur den Schwanz
-lesen:
+Ausgaben umleiten, nur den Schwanz lesen:
 
 ```bash
 set -o pipefail
@@ -130,188 +103,114 @@ set -o pipefail
 tail -n 15 "$ARBEITSDIR/baseline-<name>.log"
 ```
 
-`$ARBEITSDIR` ist das Scratchpad-Verzeichnis des Hosts; gibt es keines, ein
-eigenes Verzeichnis unter dem Temp-Verzeichnis des Systems. Beides liegt
-außerhalb der Versionierung. **Nicht unterhalb von `.git/`:** dorthin lässt die
-CLI keinen Runner schreiben, und ein Lauf, dessen Runner ihre Diffs und
-Verify-Logs nicht ablegen können, kommt nicht bis zum Commit. Der Pfad kommt in
-den Kopf des Plans, weil jeder Runner ihn braucht.
+`$ARBEITSDIR` ist das Scratchpad-Verzeichnis des Hosts, sonst ein eigenes
+Verzeichnis unter dem Temp-Verzeichnis des Systems — außerhalb der
+Versionierung und **nicht unterhalb von `.git/`**, dorthin lässt die CLI keinen
+Runner schreiben. Der Pfad kommt in den Kopf des Plans.
 
 Dazu `git status` und `git branch --show-current`. Ein unsauberer Arbeitsbaum
-ist ein Stopp mit Rückfrage: stashen, committen oder abbrechen. Fremde
-Änderungen dürfen nicht in Paket-Commits geraten.
+ist ein Stopp mit Rückfrage: stashen, committen oder abbrechen.
 
 ### 3. Scope festlegen
 
-Vorschlag: alle Findings außer `info`. Anzahl je Severity nennen, bestätigen
-lassen. Der Nutzer kann eingrenzen, auf Severity-Stufen, Kategorien, einzelne
-IDs oder einen Verzeichnisbaum. Was draußen bleibt, steht im Plan, damit später
-niemand rätselt, warum `PERF-007` nie auftauchte.
+Vorschlag: alle Findings außer `info`, Anzahl je Severity nennen, bestätigen
+lassen. Der Nutzer kann eingrenzen (Severity, Kategorie, IDs, Verzeichnis).
+Was draußen bleibt, steht im Plan.
 
-Festgehalten wird nicht die Auswahl, sondern **die Regel, die sie erzeugt hat**.
-»Alles ab medium« und »diese 24 IDs« treffen heute dieselben Findings und
-morgen nicht mehr: sobald im Lauf ein Befund auffällt, den das Audit nicht
-kennt, entscheidet über ihn die Regel und nicht die Liste. Sie kommt als Satz
-in den Plan-Kopf (`Scope-Regel:`), formuliert in den Worten des Nutzers und so,
-dass sie auf ein Finding anwendbar ist, das es noch gar nicht gibt: »ab medium
-aufwärts, jede Kategorie«, »alles aus BUG und SEC, unabhängig von der
-Severity«, »nur was unter `src/net/` liegt«.
-
-Hat der Nutzer einzelne IDs gepickt, lässt sich daraus keine Regel ablesen.
-Dann wird genau das gefragt, mit Vorschlag und im selben Zug wie die
-Scope-Bestätigung: gilt für neu auffallende Befunde dasselbe Muster, oder gehen
-sie unbesehen ins Audit? Diese Frage später zu stellen heißt, sie zwölfmal zu
-stellen.
+Festgehalten wird **die Regel, die die Auswahl erzeugt hat**, nicht die
+Auswahl: sobald im Lauf ein Befund auffällt, den das Audit nicht kennt,
+entscheidet über ihn die Regel. Sie steht als Satz im Plan-Kopf
+(`Scope-Regel:`), in den Worten des Nutzers und anwendbar auf ein Finding, das
+es noch nicht gibt: »ab medium aufwärts, jede Kategorie«, »alles aus BUG und
+SEC«, »nur was unter `src/net/` liegt«. Hat der Nutzer einzelne IDs gepickt,
+lässt sich keine Regel ablesen — dann im selben Zug fragen, mit Vorschlag:
+gilt für neu auffallende Befunde dasselbe Muster, oder gehen sie ins Audit?
 
 Der Scope sind diese Findings **samt dem, was ihre Behebung nach sich zieht**.
-Ein Lauf, der zwölf Findings schließt und dabei fünf neue Defekte hinterlässt,
-hat nichts erledigt, sondern die Buchhaltung verschoben — und das nächste Audit
-sieht die neuen Defekte ohne Vorgeschichte und hält sie für vorbestehend. Zwei
-Dinge, die leicht verwechselt werden und verschieden behandelt werden:
+Ein Lauf, der zwölf Findings schließt und fünf neue Defekte hinterlässt, hat
+die Buchhaltung verschoben; das nächste Audit hält die neuen für vorbestehend.
 
 | | Was es ist | Wohin |
 | --- | --- | --- |
-| **Nebenbefund** | war auch ohne diesen Lauf falsch, fiel nur auf, weil jemand hinsah | in die Befund-Queue, je mit dem Urteil an der Scope-Regel; von dort in ein Paket oder als neues Finding ins Audit |
+| **Nebenbefund** | war auch ohne diesen Lauf falsch | in die Befund-Queue, mit Urteil an der Scope-Regel; von dort in ein Paket oder als neues Finding ins Audit |
 | **Folge** | hat eine Änderung dieses Laufs verursacht | in ein Paket dieses Laufs, ausnahmslos |
 
-Beide werden von den Runnern triagiert, keiner von beiden verdunstet. Der
-Unterschied entscheidet nur, *woran* der Verbleib hängt: die Folge gehört ohne
-Prüfung in diesen Lauf, der Nebenbefund wird an der Scope-Regel gemessen.
-Fällt er darunter, ist er Arbeit dieses Laufs — »ab medium« meint auch das
-medium-Problem, das erst ein Runner gesehen hat, und »alle BUG« auch den Bug,
-der im Audit fehlt. Fällt er nicht darunter, geht er als neues, offenes Finding
-ins Audit, mit Fundstelle und dem Vermerk, dass er in diesem Lauf auffiel.
+Zwei Fälle schlagen die Regel und kommen zum Nutzer, auch bei klarem Scope:
+die Behebung kippt eine Architekturentscheidung, die das Projekt anderswo
+trägt, oder sie sprengt den Umfang eines Pakets.
 
-Zwei Fälle schlagen die Regel und kommen zum Nutzer, auch wenn der Befund klar
-im Scope liegt: seine Behebung kippt eine Architekturentscheidung, die das
-Projekt anderswo trägt, oder sie sprengt den Umfang eines Pakets. Dann steht
-nicht mehr der Fix zur Debatte, sondern ob dieser Lauf der richtige Ort dafür
-ist.
-
-Die Regel entscheidet über die Zuordnung, nicht über den Zeitpunkt. Ein
-Nebenbefund im Scope wird nicht sofort nebenbei behoben — er wandert mit seinem
-Urteil in die Queue und wird in der Drain-Runde zum Paket, es sei denn, er
-teilt die Ursache mit einem Paket, das ohnehin noch offen ist.
+Die Regel entscheidet über die Zuordnung, nicht über den Zeitpunkt: ein
+Nebenbefund im Scope wird nicht nebenbei behoben, sondern wandert mit Urteil
+in die Queue und wird in der Drain-Runde zum Paket — es sei denn, er teilt die
+Ursache mit einem noch offenen Paket.
 
 ### 4. Offene Entscheidungen klären
 
-Vor dem Plan, nicht während der Umsetzung. Gefragt wird, wo eine Entscheidung
-fehlt:
+Vor dem Plan, gebündelt in einer Runde, je mit Vorschlag. Gefragt wird, wo
+eine Entscheidung fehlt:
 
 - die Sektion »Offene Fragen« des Reports
 - Empfehlungen, die zwei gleichwertige Wege offenlassen
-- Findings, die eine Produkt- oder API-Entscheidung berühren: einen Export
-  streichen, Default-Verhalten ändern, eine Dependency austauschen
-- Findings, die einander widersprechen oder deren Behebung ein anderes
-  gegenstandslos macht
+- Findings, die eine Produkt- oder API-Entscheidung berühren: Export
+  streichen, Default ändern, Dependency austauschen
+- Findings, die einander widersprechen oder einander gegenstandslos machen
 - Findings ohne belastbare Empfehlung
 
-**Alles andere wird nicht gefragt.** Hat ein Finding eine eindeutige Empfehlung,
-gilt sie. Rückfragen zu Dingen, die im Audit bereits beantwortet sind, sind der
-schnellste Weg, eine Klärungsrunde nutzlos zu machen.
+**Alles andere wird nicht gefragt.** Eine eindeutige Empfehlung gilt — sie
+entscheidet das Wie, nicht das Ob. Ausnahme: ihre Umsetzung ändert, was ein
+fremder Aufrufer sieht. Der Test: Müsste jemand, der dieses Projekt einbindet,
+seinen Code anfassen? Dann in die Klärungsrunde, samt Vorschlag, wie weit der
+Lauf die eigenen Aufrufer mitzieht.
 
-Die beiden Sätze davor und dieser hier ziehen an derselben Stelle gegeneinander,
-und die Auflösung ist einfach: **die Empfehlung entscheidet das Wie, nicht das
-Ob.** Eine eindeutige Empfehlung gilt — es sei denn, ihre Umsetzung ändert, was
-ein fremder Aufrufer zu sehen bekommt. Ein `await`, das eine Methode asynchron
-macht, ist im Audit ein Einzeiler und beim Aufrufer ein Bruch; über den Einzeiler
-ist entschieden, über den Bruch nicht. Der Test steht in einer Frage: Müsste
-jemand, der dieses Projekt einbindet, seinen Code anfassen? Dann in die
-Klärungsrunde, samt Vorschlag, wie weit der Lauf die eigenen Aufrufer mitzieht.
-Sonst gilt die Empfehlung, und es wird nicht gefragt.
-
-Gebündelt fragen, in einer Runde, je mit Vorschlag statt offener Frage. Die
-Antworten kommen mit Datum in den Plan-Abschnitt »Entscheidungen«, damit ein
-späterer Lauf sie nicht neu aufwirft.
+Die Antworten kommen mit Datum in den Plan-Abschnitt »Entscheidungen«.
 
 ### 5. Pakete, Reihenfolge, Grobplan
 
 **Bündeln ist die Regel, Trennen die Ausnahme.** Jedes Paket kostet einen
-Runner, einen Implementierer, einen Reviewer, ein volles Verify-Gate, einen
-Commit und ein Fenster, in dem der Nutzer gebraucht wird — und dieser Preis
-hängt kaum daran, wie viel im Paket steckt. Zwölf Pakete sind nicht gründlicher
-als sechs, sie sind zwölfmal dieselbe Zeremonie. Die Paketzahl ist die Zahl, an
-der ein Lauf schnell oder zäh wird.
+Runner, einen Implementierer, einen Reviewer, ein Verify-Gate, einen Commit
+und ein Fenster, in dem der Nutzer gebraucht wird — unabhängig davon, wie viel
+im Paket steckt. Zwölf Pakete sind nicht gründlicher als sechs.
 
-Zusammen kommt, was mindestens eines davon teilt:
+Zusammen kommt, was mindestens eines davon teilt: **Ursache** (ein Fehler,
+mehrere Symptome), **Verifikation** (dasselbe Gate), **fachliche Domäne**
+(dasselbe Subsystem, ablesbar aus `location`), **Diff-Fläche** (der Reviewer
+läse ohnehin dieselben Dateien), **Voraussetzung** (derselbe Umbau vorweg).
+Teilt ein Finding nichts davon, steht es allein. **Im Zweifel eines** — was zu
+groß ist, schneidet der Runner in Zug 0 nach; was zu klein ist, bleibt zu
+klein.
 
-1. **Ursache** — ein Fehler, mehrere Symptome.
-2. **Verifikation** — derselbe Test, dieselbe Abnahme, dasselbe rote Signal.
-   Zwei Findings, die dasselbe Gate grün machen müssen, laufen einmal durch
-   dieses Gate und nicht zweimal.
-3. **Fachliche Domäne** — dasselbe Subsystem, dieselbe Zuständigkeit. Das Audit
-   liefert sie nicht als Feld: sie steht im Portrait und lässt sich aus
-   `location` ablesen.
-4. **Diff-Fläche** — der Reviewer läse ohnehin dieselben Dateien.
-5. **Voraussetzung** — beide brauchen denselben Umbau vorweg.
+**Getrennt bleibt**, was einen dieser Blocker auslöst:
 
-Teilt ein Finding mit keinem anderen etwas davon, steht es allein. Zwei völlig
-verschiedene Themen zusammenzuzwingen macht den Commit unlesbar und spart
-nichts.
+- **Severity-Sprung.** Ein kritischer Fix wandert nie in ein Kosmetik-Paket.
+- **Reviewbarkeit.** Hält ein Reviewer den Diff in einem Durchgang? Orientierung
+  rund zehn Findings oder fünfzehn Dateien; ein einzelnes Finding, das das
+  sprengt (`strict: true` über ein gewachsenes Projekt), wird zerlegt.
+- **Echte Abhängigkeit.** Muss A committet sein, bevor B gebaut werden kann.
 
-**Im Zweifel eines.** Wer zwischen einem Paket und zweien schwankt, nimmt
-eines. Der Zweifel ist bereits der Beleg, dass die Grenze nicht trägt. Was zu
-groß geraten ist, merkt der Runner in Zug 0 und schneidet nach; was zu klein
-geschnitten wurde, bleibt den ganzen Lauf über zu klein.
+Nichts anderes trennt: nicht Kategorie, nicht Datei, nicht Phase.
 
-**Getrennt bleibt**, was einen dieser drei Blocker auslöst:
+**Reihenfolge** in fünf Phasen: (1) Sicherungsnetz und Sichtbarkeit — Lint,
+Typecheck, Testrunner, CI; (2) Tests für genau die Bereiche, die Phase 3 und 4
+umbauen; (3) Korrektheit — Bugs, Leaks, Async, Sicherheit; (4) Typsicherheit
+und Struktur — Strictness, Architektur, Modulgrenzen, öffentliche API; (5)
+Konsistenz, DX, Doku, Dependency-Kosmetik.
 
-- **Severity-Sprung.** Ein kritischer Fix wandert nie in ein Kosmetik-Paket,
-  sonst versteckt sich der wichtige Commit im unwichtigen.
-- **Reviewbarkeit.** Der Maßstab ist keine Findingzahl, sondern die Frage, ob
-  ein Reviewer diesen Diff in einem Durchgang hält. Als Orientierung rund zehn
-  Findings oder fünfzehn Dateien. Sprengt ein einzelnes Finding das schon
-  (`strict: true` über ein gewachsenes Projekt), wird es in Teilpakete zerlegt.
-- **Echte Abhängigkeit.** Muss A committet sein, bevor B überhaupt gebaut
-  werden kann, sind es zwei.
-
-Alles andere trennt nicht: nicht die Kategorie, nicht die Datei, nicht die
-Phase.
-
-**Reihenfolge** in fünf Phasen:
-
-1. **Sicherungsnetz und Sichtbarkeit** — Lint, Typecheck, Testrunner, CI.
-   Solange die Werkzeuge nicht laufen, ist jeder spätere Schritt
-   unverifizierbar.
-2. **Tests** für genau die Bereiche, die in Phase 3 und 4 umgebaut werden.
-   Nicht flächendeckend.
-3. **Korrektheit** — Bugs, Memory Leaks, Async und Races, Sicherheit. Größter
-   Schaden, kleinster Blast Radius.
-4. **Typsicherheit und Struktur** — Strictness-Stufen, Architektur,
-   Modulgrenzen, öffentliche API. Hier entstehen die Breaking Changes.
-5. **Konsistenz, DX, Doku, Dependency-Kosmetik.**
-
-Die Phasen sortieren, sie schneiden nicht. Ein Paket darf Phasen überspannen,
-wenn es dieselbe Fläche betrifft, und steht dann an der Stelle seines
-schwersten Findings. Ein Test aus Phase 2, der genau die Fläche eines
-Phase-3-Pakets absichert, ist kein eigenes Paket — er ist dessen erster
-Schritt, so wie es die Prinzipien für jeden Bugfix ohnehin verlangen.
-
-Drei Querregeln schlagen die Phasen: echte Abhängigkeiten gehen vor (verlangt
-ein Bugfix erst eine Umstrukturierung, kommt die Umstrukturierung zuerst);
-Dependency-Bumps, die APIs verändern, gehören nach vorn und nicht ans Ende;
-breitflächige Umformatierungen oder Renames liegen ganz vorn oder ganz hinten,
-nie dazwischen, weil sonst jeder folgende Diff unlesbar wird.
+Die Phasen sortieren, sie schneiden nicht: ein Paket darf Phasen überspannen
+und steht dann an der Stelle seines schwersten Findings; ein Phase-2-Test, der
+genau die Fläche eines Phase-3-Pakets absichert, ist dessen erster Schritt.
+Drei Querregeln schlagen die Phasen: echte Abhängigkeiten gehen vor;
+Dependency-Bumps, die APIs verändern, nach vorn; breitflächige
+Umformatierungen und Renames ganz vorn oder ganz hinten, nie dazwischen.
 
 **Der Grobplan** wird nach `./remediation-plan.md` geschrieben und überschreibt
 eine vorhandene Datei. Du legst Kopf, Entscheidungen, Queue und Paketliste an;
-die Runner tragen dort Marken, Hashes und Ergebnisse nach.
-
-**Die Einzelheiten je Paket schreibst du nicht und niemand schreibt sie in
-diese Datei.** Sie entstehen im Runner und landen in einer eigenen Datei je
-Paket: `docs/remediation/paket-<N>.md`, angelegt von dessen Zug 0. Der Plan
-verweist darauf, mehr nicht. Der Grund ist der Preis des Lesens: den Plan öffnet
-jeder Runner, jeder Implementierer und jeder Reviewer, in jedem Paket — ein
-Dokument, das über zwölf Pakete alle Detailpläne, Verläufe und Finding-Volltexte
-einsammelt, wird von allen gelesen und geht fast alle nichts an. Die Trennlinie
-ist eine Frage: **braucht das jemand, der an einem anderen Paket arbeitet?**
-Dann Plan, sonst Paketdatei.
-
-Hier wird **nicht** ausformuliert, wie ein Paket umgesetzt wird. Ein Vorgehen,
-das zwölf Pakete im Voraus beschreibt, ist ab dem dritten Paket zur Hälfte
-Fiktion — der Code darunter hat sich inzwischen bewegt, Findings sind nebenbei
-mit weggefallen, neue Stellen sind aufgetaucht. Was hier steht, muss reichen,
-damit der Nutzer Schnitt und Reihenfolge beurteilen kann. Mehr nicht.
+die Runner tragen Marken, Hashes und Ergebnisse nach. **Die Einzelheiten je
+Paket schreibst du nicht:** sie entstehen in Zug 0 des Runners und landen in
+`docs/remediation/paket-<N>.md`. Den Plan öffnet jeder Runner, Implementierer
+und Reviewer in jedem Paket; die Trennlinie ist die Frage **braucht das
+jemand, der an einem anderen Paket arbeitet?** Dann Plan, sonst Paketdatei.
+Was hier steht, muss reichen, damit der Nutzer Schnitt und Reihenfolge
+beurteilen kann. Mehr nicht.
 
 ```markdown
 # Remediation-Plan — <Projektname>
@@ -371,158 +270,99 @@ der Zeile misst den Eintrag an der Scope-Regel oben: `→ Scope`, `→ Audit`,
 - Hash: —
 ```
 
-Die Zeile `- Detail: docs/remediation/paket-1.md` trägt Zug 0 nach, zusammen
-mit der Datei, auf die sie zeigt. Du schreibst sie nicht im Voraus — ein
-Verweis auf eine Datei, die es noch nicht gibt, ist ein toter Verweis.
+Zum Template:
 
-Der Abschnitt »Entscheidungen« ist die wichtigste Zeile im Kopf: an ihr misst
-der Runner später, ob eine Umplanung noch im Rahmen liegt oder eine Rückfrage
-braucht.
+- Der Einstiegsabsatz mit Statuslegende und der Abschnitt »Konventionen« stehen
+  wörtlich so in der Datei. Konventionen werden projektspezifisch ergänzt,
+  nicht ersetzt. Sie stehen im Plan, weil sie für jede Zeile des Laufs gelten
+  und sonst in jeden Brief kopiert werden müssten; die Commit-Message steht auf
+  der bleibenden Seite, auch wenn sie im Lauf entsteht.
+- »Entscheidungen« ist die wichtigste Stelle im Kopf: daran misst der Runner,
+  ob eine Umplanung im Rahmen liegt oder eine Rückfrage braucht.
+- `Hängt ab von` benennt nur echte Zwänge (Paket 4 braucht die Modulgrenze aus
+  Paket 2), nicht die Reihenfolge. Steht dort nichts, ist das Paket
+  verschiebbar.
+- Die Überschrift ist ein Format: `### [Marke] <Nummer>. <Titel>`, Marke genau
+  ein Zeichen, Nummer Ziffern mit optionalem Kleinbuchstaben. Das Skript liest
+  sie mit `sed`; was abweicht, ist für es kein Paket.
+- Die Zeile `- Detail: docs/remediation/paket-<N>.md` trägt Zug 0 nach, `Stand:`
+  schreiben die Runner fort, `Hash:` bleibt bis zum Commit leer. Eine
+  Modellstufe steht hier nicht — die setzt Zug 0 in der Paketdatei.
+- Zwei Stellen gehören dem Skript: der Abschnitt `## Tokenverbrauch` am Ende
+  und die Zeile `Lauf-Status:` direkt unter `Arbeitsverzeichnis:`. Weder du
+  noch ein Runner schreibt sie.
+- Ein Paket, dessen Ziel sich nicht in einem Satz sagen lässt, ist falsch
+  geschnitten.
 
-Der Abschnitt »Konventionen« steht wörtlich so in der Datei und wird
-projektspezifisch ergänzt, nicht ersetzt: hat das Zielprojekt eigene Regeln für
-Kommentare oder Doku, kommen sie darunter. Er steht im Plan und nicht im Brief
-und nicht in den Paketdateien, weil er für jede Zeile des ganzen Laufs gilt und
-sonst in jeden Dispatch-Prompt und jede Paketdatei kopiert werden müsste.
-Die Trennlinie dahinter: Plan und Reports sind Artefakte dieses Laufs und
-verschwinden mit ihm. Alles, was im Repo zurückbleibt — Code, Doku, CHANGELOG
-und die Commit-Message —, wird von jemandem gelesen, der weder das Audit noch
-diesen Lauf kennt. Die Commit-Message steht auf der bleibenden Seite dieser
-Linie, auch wenn sie im Lauf entsteht.
-
-Das Feld **Hängt ab von** wird ernst genommen und nicht mit der bloßen
-Reihenfolge verwechselt. Es benennt nur echte Zwänge — Paket 4 braucht die
-Modulgrenze aus Paket 2 —, denn genau daran entscheidet sich später, was
-umgestellt werden darf und was nicht. Steht dort nichts, ist das Paket
-verschiebbar.
-
-Die Überschrift eines Pakets ist ein Format und keine Formulierung:
-`### [Marke] <Nummer>. <Titel>`, die Marke genau ein Zeichen, die Nummer Ziffern
-mit optionalem Kleinbuchstaben. Der Skript-Weg aus Schritt 6 liest die Marken mit
-`sed`; was von dieser Form abweicht, ist für ihn kein Paket.
-
-Der Absatz mit Einstieg und Statuslegende steht wörtlich so in der Datei und
-wird nicht als Redundanz zum Skill-Text weggekürzt. Er ist der Grund, warum
-jemand die Datei einordnen kann, der sie als Erstes findet und nicht diesen
-Skill. Die Zeile `Stand:` schreiben die Runner fort, das Feld `Hash:` bleibt bis
-zum Commit des Pakets leer. Eine Modellstufe steht hier nicht: die setzt der
-Runner in seinem Zug 0, wenn er den Code gesehen hat, und sie steht dann in der
-Paketdatei.
-
-Zwei Stellen im Plan schreibst du **nicht**, und kein Runner tut es auch: beide
-gehören dem Skript aus Schritt 6. Der Abschnitt `## Tokenverbrauch` am Ende der
-Datei trägt, was der Lauf bis dahin verbraucht hat — je Paket eine Zeile, dazu
-Summe und Ausgabe je Modell. Das Skript schreibt ihn bei jedem Ausgang neu; der
-Abschluss zieht ihn unverändert in den Remediation-Report um, der als einzige
-Datei des Laufs im Repo bleibt.
-
-Die Zeile `Lauf-Status:` gehört ebenfalls dem Skript, das sie beim Start setzt,
-bei jedem Ausgang überschreibt und beim Abschluss wieder wegnimmt. Sie steht
-direkt unter `Arbeitsverzeichnis:` und beantwortet die eine Frage, die Paketmarken nicht beantworten können: läuft
-gerade eine Schleife, hängt sie an einem Exit-Code, oder ist sie durch und nur
-der Abschluss steht noch aus. Solange sie dasteht, ist der Lauf nicht fertig.
-
-Ein Paket, dessen Ziel sich nicht in einem Satz sagen lässt, ist falsch
-geschnitten — nicht unterspezifiziert, sondern falsch geschnitten.
-
-**Freigabe.** Der Grobplan wird vorgelegt, und zwar ausdrücklich mit Branch und
+**Freigabe.** Der Grobplan wird vorgelegt, ausdrücklich mit Branch und
 Commit-Modus: »<N> Pakete, <N> Commits direkt auf `<branch>`, ohne
-GPG-Signatur«. Dazu ein Satz, dass jedes Paket unmittelbar vor seiner Umsetzung
-gegen den dann aktuellen Code detailliert wird, und dass eine Umplanung, die
-Zielsetzung oder Architektur berührt, zurück zum Nutzer kommt. Ebenso ein Satz
-zu den Folgen: zieht ein Fix anderswo etwas nach sich, wird das in diesem Lauf
-mit behoben, notfalls in zusätzlichen Paketen — die Paketzahl ist damit eine
-Untergrenze, keine Zusage. Und ein Satz zu den Nebenbefunden, der die
-Scope-Regel wörtlich wiederholt: was während des Laufs auffällt und unter sie
-fällt, wird in diesem Lauf mit behoben, der Rest geht als neues Finding ins
-Audit — beides ohne weitere Rückfrage, beides im Abschlussreport nachlesbar.
+GPG-Signatur«. Dazu je ein Satz:
+
+- Jedes Paket wird unmittelbar vor seiner Umsetzung gegen den dann aktuellen
+  Code detailliert; eine Umplanung, die Zielsetzung oder Architektur berührt,
+  kommt zurück zum Nutzer.
+- Folgen werden in diesem Lauf mit behoben, notfalls in zusätzlichen Paketen —
+  die Paketzahl ist eine Untergrenze.
+- Nebenbefunde, mit der Scope-Regel wörtlich: was darunter fällt, wird in
+  diesem Lauf behoben, der Rest geht als neues Finding ins Audit — beides ohne
+  Rückfrage, beides im Abschlussreport nachlesbar.
+- Die Pakete fährt `scripts/remediate.sh` in einer abgelösten tmux-Session. Zug
+  0 jedes Pakets bekommt dort ein eigenes Fenster und kann fragen; der Nutzer
+  wird nur am Anfang jedes Pakets gebraucht und muss nichts schließen. Die
+  Umsetzung läuft ohne ihn, mit den Rechten ihres Permission-Modus.
+- Er muss nicht danebensitzen: jedes committete Paket, das Ende und jeder
+  unerwartete Ausgang werden gemeldet — per `PushNotification` aus dieser
+  Session und per Desktop-Nachricht aus der Schleife, die auch ohne diese
+  Session ankommt; `NOTIFY_CMD` nimmt ein weiteres Kommando, voreingestellt
+  ist dort nichts.
+- Verbleib des Plans, als Ansage: »Am Ende nimmt ein Commit
+  `./remediation-plan.md` samt `docs/remediation/paket-*.md` ins Repo, ein
+  zweiter räumt beides aus dem Arbeitsbaum — die Historie behält sie. Im
+  Projekt bleibt allein `docs/remediation/<YYYYMMDD>-remediation-report.md`.
+  Sag Bescheid, wenn Plan und Paketdateien stattdessen ungetrackt liegenbleiben
+  sollen.« Ein Widerspruch steht datiert in »Entscheidungen«. Während des Laufs
+  bleiben beide ungetrackt: sie tragen die Hashes der Commits, in denen sie
+  deshalb nicht liegen können.
+
 Diese Freigabe ist die Vollmacht für den ganzen Abschluss; danach wird nicht
-mehr gefragt. Freigegeben werden Paketschnitt und Reihenfolge.
-Ohne diese Freigabe beginnt die Umsetzung nicht.
-
-In dieselbe Ansage gehört, wie es danach weitergeht: die Pakete fährt
-`scripts/remediate.sh` in einer abgelösten tmux-Session. Die Planung jedes
-Pakets bekommt dort ein eigenes Fenster und kann den Nutzer fragen — er wird
-also gebraucht, aber nur am Anfang jedes Pakets, und schließen muss er nichts. Die Umsetzung läuft ohne ihn, mit
-den Rechten, die ihr Permission-Modus ihnen gibt. Das ist ein Tausch, und er
-wird genannt, nicht vorausgesetzt.
-
-Dazu der Satz, der ihm die Wartezeit zurückgibt: er muss nicht danebensitzen.
-Gemeldet wird jedes committete Paket, das Ende des Laufs und jeder unerwartete
-Ausgang, auf zwei voneinander unabhängigen Wegen. Diese Session schickt eine
-`PushNotification`, die bei offener Remote-Control-Verbindung auf seinem Telefon
-landet und ihn nichts kostet außer der Session, die dafür leben muss. Die
-Schleife selbst schickt zusätzlich eine Desktop-Nachricht, die auch dann noch
-kommt, wenn diese Session längst geschlossen ist; `NOTIFY_CMD` nimmt ein
-beliebiges weiteres Kommando dafür, voreingestellt ist dort nichts, und über
-den Weg entscheidet er, weil Paketnummern und Commit-Hashes hindurchgehen.
-
-Im selben Aufwasch der Verbleib des Plans, als Ansage statt als Frage: »am Ende
-nimmt ein Commit `./remediation-plan.md` samt den Paketdateien unter
-`docs/remediation/` mit ins Repo, und ein zweiter räumt beides aus dem
-Arbeitsbaum — die Historie behält sie. Im Projekt bleibt allein
-`docs/remediation/<YYYYMMDD>-remediation-report.md` mit Zusammenfassung,
-Tokenverbrauch und Semver-Empfehlung. Sag Bescheid, wenn Plan und
-Paketdateien stattdessen ungetrackt liegenbleiben sollen«. Ohne Widerspruch
-wird committet; widerspricht der Nutzer, steht das datiert in
-»Entscheidungen«, weil der Abschluss danach greift. Während des Laufs bleiben
-Plan und Paketdateien in jedem Fall ungetrackt: sie tragen die Hashes der
-Commits, in denen sie deshalb nicht liegen können.
+mehr gefragt. Ohne sie beginnt die Umsetzung nicht.
 
 ### 6. Die Schleife
 
-Du drehst sie nicht selbst. Sobald der Grobplan freigegeben ist, startest du
-`scripts/remediate.sh` — ungefragt, das ist die Freigabe:
+Vor dem ersten Start `references/shell-runner.md` lesen. Sobald der Grobplan
+freigegeben ist, startest du das Skript — ungefragt, das ist die Freigabe:
 
 ```bash
 ORCHESTRATOR_SESSION=<deine Session-Kennung> <skill>/scripts/remediate.sh
 ```
 
-Die Kennung ist die deiner eigenen Session — bei Claude Code der UUID-Abschnitt
-im Pfad deines Scratchpad-Verzeichnisses. Sie kostet nichts und beantwortet am
-Ende eine Frage, die sonst niemand beantworten kann: Der Lauf zählt zum Schluss
-zusammen, was er verbraucht hat, und deine Session ist der einzige Posten
-darin, den er nicht von sich aus findet — Plan, Start und Abschluss laufen ja
-bei dir. Kennst du deine Kennung nicht, lässt du die Variable weg; die Tabelle
-sagt dann selbst, dass dieser Posten fehlt.
+Die Kennung ist bei Claude Code der UUID-Abschnitt im Pfad deines
+Scratchpad-Verzeichnisses; sie lässt den Lauf deine Session in der
+Tokentabelle mitzählen. Kennst du sie nicht, lass die Variable weg.
 
-Das Skript hängt sich in eine abgelöste tmux-Session und kommt sofort zurück.
-Ab da läuft es unabhängig von dir: es liest die Marken im Plan, fährt je Paket
-Zug 0 in einem eigenen Fenster der Session und die Züge 1 bis 5 als eigenen
-Prozess, prüft
-jedes Ergebnis gegen `git` und das Verify-Log und hört auf, wenn kein Paket mehr
-offen ist.
-
-Du drehst sie nicht, du begleitest sie. Vier Dinge, die ersten drei sofort:
+Das Skript hängt sich in eine abgelöste tmux-Session, kommt sofort zurück und
+läuft unabhängig von dir. Vier Dinge, die ersten drei sofort:
 
 1. Die Startausgabe wörtlich an den Nutzer weitergeben — sie nennt die
    tmux-Session, wie er sich anhängt und wo Journal, Sperre und Mitschrift
    liegen.
 2. Ihm sagen, dass Zug 0 des ersten Pakets dort in einem eigenen Fenster auf
    ihn wartet und dass er es nicht zu schließen braucht.
-3. **Sofort danach den Wachposten auf das Journal setzen** (unten). Das ist
-   keine Kür: ohne ihn erfährt niemand, dass der Lauf fertig ist.
-4. Auf jedes Ereignis reagieren, das er meldet. Die Exit-Tabelle steht in
-   `references/shell-runner.md`; nur `0` führt weiter zu Schritt 7.
+3. **Den Wachposten auf das Journal setzen** (unten). Ohne ihn erfährt niemand,
+   dass der Lauf fertig ist — ein Abschluss ist so schon einen halben Tag
+   liegengeblieben.
+4. Auf jedes Ereignis reagieren, das er meldet. Nur `ende exit=0` führt zu
+   Schritt 7; die anderen Codes stehen in `references/shell-runner.md`.
 
-**Du blockierst nicht, und du wirst geweckt.** Das sind zwei Sätze, und sie
-widersprechen einander nicht. Ein Lauf dauert Stunden; ein Kommando, das so
-lange im Vordergrund läuft, macht deine Session für diese Stunden unbrauchbar —
-genau die Session, in der der Nutzer nebenher etwas anderes fragen wollte.
-Verboten ist deshalb das Warten im Vordergrund: kein blockierender Aufruf, kein
-`ScheduleWakeup` im Minutentakt, kein Nachsehen »nur mal kurz«. Der Wachposten
-läuft nebenher und kostet dich nichts, solange nichts passiert.
-
-Was ohne ihn passiert, ist gemessen: am 2026-08-26 lief eine Schleife über fünf
-Pakete sauber durch, schrieb ihre Schlusszeile um 08:58:42 in ein abgelöstes
-Pane, und das Pane starb in derselben Sekunde. Der Abschluss blieb liegen, bis
-der Nutzer Stunden später von selbst danach fragte.
+**Du blockierst nicht, und du wirst geweckt.** Ein Lauf dauert Stunden; ein
+Kommando, das so lange im Vordergrund läuft, macht deine Session unbrauchbar.
+Kein blockierender Aufruf, kein `ScheduleWakeup` im Minutentakt, kein
+Nachsehen »nur mal kurz«.
 
 #### Der Wachposten
 
-Ein `Monitor` auf Journal und Sperre. Beide Pfade nennt die Startausgabe
-wörtlich, in den Zeilen `Journal:` und `Sperre:`. Jede gemeldete Zeile weckt
-dich; die Schleife läuft davon unbeeindruckt weiter.
+Ein `Monitor` mit `persistent: true` auf Journal und Sperre; beide Pfade nennt
+die Startausgabe (`Journal:`, `Sperre:`). Er beendet sich selbst.
 
 ```bash
 J='<Journal-Pfad aus der Startausgabe>'
@@ -548,125 +388,78 @@ while :; do
 done
 ```
 
-`persistent: true`, denn ein Lauf überschreitet jede Frist, die der Monitor
-sonst kennt. Er beendet sich selbst — du musst ihn nicht abräumen.
-
-Warum die Sperre und nicht nur das Journal: ein fortgesetzter Lauf schreibt in
-dasselbe Journal, in dem der Abbruch des Vorgängers schon steht. Wer nur nach
-`ende exit=` sieht, hält den frischen Lauf für längst beendet und verabschiedet
-sich, bevor die erste Zeile kommt — gemessen beim Bau dieses Schnipsels, mit
-einem Journal, das auf `ende exit=21` endete. `.remediate.lock` dagegen
-existiert genau, solange eine Schleife arbeitet: der EXIT-Trap räumt es weg.
-Daraus fällt der zweite Gewinn ab — verschwindet die Sperre, ohne dass eine
-`ende`-Zeile kam, ist die Schleife gestorben, ohne ihren Trap zu erreichen
-(`kill -9`, Terminal weg, Strom weg). Genau dieser Ausgang meldet sich sonst
-nirgends. Die Minute Geduld am Anfang ist ebenfalls nötig: die Sperre entsteht
-erst im abgelösten Prozess, also ein paar Sekunden nachdem das Skript
-zurückgekommen ist.
-
-Der Filter lässt genau die Zeilen durch, auf die jemand reagiert, und er lässt
-keine Abbruchform aus: jeder benannte Ausgang endet mit `ende exit=`, jeder
-unbenannte mit der verschwundenen Sperre. Der `[~]`-Vermerk nach Zug 0 fehlt
-absichtlich — halbe Pakete sind kein Anlass, jemanden anzusprechen. Die Zeile
-`status=review-offen` kommt durch, weil sie auf `status=` passt; sie ist die
-eine, auf die du nichts tust (siehe Tabelle unten).
+Warum die Sperre: ein fortgesetzter Lauf schreibt in dasselbe Journal, in dem
+das `ende exit=` des Vorgängers schon steht; wer nur danach sieht, hält den
+frischen Lauf für beendet. `.remediate.lock` existiert genau, solange eine
+Schleife arbeitet — verschwindet sie ohne `ende`-Zeile, ist die Schleife
+gestorben, ohne ihren Trap zu erreichen (`kill -9`, Terminal weg). Die Minute
+Geduld am Anfang: die Sperre entsteht erst im abgelösten Prozess. Der Filter
+lässt den `[~]`-Vermerk absichtlich aus — halbe Pakete sind kein Anlass.
 
 #### Was du je Ereignis tust
 
-Der Nutzer hat ausdrücklich um eine Nachricht nach jedem Paket und am Ende
-gebeten. Das schlägt die übliche Zurückhaltung bei `PushNotification`: hier ist
-sie bestellt, nicht aufgedrängt. Eine Zeile, das Wichtigste zuerst, keine
-Wiederholung dessen, was der Nutzer ohnehin vor sich sieht.
+Der Nutzer hat um eine Nachricht nach jedem Paket und am Ende gebeten; das
+schlägt die übliche Zurückhaltung bei `PushNotification`. Eine Zeile, das
+Wichtigste zuerst. Meldet sie »not sent«, sitzt er am Terminal und liest deine
+Antwort ohnehin — trotzdem senden, statt zu raten.
 
-| Zeile im Journal | Was sie heißt | Was du tust |
-| --- | --- | --- |
-| `status=committed` | Paket ist im Repo | Push mit Paketnummer, Kurzhash und Paketstand |
-| `status=dropped`, `marke=[x]` | Paket entfiel ohne Commit | Push, knapp |
-| `status=review-offen` | ein Runner hat ohne Review-Beleg committet; die Schleife zieht ihn nach | **nichts.** Kein Push, keine Rückfrage, kein Blick ins Repo. Das Paket ist noch nicht fertig, und die nächste Zeile dazu ist seine `status=committed` |
-| `status=question`, `status=blocked`, `marke=[!]` | die Schleife hält an und will eine Entscheidung | Push, der die Frage nennt, dann `references/shell-runner.md` |
-| `ende exit=0` | die Schleife ist durch | Push, und **sofort** Schritt 7 beginnen. Nicht auf ein Signal des Nutzers warten — dieses Warten ist der Fehler, gegen den der Wachposten gebaut ist |
-| `ende exit=` mit einer anderen Zahl | Abbruch | Push, der die Zahl nennt, dann die Exit-Tabelle |
+| Zeile im Journal | Was du tust |
+| --- | --- |
+| `status=committed` | Push mit Paketnummer, Kurzhash und Paketstand |
+| `status=dropped`, `marke=[x]` | Push, knapp |
+| `status=review-offen` | **nichts.** Die Schleife zieht den Review nach; die nächste Zeile zu dem Paket ist seine `status=committed` |
+| `status=question`, `status=blocked`, `marke=[!]` | Push, der die Frage nennt, dann `references/shell-runner.md` |
+| `ende exit=0` | Push, und **sofort** Schritt 7 — nicht auf ein Signal des Nutzers warten |
+| `ende exit=` mit anderer Zahl | Push, der die Zahl nennt, dann die Exit-Tabelle |
 
-Sitzt der Nutzer gerade am Terminal, meldet `PushNotification` »not sent«. Das
-ist kein Fehler, sondern die eingebaute Doppelungsbremse: er liest deine
-Antwort ohnehin. Trotzdem senden, statt vorher zu raten, ob er da ist.
-
-**Stirbt deine Session, stirbt der Wachposten mit ihr.** Dafür gibt es zwei
-Auffangnetze, die keine Session brauchen: die Schleife schickt bei denselben
-Anlässen selbst eine Desktop-Nachricht (`notify-send`, und über `NOTIFY_CMD`
-auf einen beliebigen weiteren Weg), und sie schreibt ihren Zustand als Zeile
-`Lauf-Status:` in den Kopf des Plans. Ein Agent, der später hier einsteigt,
-liest sie über `references/resume.md`. Keines der drei Netze ersetzt die
-anderen: der Wachposten kennt den Kontext, die Desktop-Nachricht überlebt die
-Session, die Plan-Zeile überlebt die Maschine.
-
-**Vor dem ersten Start** `references/shell-runner.md` lesen. Danach nicht mehr:
-der Inhalt gehört den Runnern, nicht dir.
+Stirbt deine Session, stirbt der Wachposten mit ihr. Dafür gibt es zwei Netze
+ohne Session: die Desktop-Nachricht der Schleife und die Zeile `Lauf-Status:`
+im Plan-Kopf, die ein späterer Agent über `references/resume.md` liest.
 
 Was du **nicht** tust: keinen Runner selbst starten, keinen Subagenten für ein
-Paket, keine eigene Schleife. Auch nicht, wenn das Skript abbricht — ein Abbruch
-ist eine Meldung an den Nutzer, keine Einladung, es von Hand zu machen.
-
-Läuft der Lauf gerade und der Nutzer fragt nach dem Stand, sieh nach, ohne zu
-stören: `tmux capture-pane -p -t <session>:0` zeigt das Pane der Schleife, das
-Journal zeigt die Zeilen. Beides ist ein Blick, kein Warten. Häng dich nicht
-selbst an die Session — dort sitzt der Nutzer.
+Paket, keine eigene Schleife — auch nicht nach einem Abbruch. Fragt der Nutzer
+nach dem Stand, zeigt `tmux capture-pane -p -t <session>:0` das Pane und das
+Journal die Zeilen. Häng dich nicht selbst an die Session — dort sitzt er.
 
 ### 7. Abschluss
 
-Nach dem letzten Paket `references/semver-and-closeout.md` lesen. Dort stehen
-der Drain der Befund-Queue, der volle Verify-Lauf, der CHANGELOG-Eintrag, das
-Nachführen der `./audit.html`, der Remediation-Report mit Tokenverbrauch und
-Semver-Empfehlung, die beiden Abschluss-Commits und die Übergabe. Der ganze
-Schritt läuft ohne Rückfrage durch; die Freigabe aus Schritt 5 deckt ihn.
+Nach dem letzten Paket `references/semver-and-closeout.md` lesen: Drain der
+Befund-Queue, voller Verify-Lauf, CHANGELOG, Nachführen der `./audit.html`,
+Remediation-Report mit Tokenverbrauch und Semver-Empfehlung, die beiden
+Abschluss-Commits, Übergabe. Ohne Rückfrage; die Freigabe aus Schritt 5 deckt
+ihn.
 
 ## Prinzipien
 
-- **Die Empfehlung gilt.** Das Audit hat den Weg bereits benannt. Ein anderer
-  Weg braucht einen Grund, der im Detailplan oder im Report eines Subagenten
-  steht, keine stille Umdeutung.
-- **Bugfix heißt Test zuerst.** Ein Paket, das einen Korrektheitsfehler behebt,
-  schreibt zuerst den fehlschlagenden Test, sieht ihn rot, und behebt dann.
-  Ohne rot gesehenen Test weiß niemand, ob der Test den Fehler überhaupt fangen
-  würde. Ausgenommen sind Pakete ohne testbaren Kern: Konfiguration,
-  Dokumentation, Dependency-Bumps, reine Formatierung. Fehlt dem Projekt jede
-  Testinfrastruktur, ist das selbst ein Finding und gehört in Phase 1 — mitten
-  im Bugfix wird kein Test-Harness nachgerüstet.
+- **Die Empfehlung gilt.** Ein anderer Weg braucht einen Grund im Detailplan
+  oder im Report, keine stille Umdeutung.
+- **Bugfix heißt Test zuerst.** Fehlschlagenden Test schreiben, rot sehen,
+  dann beheben. Ausgenommen Pakete ohne testbaren Kern: Konfiguration, Doku,
+  Dependency-Bumps, Formatierung. Fehlt jede Testinfrastruktur, ist das ein
+  Finding für Phase 1 — mitten im Bugfix wird kein Harness nachgerüstet.
 - **Der Plan ist die Wahrheit, nicht die Erinnerung.** `./remediation-plan.md`
-  und `git log` schlagen das, was du zu wissen glaubst. Die Umkehrung wiegt
-  schwerer: was nur in einem Agentenkontext steht und weder im Plan noch in
-  einer Paketdatei, gibt es nach dessen Rückgabe nicht mehr.
-- **Dein Kontext gehört der Koordination.** Du liest keine Diffs, keine
-  Verify-Ausgaben außer fünfzehn Zeilen Schwanz, keine Subagenten-Reports im
-  Volltext, keine Paketdatei (außer der Abschluss verlangt es) und keine
-  Referenzdatei, die einem anderen Zug gehört. Ein Orchestrator, der über zwölf Pakete vollläuft, verliert genau das Wissen, für
-  das er die ganze Zeit dagesessen hat.
-- **Sprache.** Antworten an den Nutzer in der Sprache seiner Anfrage.
-  Commit-Messages in der Sprache, die `git log` des Projekts zeigt.
+  und `git log` schlagen, was du zu wissen glaubst. Was nur in einem
+  Agentenkontext steht, gibt es nach dessen Rückgabe nicht mehr.
+- **Dein Kontext gehört der Koordination.** Keine Diffs, keine Verify-Ausgaben
+  außer fünfzehn Zeilen Schwanz, keine Reports im Volltext, keine Paketdatei
+  (außer der Abschluss verlangt es), keine Referenzdatei eines anderen Zuges.
+- **Sprache.** Antworten in der Sprache der Anfrage, Commit-Messages in der
+  Sprache von `git log`.
 
 ## Zusammenspiel mit anderen Skills
 
-Dieser Skill funktioniert allein und setzt keine Erweiterung voraus. Sind die
-Superpowers-Skills installiert, gilt folgende Aufteilung, damit sich nichts
-doppelt:
-
-- `js-ts-project-audit` liefert den Input. Es fixt nie selbst, dieser Skill
-  auditiert nie selbst. Dass hier am Ende trotzdem in die `./audit.html`
-  geschrieben wird, ist kein Bruch dieser Linie: gebucht wird, was
-  Reviewer-Urteil und Commit-Hash belegen, und der Score ist die Formel des
-  Audits auf ein verändertes Backlog. Die Bewertung des Codes bleibt beim
-  nächsten Audit-Lauf, den der Nutzer startet, wann er will — angeboten wird
-  er nicht. Auch die Optik gehört dorthin: Schritt 7 fasst die Gestaltung der
-  Seite nicht an.
+- `js-ts-project-audit` liefert den Input und fixt nie; dieser Skill auditiert
+  nie. Dass Schritt 7 in die `./audit.html` schreibt, ist kein Bruch: gebucht
+  wird, was Reviewer-Urteil und Commit-Hash belegen, der Score ist die Formel
+  des Audits auf ein verändertes Backlog. Die Bewertung des Codes und die Optik
+  der Seite bleiben beim nächsten Audit-Lauf, den der Nutzer startet, wann er
+  will — angeboten wird er nicht.
 - Fährt der Nutzer die Umsetzung ausdrücklich über
   `superpowers:subagent-driven-development`, gewinnt dessen Prozess innerhalb
-  eines Pakets. Findings-Quelle, Paketschnitt, der Runner als eigener Agent,
-  die Befund-Queue, die Fortschreibung von `./remediation-plan.md`,
-  Semver-Empfehlung und Report bleiben hier — ein fremder Umsetzungsprozess ersetzt das Briefing,
-  nicht den Abgleich gegen den aktuellen Code und nicht das Dokument, an dem
-  ein Dritter den Stand abliest.
-- Bleibt ein Verify-Lauf nach zwei Runden unerklärlich rot, ist das ein
-  Debugging-Problem. Dann nicht weiterraten: `superpowers:systematic-debugging`,
-  falls vorhanden, sonst Paket blockieren und berichten.
-- Wurde ausnahmsweise auf einem Feature-Branch gearbeitet, ist die Integration
-  Sache des Nutzers. Dieser Skill pusht und merged nicht.
+  eines Pakets. Findings-Quelle, Paketschnitt, Runner, Befund-Queue,
+  Fortschreibung des Plans, Semver-Empfehlung und Report bleiben hier.
+- Bleibt ein Verify-Lauf nach zwei Runden unerklärlich rot:
+  `superpowers:systematic-debugging`, falls vorhanden, sonst Paket blockieren
+  und berichten.
+- Auf einem Feature-Branch ist die Integration Sache des Nutzers. Dieser Skill
+  pusht und merged nicht.

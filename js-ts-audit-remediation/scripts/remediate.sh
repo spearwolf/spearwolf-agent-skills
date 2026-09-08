@@ -716,7 +716,7 @@ tool_args() { # füllt TOOL_ARGS; die Muster enthalten Leerzeichen und dürfen
 tool_args_zug0() { # $1 = Paketnummer. Für Zug 0 im Fenster: nichts entziehen und
   local t old=$IFS                                  # nur eine einzige Sache erlauben
   TOOL_ARGS=()
-  TOOL_ARGS[${#TOOL_ARGS[@]}]=--add-dir             # seine beiden Referenzdateien
+  TOOL_ARGS[${#TOOL_ARGS[@]}]=--add-dir             # seine Referenzdatei
   TOOL_ARGS[${#TOOL_ARGS[@]}]=$SKILL_DIR
   TOOL_ARGS[${#TOOL_ARGS[@]}]=--add-dir             # und das Arbeitsverzeichnis
   TOOL_ARGS[${#TOOL_ARGS[@]}]=$WORK
@@ -985,7 +985,7 @@ zurückgibst." ;;
   case "$role" in
     A) scope="Du bist A: du führst Zug 0 aus — Abgleich, Triage der offenen Befunde, Detailplan, Restplan prüfen. Danach hörst du auf. Du änderst keine Zeile Projektcode und startest keinen Implementierer." ;;
     N) scope="Du bist N: das Paket ist committet, aber es fehlt der Beleg, dass ein unabhängiger Reviewer den Diff gesehen hat. Du ziehst den Review nach.
-Der Abschnitt »Wenn der Review fehlt« in shell-runner.md gilt und geht allem anderen vor. Kurz: der Commit bleibt stehen, du rollst nichts zurück und wirfst keine Arbeit weg. Du beginnst bei Zug 3 mit dem Diff des vorhandenen Commits, beauftragst einen Reviewer als eigenen Prozess, fährst die Fehlerkette über Implementierer-Prozesse, wenn er etwas findet, läufst Verify selbst und legst eine Nachbesserung als eigenen Commit obendrauf. Ohne Befund bleibt es bei dem einen Commit.
+Der Abschnitt »Rolle N« in runner.md gilt und geht allem anderen vor. Kurz: der Commit bleibt stehen, du rollst nichts zurück und wirfst keine Arbeit weg. Du beginnst bei Zug 3 mit dem Diff des vorhandenen Commits, beauftragst einen Reviewer als eigenen Prozess, fährst die Fehlerkette über Implementierer-Prozesse, wenn er etwas findet, läufst Verify selbst und legst eine Nachbesserung als eigenen Commit obendrauf. Ohne Befund bleibt es bei dem einen Commit.
 Die Fehlerkette hat höchstens $MAX_ROUNDS Runden. Eine Runde, die die Zahl der offenen Befunde nicht senkt, ist die letzte." ;;
     B) scope="Du bist B: Zug 0 ist erledigt, dein Detailplan steht in deiner Paketdatei. Du beginnst bei Zug 1 und endest mit dem Commit aus Zug 5. Du machst Zug 0 nicht noch einmal.
 Die Fehlerkette in Zug 4 hat höchstens $MAX_ROUNDS Runden. Eine Runde, die die Zahl der offenen Befunde nicht senkt, ist die letzte — dann blockieren und berichten." ;;
@@ -994,9 +994,7 @@ Die Fehlerkette in Zug 4 hat höchstens $MAX_ROUNDS Runden. Eine Runde, die die 
   cat <<EOF
 Du bist Runner $role für Paket $pkg eines Remediation-Laufs.
 
-Lies zuerst diese beiden Dateien, in dieser Reihenfolge:
-  1. $SKILL_DIR/references/shell-runner.md — deine Rolle, deine Grenzen, deine Rückgabe
-  2. $SKILL_DIR/references/runner.md — der Inhalt deiner Züge
+Lies zuerst $SKILL_DIR/references/runner.md — deine Rolle, deine Züge, deine Grenzen, deine Rückgabe.
 
 Plan: $PLAN
 Paketdatei: $(detail_file "$pkg") — dort steht der Detailplan zu Paket $pkg. Zug 0 legt sie an, alle danach lesen und schreiben dort. Der Plan trägt den Stand des Laufs, die Paketdatei die Einzelheiten dieses einen Pakets.
