@@ -347,9 +347,9 @@
 
   <section>
     <p class="kicker">Bestand</p>
-    <h2>Sechs Prozesse, keine Subagenten</h2>
+    <h2>Prozesse statt Subagenten</h2>
     <div class="prose">
-      <p>Der Lauf hat sechs Rollen, und jede ist ein eigener Betriebssystem-Prozess — eine siebte, N, kommt nur vor, wenn ein Commit ohne Review-Beleg dasteht. Nichts davon läuft parallel: das Skript fährt je Paket erst Zug 0, dann die Züge 1 bis 5, und B hält immer nur einen Implementierer offen. Sie teilen sich einen Arbeitsbaum, und der Konflikt kostete mehr als die gesparte Zeit.</p>
+      <p>Der Lauf hat sechs Rollen, und jede ist ein eigener Betriebssystem-Prozess. Eine siebte, N, kommt nur vor, wenn ein Commit ohne Review-Beleg dasteht — sie steht deshalb in der Tabelle, aber nicht in der Zählung. Nichts davon läuft parallel: das Skript fährt je Paket erst Zug 0, dann die Züge 1 bis 5, und B hält immer nur einen Implementierer offen. Sie teilen sich einen Arbeitsbaum, und der Konflikt kostete mehr als die gesparte Zeit.</p>
       <p>Die sechste ist die Session, aus der heraus gestartet wurde. Sie stand lange nicht in dieser Liste, weil sie nach der Freigabe fertig zu sein schien. Sie ist es nicht: sie hält den Wachposten und macht den Abschluss.</p>
     </div>
 
@@ -435,7 +435,7 @@
           </tr>
           <tr>
             <td class="who">remediate.sh</td>
-            <td>Runner A, Runner B</td>
+            <td>Runner A, Runner B, im Reparaturfall N</td>
             <td>je 1 pro Paket, sequentiell</td>
             <td>hat keinen — Shell</td>
           </tr>
@@ -450,6 +450,12 @@
             <td>Implementierer, Reviewer</td>
             <td>bis zu 5 Runden, je Runde einer von beiden</td>
             <td>mit der Rückgabe von neun Zeilen</td>
+          </tr>
+          <tr>
+            <td class="who">N · nachgezogener Review</td>
+            <td>Reviewer, bei Befunden Implementierer</td>
+            <td>nur bei einem Commit ohne Review-Beleg</td>
+            <td>mit der Rückgabe, wie bei B</td>
           </tr>
           <tr>
             <td class="who">Implementierer</td>

@@ -777,7 +777,20 @@ dirty_paths() { # Arbeitsbaum ohne Plan und Paketdetails, die während des Laufs
   # Verzeichnis zu einer Zeile zusammen (»?? docs/«), und die trägt den Pfad
   # nicht mehr, an dem hier gefiltert wird. Der ganze Ordner sähe dann wie eine
   # fremde Änderung aus und hielte jeden Start auf.
-  git status --porcelain -uall | grep -v -F -e "$(basename "$PLAN")" -e "$DETAILS/" || true
+  #
+  # Ausgeblendet wird nur der ungetrackte Fall, also genau die Zeilen mit »?? «,
+  # und der Pfad muss ganz passen. Ein getracktes und geändertes Dokument unter
+  # demselben Namen ist eine fremde Änderung wie jede andere und gehört gesehen
+  # — ein Zielprojekt, das unter docs/remediation/ schon etwas führt, sähe sonst
+  # sauber aus und bekäme seine Änderungen in den nächsten Paket-Commit.
+  local plan details
+  plan=${PLAN#./}
+  details=${DETAILS%/}; details=${details#./}
+  git status --porcelain -uall | awk -v plan="?? $plan" -v det="?? $details/" '
+    $0 == plan { next }
+    index($0, det) == 1 { next }
+    { print }
+  '
 }
 
 # --- Start in einer abgelösten tmux-Session ---------------------------------
@@ -1374,14 +1387,17 @@ check_commit() { # $1 = Paketnummer, $2 = HEAD vor dem Runner
   # pipefail den ganzen Aufruf mit.
   impl=$(find "$WORK" -maxdepth 1 -name "paket-$1.impl-*.json" 2>/dev/null | wc -l | tr -d ' ')
   rev=$(find "$WORK" -maxdepth 1 -name "paket-$1.review-*.json" 2>/dev/null | wc -l | tr -d ' ')
+  #
+  # Kein früher Ausstieg: was hier fehlt, ist ein Beleg, kein Grund, die
+  # restlichen Proben zu überspringen. Gerade eine Rückgabe, die schon einmal
+  # neben dem Vertrag lag, gehört ganz geprüft — die Rundenzahl und der
+  # Arbeitsbaum unten gelten für sie wie für jede andere.
   if [ "$rev" -lt 1 ]; then
     REVIEW_OFFEN=1
     set_marker "$1" 'r'
     plan_note "$1" "Review offen: ohne Beleg committet ($hash), die Schleife zieht ihn nach ($(date '+%Y-%m-%d'))"
     warn "Paket $1 ist ohne Review-Beleg committet ($impl Implementierer-Report(s), $rev Review(s)). Der Commit bleibt stehen, das Paket steht auf [r], der Review wird nachgezogen."
-    return 0
-  fi
-  if [ "$impl" -lt 1 ]; then
+  elif [ "$impl" -lt 1 ]; then
     plan_note "$1" "Ausnahme: der Code stammt vom Runner selbst, nicht von einem Implementierer — der Review liegt vor ($(date '+%Y-%m-%d'))"
     warn "Paket $1 hat keinen Implementierer-Report: der Runner hat den Code selbst geschrieben. Der Review liegt vor, der Commit bleibt stehen, die Ausnahme steht im Plan."
   fi
@@ -1430,7 +1446,22 @@ check_nachgezogen() { # $1 = Paketnummer; die Gegenprobe nach Rolle N
       "Paket $1 hat auch nach dem nachgezogenen Review keinen Review-Report im Arbeitsverzeichnis. Hier hört die Reparatur auf — ein zweiter Anlauf käme an dieselbe Stelle. Das Paket steht auf [r], der Commit steht im Repo, und was mit ihm geschieht, entscheidet der Nutzer."
   fi
 
+  # Dieselbe Obergrenze wie bei B: Rolle N fährt dieselbe Fehlerkette, und ihr
+  # Brief nennt dieselbe Zahl. Eine Reparatur, die weniger geprüft wird als der
+  # reguläre Weg, wäre der bequemere Weg an der Prüfung vorbei.
+  local runden impl
+  runden=$(jq -r '(.rounds // 0)' <<<"$RES")
+  [ "$runden" -le "$MAX_ROUNDS" ] || die $EX_CONTRACT \
+    "Paket $1 meldet $runden Runden im nachgezogenen Review, erlaubt sind $MAX_ROUNDS"
+  impl=$(find "$WORK" -maxdepth 1 -name "paket-$1.impl-*.json" 2>/dev/null | wc -l | tr -d ' ')
+  [ "$impl" -le "$MAX_ROUNDS" ] || die $EX_CONTRACT \
+    "Paket $1 hat $impl Implementierer-Reports bei $MAX_ROUNDS erlaubten Runden"
+
   check_marker "$1" 'x'
+
+  local left
+  left=$(dirty_paths)
+  [ -z "$left" ] || warn "$(printf 'nach dem nachgezogenen Review von Paket %s liegt noch etwas im Arbeitsbaum:\n%s' "$1" "$left")"
 }
 
 # --- Die Schleife -----------------------------------------------------------
