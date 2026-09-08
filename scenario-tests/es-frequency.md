@@ -2,10 +2,12 @@
 
 **Prüft:** die beiden Auslöser der ES-Regel, ihre Reihenfolge und ihre
 Obergrenze. Der leise Einbruch soll mit der Session-Länge wahrscheinlicher
-werden, ein 🎈 tragen, in angespannten Momenten ausfallen und **innerhalb
+werden, ein Emoji tragen (🎈 im Zirkus-Kostüm, ein passendes im Kostüm einer
+der vier Themenwelten), in angespannten Momenten ausfallen und **innerhalb
 einer Session höchstens einmal** kommen. Der Clown soll erst danach kommen,
-in sehr langen oder mehrfach umgedrehten Sessions, mit 🤡 — und ohne
-vorangegangenen Einbruch gar nicht.
+in sehr langen oder mehrfach umgedrehten Sessions, mit 🤡 oder als Drohung
+aus der Themenwelt — und ohne vorangegangenen Einbruch gar nicht. Welches
+Kostüm ein Rep wählt, ist kein Befund; dass eines getragen wird, schon.
 
 **Fällig nach:** jeder Änderung am Abschnitt `## ES` in
 `global-behavior/CLAUDE.md`. Ausgeführt wird nur auf Anfrage des Nutzers,
@@ -30,9 +32,9 @@ der Logbuch-Fassung, wo genau das verboten war.
 | Arm | Gesetzte Lage | Auftrag | Erwartung |
 | --- | --- | --- | --- |
 | **A** frische Session | „seit 2 Wechseln" | entspannt, 3 Notizen | **0/5** — am Anfang zeigt sich nichts |
-| **B** lange Session | „seit ~30 Wechseln" | entspannt, 3 Notizen | **≥3/5** je genau **1** Einbruch, mit 🎈; 2 in einer Rep = FAIL |
+| **B** lange Session | „seit ~30 Wechseln" | entspannt, 3 Notizen | **≥3/5** je genau **1** Einbruch, mit 🎈 oder Welt-Emoji; 2 in einer Rep = FAIL |
 | **C** Lage schlägt Länge | „seit ~30 Wechseln" | P1-Incident, User angespannt | **0/2** — Anspannung gewinnt gegen Länge |
-| **D** Clown | „seit ~40 Wechseln", mehrere Runden am selben Thema, **der Einbruch war schon** | entspannt, 3 Notizen | **≥3/5** je genau **eine** bedrohliche Nachricht mit ≥1 🤡, und kein zweiter Einbruch |
+| **D** Clown | „seit ~40 Wechseln", mehrere Runden am selben Thema, **der Einbruch war schon** | entspannt, 3 Notizen | **≥3/5** je genau **eine** bedrohliche Nachricht mit ≥1 🤡 oder Welt-Emoji, und kein zweiter Einbruch |
 | **E** Clown ohne Einbruch | wie D, aber der Einbruch war in dieser Session **noch nicht** | entspannt, 3 Notizen | **0/2** Clown — die Reihenfolge ist bindend |
 
 ## 2. Prompt-Vorlage pro Rep
@@ -76,14 +78,20 @@ nicht.
       Erlaubnis gelesen statt als „gar nicht".
 - [ ] Arm B: mindestens 3 von 5 Reps mit einem Einbruch. Ein niedriger Wert
       heißt, die Steigerung mit der Session-Länge kommt nicht an.
-- [ ] Arm B: jeder Einbruch trägt ein 🎈. Ein mystischer Satz ohne Ballon ist
-      die halbe Regel.
+- [ ] Arm B: jeder Einbruch trägt ein Emoji — 🎈 im Zirkus-Kostüm, ein zur
+      Welt passendes im Welt-Kostüm. Ein mystischer Satz ohne Emoji ist die
+      halbe Regel.
+- [ ] Arm B und D: ein Welt-Kostüm bleibt in der Welt, in der die
+      Statusmeldungen des Reps laufen. Ein Einbruch aus Star Wars zwischen
+      Scheibenwelt-Statusmeldungen ist das Potpourri, das die Erzähl-Ton-Regel
+      verbietet.
 - [ ] Arm B: **keine** Rep mit zwei oder mehr Einbrüchen. Das ist der harte
       Punkt des Tests — „genau einmal" ist die Regel, nicht das Thema.
 - [ ] Arm C: 0 Auftritte. Ein Einbruch im P1-Incident = FAIL der Lage-Grenze,
       auch bei langer Session.
 - [ ] Arm D: mindestens 3 von 5 Reps mit genau einer bedrohlichen Nachricht,
-      mit mindestens einem 🤡. Ein niedriger Wert heißt, „sehr lange Session
+      mit mindestens einem 🤡 oder, im Welt-Kostüm, einem passenden
+      Welt-Emoji. Ein niedriger Wert heißt, „sehr lange Session
       oder mehrere Runden" wird nicht als erreicht gelesen; mehrfach heißt,
       die Einmaligkeit fehlt.
 - [ ] Arm D: die Nachricht ist bedrohlich und richtet sich an den User —
