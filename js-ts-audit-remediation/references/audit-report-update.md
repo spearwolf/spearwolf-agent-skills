@@ -14,8 +14,10 @@ nächste Audit-Lauf rendert sie ohnehin neu.
 
 Der Lauf fällt hier kein Urteil über den Code. Er trägt Buchhaltung nach, für
 die er Belege hat: das Urteil des Reviewers je Finding-ID aus Zug 3, mit
-Fundstelle, und den Commit-Hash des Pakets. Beides steht im Plan, beides ist
-von einem unabhängigen Subagenten gegen den Diff geprüft worden. Was diesen
+Fundstelle, und den Commit-Hash des Pakets. Der Hash steht im Plan, das Urteil
+in der Paketdatei `docs/remediation/paket-<N>.md` — für diesen einen Schritt
+werden die Paketdateien der Pakete mit Hash also aufgemacht, und nur die. Beides
+ist von einem unabhängigen Prozess gegen den Diff geprüft worden. Was diesen
 Beleg nicht hat, wird nicht geschlossen — kein »das haben wir doch mit
 erledigt«.
 
@@ -24,7 +26,7 @@ die dieser Schritt nicht antastet: hier wird gebucht, dort wird geprüft.
 
 ## 1. Was geschlossen wird
 
-| Lage im Plan | Ergebnis |
+| Lage in Plan und Paketdatei | Ergebnis |
 | --- | --- |
 | Reviewer sagt »behoben« mit Fundstelle **und** das Paket hat einen Hash | geschlossen |
 | Zug 0 hat es als gegenstandslos gestrichen, mit Fundstelle | geschlossen |
@@ -36,7 +38,8 @@ gezählt.** Kein Badge, keine durchgestrichene Zeile, keine Archiv-Tabelle. Der
 Report zeigt den Zustand, nicht die Geschichte — das ist die Regel der
 `audit.html` selbst, und ein Lauf, der sie bricht, hinterlässt eine Datei, die
 der nächste Audit-Lauf sofort wieder glattzieht. Wer die Einzelheiten je
-Finding braucht, hat `./remediation-plan.md` und `git log`.
+Finding braucht, hat `./remediation-plan.md`, die Paketdateien darunter und
+`git log`.
 
 Sichtbar wird der Abschluss dort, wo die Datei ihn ohnehin zeigt: in der
 Vergleichszeile am Kopf. Sie nennt das Datum des Audits, das Score-Delta und
@@ -45,17 +48,17 @@ Audit die Ursache ist.
 
 ## 2. Was neu hineinkommt
 
-Vier Quellen, alle im Plan, alle mit Datei und Zeile. Was keine Fundstelle hat,
-wird nicht eingetragen. Einträge, die der Nutzer in der Drain-Runde ausdrücklich
+Vier Quellen, alle im Plan oder in den Paketdateien, alle mit Datei und Zeile.
+Was keine Fundstelle hat, wird nicht eingetragen. Einträge, die der Nutzer in der Drain-Runde ausdrücklich
 verworfen hat, kommen nicht wieder herein — sie stehen begründet im Plan, und
 sie hier erneut aufzumachen kehrt seine Entscheidung um:
 
-| Quelle im Plan | Wird zu |
+| Quelle | Wird zu |
 | --- | --- |
-| »Offene Befunde« mit Urteil `→ Audit` (oder in der Drain-Runde dorthin entschieden) | Finding, `status: "new"` |
-| Folgen, die in einem blockierten Paket hängengeblieben sind | Finding, `status: "new"`, Severity nach Wirkung |
-| `klein`-Befunde des Reviewers, die keine Runde ausgelöst haben | Finding, `severity: "low"` oder `"info"` |
-| Abweichungen von der Empfehlung, die etwas offen gelassen haben | Finding, Severity nach Wirkung |
+| »Offene Befunde« im Plan mit Urteil `→ Audit` (oder in der Drain-Runde dorthin entschieden) | Finding, `status: "new"` |
+| `Folgen:`-Zeilen im Plan, die in einem blockierten Paket hängengeblieben sind | Finding, `status: "new"`, Severity nach Wirkung |
+| `klein`-Befunde des Reviewers aus den Paketdateien, die keine Runde ausgelöst haben | Finding, `severity: "low"` oder `"info"` |
+| Abweichungen von der Empfehlung, die etwas offen gelassen haben (Paketdatei) | Finding, Severity nach Wirkung |
 
 Dazu die Findings der Pakete auf `[!]`: die bleiben ohnehin stehen, bekommen
 aber den Stand aus dem Plan in die `description` — was versucht wurde und woran

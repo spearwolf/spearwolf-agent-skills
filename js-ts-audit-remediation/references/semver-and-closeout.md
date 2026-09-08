@@ -217,9 +217,11 @@ Der Löschbefund ist prüfbar, und er wird geprüft:
 grep -n '^Lauf-Status:' remediation-plan.md   # muss leer ausgehen
 ```
 
-Ein Commit, der Versionsanhebung, CHANGELOG-Eintrag und den fortgeschriebenen
-`./remediation-plan.md` zusammenfasst. Message im Stil, den `git log` des
-Projekts zeigt.
+Ein Commit, der Versionsanhebung, CHANGELOG-Eintrag, den fortgeschriebenen
+`./remediation-plan.md` und den Ordner `docs/remediation/` zusammenfasst. Plan
+und Paketdateien gehen gemeinsam hinein — der Plan verweist auf sie, und ein
+Verweis auf eine Datei, die nie committet wurde, ist keiner. Message im Stil,
+den `git log` des Projekts zeigt.
 
 Die nachgeführte `./audit.html` geht mit hinein, sofern sie im Repo verfolgt
 wird — dann ist ihr Verlauf die Historie der Reports, und ein uncommitteter
@@ -229,10 +231,11 @@ namentlich nennen.
 
 Der Plan geht mit hinein, sofern »Entscheidungen« nichts anderes sagt — das ist
 die Ansage aus der Freigabe in Schritt 5 der `SKILL.md`. Steht dort, dass er
-draußen bleibt, wird er weder geaddet noch gelöscht noch in `.gitignore`
-eingetragen: er liegt im Arbeitsbaum, gehört dem Nutzer, und was damit geschieht,
-entscheidet er. Erwähne die Datei dann im Bericht namentlich, sonst steht am Ende
-eine ungetrackte Datei im Projektroot, deren Herkunft niemand mehr kennt.
+draußen bleibt, wird weder er noch `docs/remediation/` geaddet, gelöscht oder in
+`.gitignore` eingetragen: beides liegt im Arbeitsbaum, gehört dem Nutzer, und
+was damit geschieht, entscheidet er. Erwähne sie dann im Bericht namentlich,
+sonst stehen am Ende ungetrackte Dateien im Projekt, deren Herkunft niemand mehr
+kennt.
 
 ### Und danach aus dem Arbeitsbaum
 
@@ -241,15 +244,21 @@ winziger Commit ihn aus dem Arbeitsbaum:
 
 ```bash
 git rm remediation-plan.md
+git rm -r docs/remediation
 git commit --no-gpg-sign -m "<im Stil des Projekts: Remediation-Plan archiviert>"
 ```
 
 Der Projektroot ist damit wieder so leer wie vorher, und die Historie behält
 alles: `git log --oneline -- remediation-plan.md` zeigt beide Commits, `git show
-<hash>:remediation-plan.md` den vollen Stand.
+<hash>:remediation-plan.md` den vollen Stand, `git show
+<hash>:docs/remediation/paket-3.md` den Detailplan eines einzelnen Pakets.
 
-**Sauber geschlossen heißt: kein Paket auf `[!]`, »Offene Befunde« leer, keine
-unverteilte `Folgen:`-Zeile.** Trifft eines davon nicht zu, bleibt der Plan im
+Bestand `docs/` vor dem Lauf schon und liegt dort mehr als `remediation/`, wird
+nur das eine Unterverzeichnis entfernt — `git rm -r docs` nähme die Dokumentation
+des Projekts mit.
+
+**Sauber geschlossen heißt: kein Paket auf `[!]` oder `[r]`, »Offene Befunde«
+leer, keine unverteilte `Folgen:`-Zeile.** Trifft eines davon nicht zu, bleibt der Plan im
 Arbeitsbaum stehen, und der Bericht sagt warum. Der Grund ist nicht Ordnungssinn:
 ein blockiertes Paket hat seinen Arbeitsbaum im Stash, und der Stash-Name steht
 nur im Plan. Wer den Plan wegräumt, während dort noch etwas liegt, hat einen

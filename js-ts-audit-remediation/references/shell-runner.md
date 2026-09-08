@@ -57,7 +57,8 @@ zugleich erlaubt.
 `--remote-control "<session>-p<N>-plan"`: der Name macht sie in der Session-Liste
 auffindbar, und Remote Control macht sie vom Account aus erreichbar — dieselbe
 Rückfrage lässt sich dann auch vom Handy beantworten, statt sich per SSH an tmux
-zu hängen. Die Züge 1–5 laufen mit `--name "<session>-p<N>-lauf"`; sie sind
+zu hängen. Die Züge 1–5 laufen mit `--name "<session>-p<N>-lauf"`, ein
+nachgezogener Review mit `-nachzug`; sie sind
 nicht interaktiv, aber auffindbar. Der Sessionname kommt aus `SESSION`, sonst aus
 dem Projektverzeichnis.
 
@@ -249,7 +250,7 @@ deshalb läuft nie einer parallel zum anderen.
 | 0 | Kein Paket mehr offen | Schritt 7, `references/semver-and-closeout.md` |
 | 10 | Es braucht eine Entscheidung — oder Zug 0 stand in einer Frage, ohne dass jemand erreichbar war | Antwort datiert in »Entscheidungen«, dann erneut starten. Sagt die Meldung »ohne jede Erreichbarkeit«, war weder ein Client am Fenster noch ein Remote-Control-Kanal offen: einen der beiden Wege herstellen und noch einmal starten |
 | 11 | Ein Paket steht auf `[~]` | `references/resume.md`, nicht dieses Skript |
-| 20 | Die Rückgabe passt nicht zum Repo — oder Zug 0 hat Entscheidungen notiert, die niemand getroffen hat | Plan und `git log` ansehen. Nicht blind wiederholen. Bei »ohne Nutzer«: die neuen Zeilen unter »Entscheidungen« herausnehmen, dann erreichbar sein und erneut starten — am Fenster oder über Remote Control |
+| 20 | Die Rückgabe passt nicht zum Repo — oder Zug 0 hat Entscheidungen notiert, die niemand getroffen hat | Plan und `git log` ansehen. Nicht blind wiederholen. Bei »ohne Nutzer«: die neuen Zeilen unter »Entscheidungen« herausnehmen, dann erreichbar sein und erneut starten — am Fenster oder über Remote Control. **Ein fehlender Review-Beleg gehört nicht mehr hierher**: den zieht die Schleife selbst nach, siehe »Wenn der Review fehlt« |
 | 21 | Ein Runner hing an einer Rechteschranke | Unter der Voreinstellung `bypassPermissions` selten und nie durch eine zu enge Allowlist: es bleiben die Handlungen, die kein Modus je bewilligt — eine `ask`-Regel dieser Maschine, ein Connector-Tool, das die Organisation auf »ask« gestellt hat, ein MCP-Tool mit `requiresUserInteraction`, `rm` auf einem kritischen Pfad. Die Meldung nennt das Abgelehnte und sagt, welcher der beiden Fälle vorliegt. Das Paket steht danach auf `[~]` und will vorher nach `references/resume.md` zurückgesetzt werden — der Runner ist mitten im Zug gestorben, nicht am Ende |
 | 30 | Der Runner-Prozess selbst ist gescheitert | `paket-N.*.stderr` im Arbeitsverzeichnis |
 | 31 | Die API blieb überlastet | Nichts ist kaputt, nichts hat sich bewegt: später erneut starten |
@@ -597,12 +598,14 @@ und die Reichweite, um derentwillen der Umweg existiert, hätte er auch nicht.
 
 ## Deine Rolle, wenn du beauftragt wurdest
 
-Ein Paket läuft in zwei Prozessen statt in einem. Die Trennung liegt zwischen
-Zug 0 und Zug 1:
+Ein Paket läuft in zwei Prozessen statt in einem — in einem dritten nur, wenn
+etwas nachzuholen ist. Die Trennung liegt zwischen Zug 0 und Zug 1:
 
 - **A** führt Zug 0 aus: Abgleich der Findings am aktuellen Code, Triage der
-  Folgen und der offenen Befunde, Detailplan, Restplan prüfen. In den Detailplan
-  gehört auf diesem Weg eine Zeile mehr: `- Effort:`, siehe unten. Danach steht
+  Folgen und der offenen Befunde, Detailplan, Restplan prüfen. Der Detailplan
+  ist auf diesem Weg eine eigene Datei — `docs/remediation/paket-N.md`, der
+  Pfad steht in deinem Brief —, und dort gehört eine Zeile mehr hinein:
+  `- Effort:`, siehe unten. Die Schleife liest sie von dort. Danach steht
   das Paket auf `[~]`, und A hört auf. **A schreibt keine Zeile Projektcode und
   startet keinen Implementierer.**
   Der Nutzer ist erreichbar — als Einziger im ganzen Lauf. Das ist eine
@@ -611,7 +614,7 @@ Zug 0 und Zug 1:
   Wann eine Frage die Unterbrechung wert ist, steht in `runner.md` unter »Wo du
   anhältst«; die Liste dort ist abschließend und gilt hier unverändert.
   **Deine letzte Handlung ist `touch <arbeitsdir>/paket-N.zug0.done`**, und
-  zwar erst, wenn Detailplan und Marke im Plan stehen. Danach läuft eine Uhr:
+  zwar erst, wenn die Paketdatei steht und die Marke im Plan gesetzt ist. Danach läuft eine Uhr:
   die Schleife schließt dein Fenster. Was zu diesem Zeitpunkt nur in deinem
   Kontext steht und nicht im Plan, hat es nie gegeben. Genau dieser eine
   Aufruf ist vorab freigegeben — buchstabengetreu, mit dem Pfad aus deinem
@@ -619,8 +622,11 @@ Zug 0 und Zug 1:
   bekommt eine Rückfrage, und die beantwortet um diese Zeit niemand mehr.
 - **B** führt die Züge 1 bis 5 aus: Implementierer beauftragen, Report
   entgegennehmen, Review, Fehlerkette, Verify, Commit, Plan fortschreiben.
-  **B wiederholt Zug 0 nicht.** Der Detailplan steht unter dem Paket; er ist
+  **B wiederholt Zug 0 nicht.** Der Detailplan steht in der Paketdatei; er ist
   Stunden alt, nicht Tage.
+- **N** kommt nur vor, wenn ein Paket committet ist und der Review fehlt. Der
+  Auftrag steht unter »Wenn der Review fehlt«; er umfasst die Züge 3 bis 5 und
+  nichts davor.
 
 Alles Inhaltliche zu diesen Zügen steht in `references/runner.md`. Dieser Text
 sagt nur, welchen Ausschnitt davon du hast.
@@ -644,15 +650,15 @@ in einer Shell-Verzweigung landen:
 | Im JSON | Im Plan | Wer gibt das zurück |
 | --- | --- | --- |
 | `planned` | Paket auf `[~]`, Detailplan steht | nur A |
-| `committed` | Paket auf `[x]`, Hash eingetragen | nur B |
+| `committed` | Paket auf `[x]`, Hash eingetragen | B, und N nach dem nachgezogenen Review |
 | `dropped` | Paket auf `[x]`, »Ergebnis: entfallen« | A oder B |
-| `blocked` | Paket auf `[!]`, Arbeitsbaum im Stash | A oder B |
-| `question` | unverändert, der Nutzer entscheidet | A oder B |
+| `blocked` | Paket auf `[!]`, Arbeitsbaum im Stash | A, B oder N |
+| `question` | unverändert, der Nutzer entscheidet | A, B oder N |
 
 Die Prüffrage aus `runner.md` gilt unverändert und ist hier wichtiger als dort:
-**was weiß ich über dieses Paket, das nicht in `./remediation-plan.md` steht?**
-Zwischen A und B liegt ein Prozesswechsel, und über ihn kommt nichts als die
-Datei. Was A nicht hineinschreibt, hat B nie erfahren.
+**was weiß ich über dieses Paket, das weder im Plan noch in der Paketdatei
+steht?** Zwischen A und B liegt ein Prozesswechsel, und über ihn kommen nichts
+als diese beiden Dateien. Was A nicht hineinschreibt, hat B nie erfahren.
 
 ## Was die Schleife nachprüft
 
@@ -666,9 +672,16 @@ sind. Fällt eine dieser Proben, endet der Lauf mit Exit 20:
   enthält die Zeile `exit=0`.
 - Bei `committed`: `rounds` liegt nicht über `MAX_ROUNDS`, und es gibt nicht
   mehr Implementierer-Reports als erlaubte Runden.
-- Bei `committed`: im Arbeitsverzeichnis liegt je ein Report von Implementierer
-  und Reviewer. Ein Runner schreibt keinen Projektcode selbst, und das wird
-  belegt, nicht geglaubt.
+- Bei `committed`: im Arbeitsverzeichnis liegt ein Report des Reviewers. Ein
+  Commit, den niemand außer seinem Urheber gesehen hat, gilt nicht — das wird
+  belegt, nicht geglaubt. Fehlt der Report, hält der Lauf trotzdem nicht an: das
+  Paket geht auf `[r]` und die Schleife zieht den Review nach, siehe unten.
+- Bei `committed`: liegt ein Report des Reviewers vor, aber keiner eines
+  Implementierers, hat der Runner den Code selbst geschrieben. Das ist ein
+  Regelbruch und wird als Ausnahme in den Plan geschrieben — der Commit bleibt
+  trotzdem stehen. Geschriebener Code lässt sich nicht rückwirkend von jemand
+  anderem schreiben, und ihn wegzuwerfen kostet die Arbeit, ohne irgendetwas
+  sicherer zu machen.
 - Die Paketnummer in deiner Rückgabe ist die aus deinem Auftrag, und das Feld
   `role` nennt die Rolle, in der du beauftragt wurdest. Wer sich für die andere
   hält, hat womöglich den falschen Zug gefahren.
@@ -696,6 +709,74 @@ sind. Fällt eine dieser Proben, endet der Lauf mit Exit 20:
 
 Bleibt nach deinem Commit etwas im Arbeitsbaum liegen, gibt es eine Warnung und
 der Lauf geht weiter. Der nächste Diff enthält es dann mit.
+
+## Wenn der Review fehlt
+
+Es kommt vor, dass ein Runner B seinen Auftrag halb erfüllt: er schreibt den
+Code selbst, statt einen Implementierer zu beauftragen, oder er committet, ohne
+einen Reviewer gesehen zu haben. Die Gegenprobe merkt es an den fehlenden
+Reportdateien.
+
+**Der Lauf hält deswegen nicht an, und der Nutzer wird nicht gefragt.** Es gibt
+hier nichts zu entscheiden: die Arbeit ist getan, der Commit steht, das Verify
+war grün. Was fehlt, ist der zweite Blick — und den kann man nachholen. Die
+Schleife setzt das Paket auf `[r]`, schreibt eine Zeile darüber in den Plan und
+holt es im nächsten Durchlauf als **Rolle N** wieder auf.
+
+`[r]` geht dabei allem anderen vor. Mit einem ungeprüften Commit im Rücken
+weiterzubauen ist der einzige Ausgang, der schlechter wäre als anzuhalten.
+
+| Was fehlt | Was passiert |
+| --- | --- |
+| Review-Report | Paket auf `[r]`, Rolle N zieht den Review nach |
+| nur der Implementierer-Report | Ausnahme in den Plan, der Lauf geht weiter |
+| Review-Report auch nach Rolle N | Exit 20. Hier hört die Reparatur auf, ein zweiter Anlauf käme an dieselbe Stelle. Das Paket bleibt auf `[r]` — der Commit steht im Repo, und was mit ihm geschieht, entscheidet der Nutzer |
+
+Der Unterschied zwischen den ersten beiden Zeilen ist kein Ermessen, sondern
+eine Frage der Nachholbarkeit. Ein Review lässt sich jederzeit nachziehen: der
+Diff liegt vor, ein unabhängiger Prozess liest ihn, sein Urteil ist genauso viel
+wert wie vorher. Ein Implementierer lässt sich nicht nachziehen — Code, der
+geschrieben ist, kann nicht rückwirkend von jemand anderem geschrieben werden.
+Die Arbeit dafür wegzuwerfen kostet ein ganzes Paket und macht nichts sicherer;
+was das Verfahren wirklich trägt, ist der unabhängige Blick, und den bekommt der
+Commit auf diesem Weg.
+
+### Dein Auftrag als Rolle N
+
+Du bist der Runner, den die Schleife für ein Paket startet, das committet ist
+und dessen Review fehlt. Der Auftrag ist eng:
+
+1. **Der Commit bleibt stehen.** Kein `reset`, kein `revert`, kein `amend`, kein
+   Verwerfen des Arbeitsstands. Der Hash steht bereits im Plan, und was du hier
+   tust, hängt sich daran, statt ihn zu ersetzen.
+2. **Zug 3 mit dem Diff des vorhandenen Commits.** `git show <hash>` in eine
+   Datei im Arbeitsverzeichnis, Reviewer als eigener Prozess, Report nach
+   `paket-N.review-<runde>.json`. Die Regeln aus »Implementierer und Reviewer:
+   eigene Prozesse« gelten unverändert, ebenso die beiden Urteile aus
+   `runner.md`: Erfüllung je Finding-ID und Qualität der Änderung.
+3. **Zug 4, falls er etwas findet.** Nicht erfüllte Findings sowie kritische und
+   wichtige Befunde gehen durch die Fehlerkette wie sonst auch — über
+   Implementierer-Prozesse, nicht über deine eigene Tastatur. Kleine Befunde
+   kommen in die Paketdatei und lösen keine Runde aus.
+4. **Zug 5 mit einem eigenen Commit obendrauf.** Verify läufst du selbst und
+   liest die Ausgabe; die Nachbesserung wird ein zweiter Commit, nicht ein
+   umgeschriebener erster. Fand der Reviewer nichts, gibt es auch keinen
+   zweiten Commit — dann bleibt es bei dem einen.
+5. **Plan und Paketdatei fortschreiben.** Die Marke geht von `[r]` zurück auf
+   `[x]`, die Zeile »Review offen« weicht dem, was dabei herauskam. Trägt das
+   Paket jetzt zwei Commits, nennt `Hash:` beide, den Nachbesserungs-Commit
+   zuletzt — die Schleife hält den letzten gegen `HEAD`. In der Paketdatei
+   stehen das Urteil des Reviewers und der Vermerk, dass er nachgezogen wurde
+   und warum.
+6. **Deine Rückgabe** ist `committed` mit dem Hash, auf dem das Paket am Ende
+   steht, dem Pfad des Verify-Logs und der Rundenzahl. `blocked` und `question`
+   gibt es auch hier — aber nur für das, was sie überall bedeuten: ein Befund,
+   den die Fehlerkette nicht schließen konnte, oder eine Frage, die die Richtung
+   umwirft. Dass der Review fehlte, ist keine davon.
+
+Was du **nicht** tust: das Paket noch einmal von vorn umsetzen, den Detailplan
+neu schreiben, Findings nachtragen. Zug 0 und die Züge 1 und 2 sind gelaufen;
+du holst den Teil nach, der fehlt, und sonst nichts.
 
 ## Drei Dinge, die du anders machst als in `runner.md`
 
@@ -732,7 +813,7 @@ liest und committet; die Stufe, die zählt, steht im Paket.
 
 Deshalb setzt **A** ihn und nicht die Umgebung: A hat den Code gesehen, in
 seinem Fenster auch mit dir darüber gesprochen, und weiß, was dieses Paket
-verlangt. Eine Zeile im Detailplan, neben `- Modell:`:
+verlangt. Eine Zeile in der Paketdatei, neben `- Modell:`:
 
 ```markdown
 - Effort: low

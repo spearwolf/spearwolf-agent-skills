@@ -3,9 +3,9 @@
 # remediate.sh — die Schleife aus Schritt 6 von js-ts-audit-remediation.
 #
 # Sie trifft keine inhaltliche Entscheidung. Sie liest die Marken im Plan,
-# startet je Paket zwei Runner-Prozesse, prüft deren Rückgabe gegen git und
-# das Verify-Log, und hört auf, wenn kein Paket mehr offen ist. Alles, was
-# ein Urteil verlangt, liegt davor (Schritt 1-5) und danach (Schritt 7).
+# startet je Paket zwei Runner-Prozesse — einen dritten, wenn ein Review fehlt —,
+# prüft jede Rückgabe gegen git und das Verify-Log und hört auf, wenn kein
+# Paket mehr offen ist. Was ein Urteil verlangt, liegt davor und danach.
 #
 # Aufruf im Wurzelverzeichnis des Zielprojekts, nachdem der Grobplan
 # freigegeben ist:
@@ -28,6 +28,12 @@ EX_PRE=40      # eine Vorbedingung stimmt nicht
 
 # --- Stellschrauben, alle über die Umgebung überschreibbar ------------------
 PLAN=${PLAN:-./remediation-plan.md}
+# Die Paketdetails liegen je Paket in einer eigenen Datei, damit der Plan der
+# Stand des Laufs bleibt und nicht die Summe aller Detailpläne. Der Ordner ist
+# wie der Plan während des Laufs ungetrackt; der Abschluss committet beide
+# zusammen. Ein Plan aus einem Lauf vor dieser Aufteilung trägt die Details
+# weiter im Plan — das Skript liest dann von dort weiter (effort_for_package).
+DETAILS=${DETAILS:-docs/remediation}
 
 # Zug 0 läuft immer in einem eigenen Fenster der tmux-Session: der Planer hat
 # deine Werkzeuge, deine MCP-Server und kann dich fragen. Ein Planer, der das
@@ -182,6 +188,8 @@ SKILL_DIR=${REMEDIATE_SKILL_DIR:-$(cd -- "$SCRIPT_DIR/.." && pwd)}
 SCHEMA="$SKILL_DIR/assets/runner-return.schema.json"
 
 PACKAGES_DONE=0
+REVIEW_OFFEN=0   # setzt check_commit, wenn ein Commit ohne Review-Beleg dasteht;
+                 # die Schleife zieht ihn dann als Rolle N nach, statt anzuhalten
 AKTUELL=""       # das Paket, an dem die Schleife gerade steht; für die Meldung
                  # beim unerwarteten Ausgang, wo sonst niemand mehr sagen kann,
                  # wo es passiert ist
@@ -485,6 +493,58 @@ plan_status() { # $1 = Text hinter »Lauf-Status: «; leer entfernt die Zeile
   return 0
 }
 
+# Zwei kleine Eingriffe in den Plan, beide vom selben Schlag wie plan_status:
+# awk statt sed, weil Überschriften und Notiztexte Klammern und Schrägstriche
+# tragen und ein Ersetzungsmuster daraus eine Fehlerquelle ohne Gegenwert wäre.
+set_marker() { # $1 = Paketnummer, $2 = neues Markenzeichen
+  local pkg=$1 mark=$2 tmp
+  [ -f "$PLAN" ] || return 0
+  tmp="$PLAN.marke.$$"
+  awk -v pkg="$pkg" -v mark="$mark" '
+    $0 ~ ("^### \\[.\\] " pkg "\\.") {
+      sub(/^### \[.\]/, "### [" mark "]")
+    }
+    { print }
+  ' "$PLAN" > "$tmp" 2>/dev/null && mv -- "$tmp" "$PLAN" || rm -f -- "$tmp"
+  return 0
+}
+
+plan_note() { # $1 = Paketnummer, $2 = Zeile, die unter die Paketüberschrift kommt
+  local pkg=$1 text=$2 tmp
+  [ -f "$PLAN" ] || return 0
+  tmp="$PLAN.notiz.$$"
+  # Die Dopplungsbremse sieht nur in den Block dieses Pakets. Global geprüft
+  # hielte die Notiz des einen Pakets die gleichlautende des nächsten auf.
+  awk -v pkg="$pkg" -v text="$text" '
+    BEGIN { hdr = "^### \\[.\\] " pkg "\\." }
+    { lines[NR] = $0 }
+    $0 ~ hdr { start = NR; inpkg = 1; next }
+    inpkg && /^### / { inpkg = 0 }
+    inpkg && $0 == ("- " text) { seen = 1 }
+    END {
+      for (i = 1; i <= NR; i++) {
+        print lines[i]
+        if (i == start && !seen) print "- " text
+      }
+    }
+  ' "$PLAN" > "$tmp" 2>/dev/null && mv -- "$tmp" "$PLAN" || rm -f -- "$tmp"
+  return 0
+}
+
+plan_unnote() { # $1 = Paketnummer, $2 = Anfang der Zeile, die verschwindet
+  local pkg=$1 pre=$2 tmp
+  [ -f "$PLAN" ] || return 0
+  tmp="$PLAN.unnotiz.$$"
+  awk -v pkg="$pkg" -v pre="- $2" '
+    BEGIN { hdr = "^### \\[.\\] " pkg "\\." }
+    $0 ~ hdr { inpkg = 1; print; next }
+    /^### / { inpkg = 0 }
+    inpkg && index($0, pre) == 1 { next }
+    { print }
+  ' "$PLAN" > "$tmp" 2>/dev/null && mv -- "$tmp" "$PLAN" || rm -f -- "$tmp"
+  return 0
+}
+
 # Was der EXIT-Trap ruft. Steht als Funktion da und nicht als Einzeiler im
 # Trap, weil im Trap jedes Anführungszeichen zweimal gelesen wird und ein
 # Fehler darin erst dann auffällt, wenn er am dringendsten stört.
@@ -512,7 +572,7 @@ Optionen:
   --help      diese Ausgabe.
 
 Umgebung:
-  PLAN MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER MAX_ROUNDS
+  PLAN DETAILS MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD MAX_ITER MAX_ROUNDS
   ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS NOTIFY_CMD
   ORCHESTRATOR_SESSION  Kennung der startenden Session; ohne sie fehlen Plan,
                         Start und Abschluss in der Schlusstabelle
@@ -550,9 +610,22 @@ count_with_marker() { # $1 = Markenzeichen
   sed -En "s/^### \[$1\] ([0-9]+[a-z]?)\..*/\1/p" "$PLAN" | wc -l | tr -d ' '
 }
 
+detail_file() { # $1 = Paketnummer -> Pfad der Paketdatei
+  printf '%s/paket-%s.md' "$DETAILS" "$1"
+}
+
 effort_for_package() { # $1 = Paketnummer -> die Zeile »- Effort:« aus dem Detailplan
-  local v
-  v=$(sed -n "/^### \[.\] $1\./,/^### /p" "$PLAN" | sed -n 's/^- Effort: *\([a-z]*\).*/\1/p' | head -1)
+  local v f
+  # Erst die Paketdatei, dann der Plan. Die zweite Quelle ist der Rückfallweg
+  # für Läufe, die vor der Aufteilung begonnen haben; sie kostet ein sed und
+  # hält einen laufenden Plan alter Form fahrbar.
+  f=$(detail_file "$1")
+  if [ -f "$f" ]; then
+    v=$(sed -n 's/^- Effort: *\([a-z]*\).*/\1/p' "$f" | head -1)
+  fi
+  if [ -z "${v:-}" ]; then
+    v=$(sed -n "/^### \[.\] $1\./,/^### /p" "$PLAN" | sed -n 's/^- Effort: *\([a-z]*\).*/\1/p' | head -1)
+  fi
   case "$v" in
     low|medium|high|xhigh|max) printf '%s' "$v" ;;
     *) printf '%s' "$EFFORT_B" ;;
@@ -645,8 +718,12 @@ transient_failure() { # 0 = die API war überlastet, ein späterer Versuch lohnt
   grep -qE '(^|[^0-9])(429|500|502|503|529)([^0-9]|$)|overloaded_error|Overloaded|rate.?limit' "$ERR" 2>/dev/null
 }
 
-dirty_paths() { # Arbeitsbaum ohne den Plan, der während des Laufs ungetrackt bleibt
-  git status --porcelain | grep -v -F -e "$(basename "$PLAN")" || true
+dirty_paths() { # Arbeitsbaum ohne Plan und Paketdetails, die während des Laufs ungetrackt bleiben
+  # -uall und nicht die Voreinstellung: ohne sie fasst git ein ungetracktes
+  # Verzeichnis zu einer Zeile zusammen (»?? docs/«), und die trägt den Pfad
+  # nicht mehr, an dem hier gefiltert wird. Der ganze Ordner sähe dann wie eine
+  # fremde Änderung aus und hielte jeden Start auf.
+  git status --porcelain -uall | grep -v -F -e "$(basename "$PLAN")" -e "$DETAILS/" || true
 }
 
 # --- Start in einer abgelösten tmux-Session ---------------------------------
@@ -822,21 +899,28 @@ brief_for() { # $1 = Rolle, $2 = Paketnummer
   # Der Rückkanal ist nicht derselbe. B gibt ein JSON-Objekt zurück, das die
   # Schleife prüft; A hat gar keins und hinterlässt seinen Stand im Plan.
   case "$role" in
-    A) rueckgabe="Dein Ergebnis ist der Plan, nichts sonst: der Detailplan unter deinem Paket und die Marke davor. Du gibst kein JSON zurück, und niemand liest, was du am Ende in dieses Terminal schreibst. Was den Lauf überleben muss, steht in $PLAN, bevor du aufhörst.
-Steht alles im Plan, tust du als allerletzte Handlung genau dies:
+    A) rueckgabe="Dein Ergebnis sind zwei Dateien, nichts sonst: der Detailplan in deiner Paketdatei und die Marke vor deinem Paket im Plan. Du gibst kein JSON zurück, und niemand liest, was du am Ende in dieses Terminal schreibst. Was den Lauf überleben muss, steht in $PLAN und $(detail_file "$pkg"), bevor du aufhörst.
+Steht alles in beiden Dateien, tust du als allerletzte Handlung genau dies:
   touch $WORK/paket-$pkg.zug0.done
 Das ist dein Feierabendzeichen, und es ist das Einzige, worauf die Schleife wartet. Sie schließt dieses Fenster ${ZUG0_GRACE} Sekunden später selbst und fährt fort; niemand muss dafür etwas tippen, und /exit brauchst du nicht. Vor dem touch sagst du dem Nutzer in einem Satz, dass du fertig bist und das Fenster gleich zugeht.
-Die Reihenfolge ist keine Förmlichkeit: nach dem touch läuft eine Uhr, und was danach noch in deinem Kontext steht statt im Plan, ist verloren.
+Die Reihenfolge ist keine Förmlichkeit: nach dem touch läuft eine Uhr, und was danach noch in deinem Kontext steht statt in einer der beiden Dateien, ist verloren.
 Der Nutzer ist erreichbar, am Fenster oder unterwegs — aber seine Aufmerksamkeit ist der teuerste Posten dieses Laufs, und du bist hier, damit er sie nicht braucht. Was sich begründen lässt, entscheidest du, und der Grund steht im Detailplan. Gefragt wird allein, was die Richtung umwirft; die Liste dafür ist »Wo du anhältst« in runner.md, und sie ist abschließend. Hast du eine Empfehlung, hast du entschieden." ;;
+    N) rueckgabe="Deine Rückgabe ist ein JSON-Objekt nach dem Schema, das dir mitgegeben wurde, und
+sie ist der einzige Kanal zwischen uns. Was den Lauf überleben muss, schreibst du
+nach $PLAN und in deine Paketdatei, bevor du zurückgibst." ;;
     B) rueckgabe="Deine Rückgabe ist ein JSON-Objekt nach dem Schema, das dir mitgegeben wurde, und
 sie ist der einzige Kanal zwischen uns. Niemand fragt dich nach deinem Stand, und
 es gibt keine Adresse, an die du etwas anderes schicken könntest. Was den Lauf
-überleben muss, schreibst du nach $PLAN, bevor du zurückgibst." ;;
+überleben muss, schreibst du nach $PLAN und in deine Paketdatei, bevor du
+zurückgibst." ;;
   esac
 
   case "$role" in
     A) scope="Du bist A: du führst Zug 0 aus — Abgleich, Triage der offenen Befunde, Detailplan, Restplan prüfen. Danach hörst du auf. Du änderst keine Zeile Projektcode und startest keinen Implementierer." ;;
-    B) scope="Du bist B: Zug 0 ist erledigt, dein Detailplan steht im Plan unter deinem Paket. Du beginnst bei Zug 1 und endest mit dem Commit aus Zug 5. Du machst Zug 0 nicht noch einmal.
+    N) scope="Du bist N: das Paket ist committet, aber es fehlt der Beleg, dass ein unabhängiger Reviewer den Diff gesehen hat. Du ziehst den Review nach.
+Der Abschnitt »Wenn der Review fehlt« in shell-runner.md gilt und geht allem anderen vor. Kurz: der Commit bleibt stehen, du rollst nichts zurück und wirfst keine Arbeit weg. Du beginnst bei Zug 3 mit dem Diff des vorhandenen Commits, beauftragst einen Reviewer als eigenen Prozess, fährst die Fehlerkette über Implementierer-Prozesse, wenn er etwas findet, läufst Verify selbst und legst eine Nachbesserung als eigenen Commit obendrauf. Ohne Befund bleibt es bei dem einen Commit.
+Die Fehlerkette hat höchstens $MAX_ROUNDS Runden. Eine Runde, die die Zahl der offenen Befunde nicht senkt, ist die letzte." ;;
+    B) scope="Du bist B: Zug 0 ist erledigt, dein Detailplan steht in deiner Paketdatei. Du beginnst bei Zug 1 und endest mit dem Commit aus Zug 5. Du machst Zug 0 nicht noch einmal.
 Die Fehlerkette in Zug 4 hat höchstens $MAX_ROUNDS Runden. Eine Runde, die die Zahl der offenen Befunde nicht senkt, ist die letzte — dann blockieren und berichten." ;;
   esac
 
@@ -848,6 +932,7 @@ Lies zuerst diese beiden Dateien, in dieser Reihenfolge:
   2. $SKILL_DIR/references/runner.md — der Inhalt deiner Züge
 
 Plan: $PLAN
+Paketdatei: $(detail_file "$pkg") — dort steht der Detailplan zu Paket $pkg. Zug 0 legt sie an, alle danach lesen und schreiben dort. Der Plan trägt den Stand des Laufs, die Paketdatei die Einzelheiten dieses einen Pakets.
 Branch: $BRANCH
 Arbeitsverzeichnis für Diffs und Logs: $WORK
 
@@ -1041,9 +1126,13 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
 dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
   local role=$1 pkg=$2 model effort brief rc denials
 
+  local kennung
   case "$role" in
-    A) model=$MODEL_A; effort=$EFFORT_A ;;
-    B) model=$MODEL_B; effort=$(effort_for_package "$pkg") ;;
+    A) model=$MODEL_A; effort=$EFFORT_A; kennung=lauf ;;
+    B) model=$MODEL_B; effort=$(effort_for_package "$pkg"); kennung=lauf ;;
+    # N erbt Modell und Effort des Pakets: es sind dieselben Züge 3 bis 5, nur
+    # nachgeholt. Der eigene Name trennt ihn in der Sitzungsliste von B.
+    N) model=$MODEL_B; effort=$(effort_for_package "$pkg"); kennung=nachzug ;;
     *) die $EX_PRE "unbekannte Rolle: $role" ;;
   esac
 
@@ -1072,7 +1161,7 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
     claude -p "$brief" \
       --model "$model" \
       --effort "$effort" \
-      --name "$SESSION-p$pkg-lauf" \
+      --name "$SESSION-p$pkg-$kennung" \
       ${FALLBACK_MODEL:+--fallback-model "$FALLBACK_MODEL"} \
       --session-id "$(uuid)" \
       --output-format json \
@@ -1143,8 +1232,8 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
       rat=$(printf 'Das gehoert in ALLOW_TOOLS. Die Allowlist ist zu eng, nicht das Paket zu schwer.\n  Nach dem Zuruecksetzen:\n    ALLOW_TOOLS=%s %s\n  Dauerhaft loest das PERM=bypassPermissions, siehe Kopf des Skripts.' \
         "${wider:-$ALLOW_TOOLS,$was}" "$0")
     fi
-    die $EX_PERM "$(printf 'Runner %s fuer Paket %s wurde %s mal von der Rechteschranke gestoppt.\n  Abgelehnt: %s\n  %s\n\n  Paket %s steht auf [~] und gehoert vorher auf [ ] zurueck — siehe\n  references/resume.md, Abschnitt zu Exit 21.\n\n  Vollstaendig in %s' \
-      "$role" "$pkg" "$denials" "${was:-siehe JSON}" "$rat" "$pkg" "$RAW")"
+    die $EX_PERM "$(printf 'Runner %s fuer Paket %s wurde %s mal von der Rechteschranke gestoppt.\n  Abgelehnt: %s\n  %s\n\n  Paket %s steht auf [%s]. Bei [~] gehoert es vorher auf [ ] zurueck — siehe\n  references/resume.md, Abschnitt zu Exit 21. Bei [r] bleibt es stehen: der\n  naechste Start zieht den Review nach.\n\n  Vollstaendig in %s' \
+      "$role" "$pkg" "$denials" "${was:-siehe JSON}" "$rat" "$pkg" "$(marker_of "$pkg")" "$RAW")"
   fi
 
   # Die Form garantiert das Schema; leer heißt, dass sie es trotzdem nicht tut.
@@ -1217,13 +1306,30 @@ check_commit() { # $1 = Paketnummer, $2 = HEAD vor dem Runner
   # Wer committet, hat delegiert, und der Beleg sind die Reports von
   # Implementierer und Reviewer auf der Platte. Beide laufen als eigene
   # Prozesse; ein Subagent hinterließe keine Datei und wäre hier kein Beleg.
+  #
+  # Die beiden Belege wiegen verschieden schwer, und das entscheidet, was hier
+  # passiert. Der Review ist nachholbar: der Commit steht, der Diff ist da, ein
+  # unabhängiger Reviewer kann ihn jederzeit lesen. Der Implementierer ist es
+  # nicht — Code, der geschrieben ist, lässt sich nicht rückwirkend von jemand
+  # anderem schreiben, und ihn wegzuwerfen kostet die Arbeit ohne jeden Gewinn
+  # an Sicherheit. Also: fehlender Review wird nachgezogen, fehlender
+  # Implementierer-Report wird vermerkt. Der Nutzer wird in keinem der beiden
+  # Fälle gefragt.
   local impl rev
   # find statt ls: ein leerer Glob lässt ls scheitern und reißt unter
   # pipefail den ganzen Aufruf mit.
   impl=$(find "$WORK" -maxdepth 1 -name "paket-$1.impl-*.json" 2>/dev/null | wc -l | tr -d ' ')
   rev=$(find "$WORK" -maxdepth 1 -name "paket-$1.review-*.json" 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$impl" -lt 1 ] || [ "$rev" -lt 1 ]; then
-    die $EX_CONTRACT "Paket $1 wurde ohne Beleg für Implementierer und Reviewer committet: $impl Report(s), $rev Review(s) im Arbeitsverzeichnis. Ein Runner schreibt keinen Projektcode selbst."
+  if [ "$rev" -lt 1 ]; then
+    REVIEW_OFFEN=1
+    set_marker "$1" 'r'
+    plan_note "$1" "Review offen: ohne Beleg committet ($hash), die Schleife zieht ihn nach ($(date '+%Y-%m-%d'))"
+    warn "Paket $1 ist ohne Review-Beleg committet ($impl Implementierer-Report(s), $rev Review(s)). Der Commit bleibt stehen, das Paket steht auf [r], der Review wird nachgezogen."
+    return 0
+  fi
+  if [ "$impl" -lt 1 ]; then
+    plan_note "$1" "Ausnahme: der Code stammt vom Runner selbst, nicht von einem Implementierer — der Review liegt vor ($(date '+%Y-%m-%d'))"
+    warn "Paket $1 hat keinen Implementierer-Report: der Runner hat den Code selbst geschrieben. Der Review liegt vor, der Commit bleibt stehen, die Ausnahme steht im Plan."
   fi
 
   # Die Obergrenze der Fehlerkette. Eine Kette, die länger läuft, hat ein
@@ -1238,6 +1344,39 @@ check_commit() { # $1 = Paketnummer, $2 = HEAD vor dem Runner
   local left
   left=$(dirty_paths)
   [ -z "$left" ] || warn "$(printf 'nach Paket %s liegt noch etwas im Arbeitsbaum:\n%s' "$1" "$left")"
+}
+
+check_nachgezogen() { # $1 = Paketnummer; die Gegenprobe nach Rolle N
+  local hash vlog rev
+  hash=$(field hash)
+  [ -n "$hash" ] || die $EX_CONTRACT "Paket $1 gibt nach dem nachgezogenen Review keinen Hash zurück"
+  git rev-parse --verify --quiet "$hash^{commit}" >/dev/null \
+    || die $EX_CONTRACT "Paket $1 nennt den Hash $hash, den es in diesem Repo nicht gibt"
+  # Anders als bei B darf HEAD hier stehengeblieben sein: ein Review ohne
+  # Befund ändert keine Zeile. Genannt werden muss trotzdem der Commit, auf dem
+  # das Paket am Ende steht — der ursprüngliche oder die Nachbesserung darüber.
+  [ "$(git rev-parse "$hash")" = "$(git rev-parse HEAD)" ] \
+    || die $EX_CONTRACT "Paket $1 nennt $hash, HEAD ist aber $(git rev-parse --short HEAD)"
+
+  vlog=$(field verify_log)
+  case "$vlog" in
+    "$WORK"/*) ;;
+    *) die $EX_CONTRACT "Paket $1 nennt ein Verify-Log außerhalb des Arbeitsverzeichnisses: ${vlog:-nichts}" ;;
+  esac
+  [ -f "$vlog" ] || die $EX_CONTRACT "Paket $1 nennt ein Verify-Log, das nicht existiert: $vlog"
+  grep -q '^exit=0$' "$vlog" \
+    || die $EX_CONTRACT "in $vlog steht keine Zeile 'exit=0'. Auch ein nachgezogener Review endet auf einem grünen Lauf."
+
+  rev=$(find "$WORK" -maxdepth 1 -name "paket-$1.review-*.json" 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$rev" -lt 1 ]; then
+    # Die Marke bleibt auf [r], auch wenn der Runner sie auf [x] gesetzt hat:
+    # der Review fehlt weiterhin, und ein [x] behauptete das Gegenteil.
+    set_marker "$1" 'r'
+    die $EX_CONTRACT \
+      "Paket $1 hat auch nach dem nachgezogenen Review keinen Review-Report im Arbeitsverzeichnis. Hier hört die Reparatur auf — ein zweiter Anlauf käme an dieselbe Stelle. Das Paket steht auf [r], der Commit steht im Repo, und was mit ihm geschieht, entscheidet der Nutzer."
+  fi
+
+  check_marker "$1" 'x'
 }
 
 # --- Die Schleife -----------------------------------------------------------
@@ -1283,12 +1422,22 @@ run_b() { # $1 = Paketnummer
     committed)
       check_marker "$1" 'x'
       check_commit "$1" "$head_before"
-      PACKAGES_DONE=$((PACKAGES_DONE + 1))
-      say "  $(git rev-parse --short HEAD) · $(field findings) · $(field rounds) Runde(n)"
-      [ "$(field queue)" = "-" ] || say "  Queue: $(field queue)"
-      journal "paket=$1 rolle=B status=committed hash=$(field hash) runden=$(field rounds)"
-      notify "Paket $1 committet" \
-        "$(git rev-parse --short HEAD) · $(field rounds) Runde(n) · $(stand)"
+      if [ "$REVIEW_OFFEN" = 1 ]; then
+        # Kein Anhalten und keine Rückfrage: check_commit hat das Paket auf [r]
+        # gesetzt, der nächste Durchlauf holt es als Rolle N. Auch keine
+        # Meldung aufs Telefon — das Paket ist noch nicht fertig, und was
+        # dabei herauskommt, meldet Rolle N.
+        REVIEW_OFFEN=0
+        say "  $(git rev-parse --short HEAD) · committet ohne Review-Beleg — Paket steht auf [r], der Review wird nachgezogen"
+        journal "paket=$1 rolle=B status=review-offen hash=$(field hash) runden=$(field rounds)"
+      else
+        PACKAGES_DONE=$((PACKAGES_DONE + 1))
+        say "  $(git rev-parse --short HEAD) · $(field findings) · $(field rounds) Runde(n)"
+        [ "$(field queue)" = "-" ] || say "  Queue: $(field queue)"
+        journal "paket=$1 rolle=B status=committed hash=$(field hash) runden=$(field rounds)"
+        notify "Paket $1 committet" \
+          "$(git rev-parse --short HEAD) · $(field rounds) Runde(n) · $(stand)"
+      fi
       ;;
     dropped)
       check_marker "$1" 'x'
@@ -1306,6 +1455,37 @@ run_b() { # $1 = Paketnummer
       ;;
     *)
       die $EX_CONTRACT "Runner B für Paket $1 gibt Status '$status' zurück, den es für B nicht gibt"
+      ;;
+  esac
+}
+
+run_n() { # $1 = Paketnummer; der nachgezogene Review auf einem Paket, das schon committet ist
+  local status
+  say "Paket $1 steht auf [r]: der Commit ist da, der Review fehlt. Er wird nachgezogen."
+  journal "paket=$1 rolle=N nachgezogen start hash=$(git rev-parse --short HEAD)"
+  dispatch N "$1"
+  status=$(field status)
+  case "$status" in
+    committed)
+      check_nachgezogen "$1"
+      # Die Zeile aus check_commit hat ihren Zweck erfüllt und wäre unter einem
+      # [x] irreführend. Was bleibt, ist der Vermerk, dass hier nachgeholt
+      # wurde — der gehört in den Plan, weil er einen Regelbruch festhält.
+      plan_unnote "$1" "Review offen:"
+      plan_note "$1" "Review nachgezogen ($(date '+%Y-%m-%d')): der Commit stand ohne Beleg da"
+      PACKAGES_DONE=$((PACKAGES_DONE + 1))
+      say "  $(git rev-parse --short HEAD) · Review nachgezogen · $(field findings) · $(field rounds) Runde(n)"
+      [ "$(field queue)" = "-" ] || say "  Queue: $(field queue)"
+      journal "paket=$1 rolle=N status=committed hash=$(field hash) runden=$(field rounds)"
+      notify "Paket $1 committet" \
+        "$(git rev-parse --short HEAD) · Review nachgezogen · $(stand)"
+      ;;
+    blocked|question)
+      if [ "$status" = "blocked" ]; then check_marker "$1" '!'; fi
+      hand_over N "$1" "$status"
+      ;;
+    *)
+      die $EX_CONTRACT "Runner N für Paket $1 gibt Status '$status' zurück, den es für N nicht gibt"
       ;;
   esac
 }
@@ -1332,7 +1512,7 @@ main() {
   say "Plan:      $PLAN"
   say "Branch:    $BRANCH"
   say "Arbeit:    $WORK"
-  say "Pakete:    $(count_with_marker ' ') offen · $(count_with_marker 'x') erledigt · $(count_with_marker '!') blockiert"
+  say "Pakete:    $(count_with_marker ' ') offen · $(count_with_marker 'x') erledigt · $(count_with_marker 'r') Review offen · $(count_with_marker '!') blockiert"
   say ""
 
   local pkg
@@ -1352,20 +1532,30 @@ main() {
   # gearbeitet wird, sieht die Lage von gestern.
   plan_status "läuft seit $(date '+%Y-%m-%d %H:%M') in tmux-Session »$SESSION« · $(stand)"
 
-  local iter=0 planned open
+  local iter=0 planned review open
   while :; do
     iter=$((iter + 1))
     [ "$iter" -le "$MAX_ITER" ] || die $EX_CONTRACT "$MAX_ITER Durchläufe ohne Ende. Die Schleife kommt nicht voran, und das ist kein Fall für einen weiteren Versuch."
 
     planned=$(first_with_marker '~')
+    review=$(first_with_marker 'r')
     open=$(first_with_marker ' ')
 
-    if [ -n "$planned" ]; then
-      if [ "$iter" = "1" ]; then
-        say "Paket $planned steht auf [~]: ein früherer Lauf ist mitten im Paket gestorben."
-        say "references/resume.md gilt, nicht dieses Skript. Der Nutzer entscheidet über den Arbeitsbaum."
-        exit $EX_RESUME
-      fi
+    # Das [~] beim allerersten Durchlauf bleibt der harte Halt: dort ist ein
+    # Runner mitten im Paket gestorben, und darüber entscheidet der Nutzer.
+    if [ -n "$planned" ] && [ "$iter" = "1" ]; then
+      say "Paket $planned steht auf [~]: ein früherer Lauf ist mitten im Paket gestorben."
+      say "references/resume.md gilt, nicht dieses Skript. Der Nutzer entscheidet über den Arbeitsbaum."
+      exit $EX_RESUME
+    fi
+
+    if [ -n "$review" ]; then
+      # [r] geht vor: das Paket ist committet und wartet nur noch auf seinen
+      # Beleg. Es hinter neuer Arbeit anzustellen hieße, mit einem ungeprüften
+      # Commit im Rücken weiterzubauen.
+      AKTUELL=$review
+      run_n "$review"
+    elif [ -n "$planned" ]; then
       AKTUELL=$planned
       run_b "$planned"
     elif [ -n "$open" ]; then

@@ -7,6 +7,14 @@ Findings ab«). Die Datei entscheidet, nicht der Wortlaut der Bitte. Bevor
 irgendetwas anderes passiert: Datei ganz lesen und `git log --oneline`
 dagegenhalten. Beides zusammen kostet zwei Aufrufe.
 
+Die Paketdateien unter `docs/remediation/` liest du dabei **nicht**. Der Plan
+trägt den Stand des Laufs, die Paketdateien die Einzelheiten je Paket, und die
+gehören den Runnern. Aufgemacht wird eine davon nur, wenn eine Frage sie
+wirklich verlangt — etwa der Stash-Name eines blockierten Pakets. Fehlt im Kopf
+die Zeile `Paketdetails:` und stehen die Detailpläne noch im Plan selbst,
+stammt er aus der Zeit vor dieser Aufteilung: dann bleibt er, wie er ist. Ein
+laufender Plan wird nicht umgebaut.
+
 Warum ein Lauf steht, spielt für diesen Text fast keine Rolle. Die Schleife ist
 an einem Exit-Code angehalten, der Nutzer hat die tmux-Session abgeräumt, die
 Maschine ist neu gestartet, eine Session ist ohne Abschied gestorben — der
@@ -28,6 +36,7 @@ irgendetwas läuft.
 | --- | --- | --- |
 | `[x]` | erledigt, Hash steht | überspringen |
 | `[ ]` | offen | hier setzt die Schleife auf; fortgesetzt wird mit `scripts/remediate.sh` |
+| `[r]` | committet, aber ohne Review-Beleg | nichts tun. Das Skript holt das Paket beim nächsten Start als Erstes und zieht den Review nach. Keine Rückfrage an den Nutzer, kein Zurücksetzen, kein Verwerfen der Arbeit |
 | `[!]` | bewusst blockiert, Arbeitsbaum im Stash | **nicht** stillschweigend neu versuchen — erst fragen, ob und wie |
 | `[~]` | ein Runner ist mitten im Paket gestorben | siehe unten |
 
@@ -79,6 +88,13 @@ Skript wieder startet. Kurz: `10` will eine Entscheidung, die datiert nach
 `20`, `30` und `40` wollen, dass jemand hinsieht, bevor derselbe Aufruf ein
 zweites Mal dasselbe tut.
 
+`20` hat seit dem 2026-09-08 einen Sonderfall weniger und einen mehr. Ein
+fehlender Review-Beleg endet nicht mehr hier — den zieht die Schleife selbst
+nach. Bleibt er auch danach aus, steht das Paket auf `[r]`, der Commit im Repo,
+und der Nutzer entscheidet: Review von Hand nachholen lassen, den Commit stehen
+lassen und die Marke auf `[x]` setzen, oder ihn zurücknehmen. Was hier nicht
+passiert: die Arbeit stillschweigend verwerfen.
+
 `21` ist ein Fall für sich, weil er zwei Dinge auf einmal hinterlässt: eine zu
 enge Allowlist **und** ein Paket, das mitten im Zug stehengeblieben ist. Die
 Meldung schreibt den Neustart mit der erweiterten Liste fertig hin; davor
@@ -104,12 +120,16 @@ sie am ehesten wegrationalisiert wird.
 
 Stehen alle Pakete auf `[x]` und ist nur der Abschluss offen, wird das Skript
 gar nicht mehr gestartet, sondern unten unter »Offene Befunde« weitergelesen.
+Ein `[r]` ist dabei kein `[x]`: solange eines dasteht, fehlt einem Commit sein
+Review, und der Abschluss beginnt nicht. Dann läuft das Skript noch einmal.
 
 ## Ein Paket auf `[~]`
 
-Der Detailplan steht, ein Commit fehlt. Sein `Verlauf:` sagt, wie weit der
-Runner kam, `git status` sagt, ob das noch stimmt. Beides wird gegeneinander
-gehalten, keins allein geglaubt.
+Der Detailplan steht, ein Commit fehlt. Der `Verlauf:` in der Paketdatei
+`docs/remediation/paket-<N>.md` sagt, wie weit der Runner kam, `git status`
+sagt, ob das noch stimmt. Beides wird gegeneinander gehalten, keins allein
+geglaubt. Das ist der eine Fall, in dem eine Paketdatei aufgemacht wird — genau
+diese eine.
 
 **Sauberer Baum, Verlauf endet nach Zug 0.** Es ist nichts verloren. Paket auf
 `[ ]` zurücksetzen — das Skript fährt es dann wieder ab Zug 0, und dessen

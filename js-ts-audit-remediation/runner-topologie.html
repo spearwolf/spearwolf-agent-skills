@@ -337,7 +337,7 @@
     <h1>Runner-Topologie</h1>
     <p class="standfirst">Wer startet wen, wer lebt wie lange, und wie der Skill <code>js-ts-audit-remediation</code> seine Paketschleife fährt — als Agent oder als Prozess.</p>
     <div class="meta">
-      <span><b>Stand</b> 2026-08-26</span>
+      <span><b>Stand</b> 2026-09-08</span>
       <span><b>Beschreibt</b> <code>scripts/remediate.sh</code> · <code>references/shell-runner.md</code></span>
       <span><b>Gemessen</b> gegen CLI 2.1.241–2.1.246</span>
       <span><b>Umgesetzt</b> 2026-08-24 · Branch <code>claude/audit-remediation-orchestration-660ebh</code></span>
@@ -349,7 +349,7 @@
     <p class="kicker">Bestand</p>
     <h2>Sechs Prozesse, keine Subagenten</h2>
     <div class="prose">
-      <p>Der Lauf hat sechs Rollen, und jede ist ein eigener Betriebssystem-Prozess. Nichts davon läuft parallel: das Skript fährt je Paket erst Zug 0, dann die Züge 1 bis 5, und B hält immer nur einen Implementierer offen. Sie teilen sich einen Arbeitsbaum, und der Konflikt kostete mehr als die gesparte Zeit.</p>
+      <p>Der Lauf hat sechs Rollen, und jede ist ein eigener Betriebssystem-Prozess — eine siebte, N, kommt nur vor, wenn ein Commit ohne Review-Beleg dasteht. Nichts davon läuft parallel: das Skript fährt je Paket erst Zug 0, dann die Züge 1 bis 5, und B hält immer nur einen Implementierer offen. Sie teilen sich einen Arbeitsbaum, und der Konflikt kostete mehr als die gesparte Zeit.</p>
       <p>Die sechste ist die Session, aus der heraus gestartet wurde. Sie stand lange nicht in dieser Liste, weil sie nach der Freigabe fertig zu sein schien. Sie ist es nicht: sie hält den Wachposten und macht den Abschluss.</p>
     </div>
 
@@ -729,7 +729,7 @@ DENY=<span class="c-str">'AskUserQuestion,SendMessage,ScheduleWakeup,CronCreate,
       <p>Vierzig Zeilen ersetzen die Aufgabe, für die vorher ein Modell auf der stärksten Stufe über zwölf Pakete wach bleiben musste. Die Flags sind gegen die CLI geprüft. Vier davon verändern den Entwurf gegenüber dem naiven Skript:</p>
       <ul>
         <li><code>--json-schema</code> validiert die Rückgabe auf der Werkzeugebene. Der ganze Zweig »Rückgabeblock unlesbar« fällt weg, und mit ihm die Möglichkeit, dass ein Runner neun Zeilen frei formuliert.</li>
-        <li><b>Die Reportdateien sind der Delegationsbeleg.</b> Der Entwurf zählte hier einmal <code>subagent_stats.spawned</code> — das ging verloren, als Implementierer und Reviewer eigene Prozesse wurden, denn ein eigener Prozess taucht in dieser Zahl nicht auf. Der Ersatz ist besser als das Original: zwei Reports auf der Platte sind ein Beleg, der den Runner überlebt, ein hochgezählter Zähler nicht.</li>
+        <li><b>Die Reportdateien sind der Delegationsbeleg.</b> Der Entwurf zählte hier einmal <code>subagent_stats.spawned</code> — das ging verloren, als Implementierer und Reviewer eigene Prozesse wurden, denn ein eigener Prozess taucht in dieser Zahl nicht auf. Der Ersatz ist besser als das Original: zwei Reports auf der Platte sind ein Beleg, der den Runner überlebt, ein hochgezählter Zähler nicht. Was ein fehlender Beleg auslöst, hat sich seither getrennt: fehlt der Review, zieht die Schleife ihn nach (Rolle N, unten); fehlt nur der Implementierer-Report, kommt eine Ausnahme in den Plan und der Lauf geht weiter. Ein Abbruch bleibt nur, wo auch der nachgezogene Review keinen Report hinterlässt.</li>
         <li><code>permission_denials</code> zeigt, ob der Runner an einer Rechteschranke hing statt an der Aufgabe. Unter <code>bypassPermissions</code> ist das die Ausnahme geworden, und genau deshalb wiegt eine Meldung dort schwer: es ist dann keine zu enge Liste, sondern etwas, das kein Modus je bewilligt.</li>
         <li><code>--max-budget-usd</code> setzt je Runner-Prozess eine harte Obergrenze, voreingestellt 50 Dollar. Sie stand einmal bei 15 und passte damit zum Planer, nicht zum Implementierer, der ein Paket mit mehreren Befunden samt Testlauf und Fehlerkette durchzieht. Ein Prozess, der am Budget stirbt, hinterlässt dasselbe Trümmerfeld wie jeder harte Abbruch — die Grenze soll den Amoklauf fangen, nicht die Arbeit.</li>
       </ul>
@@ -888,6 +888,43 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
   </section>
 
   <section>
+    <p class="kicker">Ablage</p>
+    <h2>Zwei Dokumente statt einem</h2>
+    <div class="prose">
+      <p><code>./remediation-plan.md</code> war lange beides zugleich: Stand des Laufs und Sammelmappe aller Detailpläne. Das ging so lange gut, wie ein Lauf drei Pakete hatte. Bei zwölf steht darin das Vorgehen, der Verlauf, der Finding-Volltext und die Reviewer-Anmerkung jedes einzelnen Pakets — und geöffnet wird die Datei von jedem Runner, jedem Implementierer und jedem Reviewer, in jedem Paket. Der Text, den alle lesen, bestand am Ende überwiegend aus Dingen, die fast keinen von ihnen etwas angingen.</p>
+      <p>Seit dem 2026-09-08 sind es zwei Sorten Datei. Der Plan trägt den Stand des <i>Laufs</i>: Kopf, Entscheidungen, Konventionen, Baseline, die Queue der offenen Befunde und je Paket Marke, Titel, Findings, Ziel, Abhängigkeit, Hash und nach dem Commit Ergebnis, Folgen, Schnittstellen. Die Einzelheiten eines Pakets stehen in <code>docs/remediation/paket-&lt;N&gt;.md</code>, angelegt von dessen Zug 0.</p>
+      <p>Die Trennlinie ist eine Frage und keine Liste: <b>braucht das jemand, der an einem anderen Paket arbeitet?</b> Deshalb bleiben drei Dinge im Plan, obwohl sie aus einem Paket stammen — die Befund-Queue, weil der Abschluss sie an einer Stelle finden muss; die <code>Folgen:</code>-Zeile, weil der nächste Zug 0 sie triagiert; die <code>Schnittstellen:</code>-Zeile, weil der nächste Implementierer dagegen compiliert.</p>
+      <p>Beide Sorten bleiben während des Laufs ungetrackt — sie tragen die Hashes der Commits, in denen sie deshalb nicht liegen können — und beide gehen am Ende gemeinsam in den Abschluss-Commit. Jedes <code>git add -N</code>, <code>git diff</code> und <code>git stash</code> im Lauf schließt jetzt zwei Pfade aus statt einen; die Vorbedingung des Skripts liest den Arbeitsbaum dafür mit <code>-uall</code>, sonst fasste git den ganzen ungetrackten Ordner zu einer Zeile ohne Pfad zusammen und hielte jeden Start für schmutzig.</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">Reparatur</p>
+    <h2>Ein Commit ohne Review wird nachgeprüft, nicht verworfen</h2>
+    <div class="prose">
+      <p>Die Gegenprobe zählt beim Commit zwei Belege: einen Report des Implementierers und einen des Reviewers. Fehlten sie, endete der Lauf mit Exit 20 und der Nutzer sollte entscheiden. Das war in beiden Richtungen falsch. Es gab nichts zu entscheiden — die Arbeit war getan, das Verify grün —, und die einzige Handlung, die überhaupt zur Verfügung stand, war die teuerste: das Paket noch einmal fahren.</p>
+      <p>Die beiden Belege sind verschieden nachholbar, und daran hängt jetzt die Antwort. Ein <b>Review</b> lässt sich jederzeit nachziehen: der Diff liegt vor, ein unabhängiger Prozess liest ihn, sein Urteil ist genauso viel wert wie vorher. Ein <b>Implementierer</b> lässt sich nicht nachziehen — Code, der geschrieben ist, kann nicht rückwirkend von jemand anderem geschrieben worden sein.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Was fehlt</th><th>Was passiert</th></tr></thead>
+        <tbody>
+          <tr><td class="who">Review-Report</td><td>Paket auf <code>[r]</code>, die Schleife holt es im nächsten Durchlauf als <b>Rolle N</b> und zieht den Review nach</td></tr>
+          <tr><td class="who">nur der Implementierer-Report</td><td>Ausnahme mit Datum in den Plan, der Lauf geht weiter</td></tr>
+          <tr><td class="who">Review auch nach Rolle N</td><td>Exit 20. Hier hört die Reparatur auf</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose">
+      <p><code>[r]</code> ist die fünfte Marke im Plan und geht allem anderen vor — mit einem ungeprüften Commit im Rücken weiterzubauen wäre der einzige Ausgang, der schlechter wäre als anzuhalten. Sie steht in der Datei und nicht im Prozess: ein Lauf, der dazwischen stirbt, findet sie beim nächsten Start wieder.</p>
+      <p>Rolle N fährt die Züge 3 bis 5 auf dem vorhandenen Commit: Diff erzeugen, Reviewer als eigenen Prozess beauftragen, bei Befunden die Fehlerkette über Implementierer-Prozesse, Verify selbst laufen, eine Nachbesserung als eigenen Commit obendrauf. Kein <code>reset</code>, kein <code>revert</code>, kein <code>amend</code> — der Hash steht schon im Plan. Was am Ende dasteht, ist das, was der Runner hätte liefern sollen, plus einer Zeile im Plan, die sagt, dass es nachgeholt wurde.</p>
+      <p>Der Preis ist ein zusätzlicher Prozess je betroffenem Paket. Der Vergleich ist nicht »kein Prozess«, sondern ein weggeworfenes Paket samt Implementierer, Reviewer, Verify-Lauf und der Wartezeit eines Menschen, der eine Frage beantworten soll, auf die es nur eine sinnvolle Antwort gibt.</p>
+    </div>
+  </section>
+
+  <section>
     <p class="kicker">Erreichbarkeit</p>
     <h2>Zwei Instanzen fragen, eine hält den Lauf an</h2>
     <div class="prose">
@@ -967,7 +1004,7 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
 
     <figure class="fig">
       <div class="fig-scroll">
-        <svg viewBox="0 0 940 336" role="img" aria-label="Vergleich: vorher ein Runner-Prozess mit einer Effort-Stufe für alle sechs Züge, nachher zwei Prozesse mit getrennten Stufen, verbunden über den Detailplan im Plan-Dokument.">
+        <svg viewBox="0 0 940 336" role="img" aria-label="Vergleich: vorher ein Runner-Prozess mit einer Effort-Stufe für alle sechs Züge, nachher zwei Prozesse mit getrennten Stufen, verbunden über den Detailplan in der Paketdatei.">
           <defs>
             <marker id="ah6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
               <path class="mk" d="M0,0 L10,5 L0,10 z" />
@@ -1125,6 +1162,7 @@ first=1
       <p>Alles, was die Schleife deterministisch prüft, ist gegen einen Stub über 36 Fälle abgesichert. Die drei Stellen, an denen ein Modell entscheidet, sind seit dem 2026-08-25 mit echten Paketen gefahren, und alle drei halten: A hört nach dem Detailplan auf, statt den Fix gleich selbst zu machen; B beginnt bei Zug 1, statt Zug 0 zu wiederholen; und der Plan trägt über die Prozessgrenze, was B danach braucht. Dazu ein vollständiger Lauf über drei Pakete samt Drain-Runde und Abschluss, der terminiert hat.</p>
       <p>Am 2026-08-26 kamen zwei echte Läufe über <code>shadow-objects</code> dazu, und sie haben mehr gefunden als der ganze Szenario-Test davor. Alles, was seither in diesem Dokument steht — die Zehn-Minuten-Frist, die Verbotsliste statt der Erlaubnisliste, der dreifache Rückweg, die Kopie des Skripts, die Tokentabelle samt der Session, die niemand mitzählte —, ist die Antwort auf einen Fehlschlag aus diesen beiden Läufen. Keiner davon lag in der Topologie. Sie lagen alle an den Rändern: an der Frist eines Werkzeugs, an der Bauart einer Rechteschranke, an einem Pane, das eine Sekunde zu früh starb.</p>
       <p>Offen bleibt der Fall, für den es keine Probe mehr gibt: ein Zug 0, der wirklich auf eine Antwort wartet. Seit die Schwelle steht, stellt er keine Frage, die eine erzwingen würde — der Arm des Szenario-Tests, der genau diesen Fall prüft, misst seither nichts. Ebenso ungeprüft: ob der Scrollback eines sehr langen Zuges 0 über sein <code>history-limit</code> hinausläuft und der Erreichbarkeitsbeleg damit aus dem Fenster fällt, und ob eine echte CLI die Kanal-Meldung in jeder Fensterbreite ungebrochen schreibt.</p>
+      <p>Vom 2026-09-08 an ist ein Stück ungeprüft, das vorher geprüft war. Der Stub über 36 Fälle deckt die alte Belegprüfung ab — »fehlt ein Report, Exit 20« —, und genau die ist ersetzt: die Marke <code>[r]</code>, der Vorrang, den sie in der Schleife hat, Rolle N und ihre eigene Gegenprobe sind bislang nur gelesen, nicht gefahren. Dasselbe gilt für die Aufteilung in Plan und Paketdatei: dass <code>-uall</code> den ungetrackten Ordner richtig ausblendet, ist gemessen, dass ein Zug 0 seine Paketdatei anlegt und ein Zug 1 sie findet, ist es nicht.</p>
       <p>Und zwei Lücken im Test selbst. Geprüft wird die Rückfrage-Disziplin von Zug 0 (»höchstens eine weitere Frage«), für den Orchestrator zählt sie niemand — vier Halte in einem Lauf haben keinen einzigen Prüfpunkt ausgelöst. Der Rückweg wird gar nicht geprüft: kein Arm sieht nach, ob der Wachposten steht, ob eine Meldung ankommt und ob der Abschluss ohne Zutun des Nutzers beginnt. Das ist ausgerechnet die Stelle, die einen fertigen Lauf schon einmal einen halben Tag gekostet hat.</p>
     </div>
   </section>

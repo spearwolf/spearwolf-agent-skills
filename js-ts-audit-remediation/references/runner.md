@@ -1,9 +1,10 @@
 # Paket-Runner — ein Paket vom Abgleich bis zum Commit
 
 Du bist der Runner für genau ein Paket eines Remediation-Laufs. Der
-Orchestrator hat dir die Paketnummer und den Pfad zum Plan gegeben und wartet
-auf deine Rückgabe. Er sieht von deiner Arbeit nichts außer den zehn Zeilen am
-Ende und dem, was du in `./remediation-plan.md` schreibst.
+Orchestrator hat dir die Paketnummer, den Pfad zum Plan und den Pfad zu deiner
+Paketdatei gegeben und wartet auf deine Rückgabe. Er sieht von deiner Arbeit
+nichts außer den zehn Zeilen am Ende und dem, was in diesen beiden Dateien
+steht.
 
 Sechs Züge, keiner wird übersprungen, auch nicht bei einem Zweizeiler.
 
@@ -21,13 +22,22 @@ Implementierungs- und Review-Kontext nach jedem Paket verfallen. Schreibst du
 selbst, hast du beides in deinem eigenen Kontext, und ab dem dritten Zug fehlt
 dir der Platz für den Rest des Pakets.
 
+Ein Commit, dem der Beleg für Implementierer oder Reviewer fehlt, wird auf dem
+Skript-Weg nicht weggeworfen, sondern nachgeprüft — der Review wird nachgezogen,
+die Ausnahme kommt in den Plan. Das ist eine Reparatur und keine Erlaubnis:
+sie kostet einen zusätzlichen Runner, sie steht namentlich im Plan, und sie
+liefert am Ende genau das, was du hättest liefern sollen.
+
 ## Was du bekommst und was du dir holst
 
-Der Orchestrator gibt dir Paketnummer, Branch, den Pfad zum Plan und den Pfad
-zum Arbeitsverzeichnis für Diffs und Logs. Alles Weitere holst du selbst:
+Der Orchestrator gibt dir Paketnummer, Branch, den Pfad zum Plan, den Pfad zu
+deiner Paketdatei und den Pfad zum Arbeitsverzeichnis für Diffs und Logs. Alles
+Weitere holst du selbst:
 
 1. `./remediation-plan.md` ganz lesen. Kopf, »Entscheidungen«, »Konventionen«,
    erledigte Pakete samt ihren Ergebniszeilen, »Offene Befunde«, Restliste.
+   Dazu `docs/remediation/paket-<deine Nummer>.md`, sobald es sie gibt — die
+   Paketdateien der anderen Pakete liest du nicht, sie gehören nicht dir.
 2. `./audit.html`. Die Findings deines Pakets liest du dort im Original nach,
    aus der JSON-Insel `<script id="audit-data">`, nicht aus dem Plan.
 3. `git log --oneline` seit dem ersten Paket-Commit zeigt, was dieser Lauf
@@ -40,16 +50,45 @@ eins, legst du eines unter dem Temp-Verzeichnis des Systems an und trägst es in
 den Kopf des Plans ein. Ins Projekt ausweichen ist keine Lösung: dort stehen
 deine Diffs anschließend als fremde Änderungen im Arbeitsbaum.
 
-## Der Plan trägt den Stand
+## Plan und Paketdatei tragen den Stand
 
-`./remediation-plan.md` ist das Übergabedokument des Laufs. Maßstab ist, ob ein
-Agent ohne jede Vorgeschichte die Datei öffnet und daraus weiß: was ist
-erledigt, was liegt gerade im Arbeitsbaum, was ist als Nächstes dran.
-Fortgeschrieben wird **bevor** der nächste Zug startet, nicht danach. Stirbt
-dein Kontext mitten im Paket, ist die Datei die einzige Spur.
+Zwei Dateien, und die Trennung zwischen ihnen ist die Regel, an der sich alles
+Folgende ausrichtet:
 
-Zwei Orte tragen den Stand. Im Kopf die Zeile `Stand:` mit Datum — welches
-Paket, welcher Zug, wie der Arbeitsbaum aussieht. Unter deinem Paket der
+| Datei | Was darin steht | Wer sie liest |
+| --- | --- | --- |
+| `./remediation-plan.md` | der Stand des **Laufs**: Kopf, Entscheidungen, Konventionen, Baseline, die Queue »Offene Befunde«, je Paket Marke, Titel, Findings, Ziel, Abhängigkeit, Hash und — nach dem Commit — Ergebnis, Folgen, Schnittstellen | alle, in jedem Paket |
+| `docs/remediation/paket-<N>.md` | die Einzelheiten **eines Pakets**: Modell und Effort, Dateien, Vorgehen, Verify-Kommando, Commit-Message, Abgleich, Findings im Volltext, Verlauf, Anmerkungen des Reviewers | wer an diesem Paket arbeitet |
+
+Der Grund für die Teilung ist der Preis des Lesens. Der Plan wird von jedem
+Runner, jedem Implementierer und jedem Reviewer geöffnet — zwölfmal derselbe
+Text, und mit jedem Paket wird er länger. Was nur dein Paket angeht, hat dort
+nichts verloren; was den Lauf angeht, gehört nirgendwo sonst hin. Die
+Prüffrage, wenn du unsicher bist, wohin eine Zeile gehört: **braucht sie
+jemand, der an einem anderen Paket arbeitet?** Dann Plan, sonst Paketdatei.
+
+Drei Dinge stehen deshalb im Plan, obwohl sie aus einem Paket stammen: die
+Queue »Offene Befunde« (der Abschluss räumt sie ab und muss sie an einer Stelle
+finden), die `Folgen:`-Zeile (der nächste Zug 0 triagiert sie) und die
+`Schnittstellen:`-Zeile (der nächste Implementierer compiliert dagegen).
+
+Maßstab bleibt, ob ein Agent ohne jede Vorgeschichte den Plan öffnet und daraus
+weiß: was ist erledigt, was liegt gerade im Arbeitsbaum, was ist als Nächstes
+dran — und wo die Einzelheiten dazu liegen. Fortgeschrieben wird **bevor** der
+nächste Zug startet, nicht danach. Stirbt dein Kontext mitten im Paket, sind
+diese beiden Dateien die einzige Spur.
+
+Die Paketdatei heißt nach der Paketnummer, und die ist eine ID: `paket-3.md`,
+nach einer Teilung `paket-3a.md` und `paket-3b.md`. Eine Datei wird nie
+umbenannt und nie für ein anderes Paket wiederverwendet.
+
+Beide Dateien bleiben während des Laufs ungetrackt — sie tragen die Hashes der
+Commits, in denen sie deshalb nicht liegen können. Jedes `git add`, `git diff`
+und `git stash` hält beide draußen; die Pfadangaben dafür stehen bei den Zügen,
+in denen sie vorkommen.
+
+Zwei Orte tragen den Stand. Im Kopf des Plans die Zeile `Stand:` mit Datum —
+welches Paket, welcher Zug, wie der Arbeitsbaum aussieht. In der Paketdatei der
 `Verlauf:` mit einer Zeile je Zug:
 
 | Nach Zug | Zeile im Verlauf |
@@ -69,7 +108,7 @@ Verdichtet wird nur durch den Commit. Ein Paket auf `[!]` behält seinen
 Verlauf: er ist die einzige Spur dessen, was versucht wurde und woran es lag.
 
 Was der Nutzer während deines Pakets entscheidet, gehört mit Datum in den
-Abschnitt »Entscheidungen« im Kopf, nicht in den Verlauf. Der Verlauf wird
+Abschnitt »Entscheidungen« im Kopf des Plans, nicht in den Verlauf. Der Verlauf wird
 eingedampft, die Entscheidung muss den ganzen Lauf überleben und darf in keinem
 späteren Paket neu aufgeworfen werden.
 
@@ -99,7 +138,7 @@ Jeder Eintrag bekommt eine von drei Einordnungen, jede mit Fundstelle:
 
 | Einordnung | Woran erkennbar | Was folgt |
 | --- | --- | --- |
-| **Symptom** | Dieselbe Ursache, andere Stelle. Prüffrage: Wäre der Eintrag nie entstanden, wenn das verursachende Paket seine Ursache zu Ende behoben hätte? | Kein eigenes Paket. Steht das Paket noch offen, wandert die Stelle in seinen Detailplan. Ist es committet, wird **ein** Nachtragspaket geschnitten, das die Ursache zu Ende bringt und alle bekannten Fundstellen aufzählt. |
+| **Symptom** | Dieselbe Ursache, andere Stelle. Prüffrage: Wäre der Eintrag nie entstanden, wenn das verursachende Paket seine Ursache zu Ende behoben hätte? | Kein eigenes Paket. Steht das Paket noch offen, wandert die Stelle in seine Paketdatei. Ist es committet, wird **ein** Nachtragspaket geschnitten, das die Ursache zu Ende bringt und alle bekannten Fundstellen aufzählt. |
 | **Echte Folge** | Eigene Ursache, durch die Änderung neu entstanden — der Umbau auf `async` hat eine Race geöffnet, die es vorher nicht gab. | Eigenes Paket, im Scope, mit `Folge von:`. Einsortiert nach den Phasen des Grobplans, nicht automatisch ans Ende. |
 | **Vorbestehend** | Der Sachverhalt gab es schon vor dem ersten Commit dieses Laufs. | Nebenbefund. In dein Paket bei gleicher Ursache, sonst in »Offene Befunde« — dort mit dem Urteil an der Scope-Regel (siehe unten). |
 
@@ -139,17 +178,21 @@ Das Urteil sagt, *wohin* der Befund gehört, nicht *wann* er drankommt. `→ Sco
 ist keine Erlaubnis, ihn nebenbei mitzunehmen — er läuft durch ein Paket wie
 alles andere.
 
-**Drittens den Detailplan schreiben**, direkt in den Abschnitt zu deinem Paket
-in `./remediation-plan.md`. Er ergänzt den Grobplan-Block, er ersetzt ihn nicht:
+**Drittens den Detailplan schreiben**, und zwar in deine Paketdatei
+`docs/remediation/paket-<N>.md`. Du legst sie an; das Verzeichnis dazu
+(`mkdir -p`) auch, wenn es noch nicht existiert. Sie ergänzt den Block im Plan,
+sie ersetzt ihn nicht:
 
 ```markdown
-### [ ] 3. WebSocket-Reconnect: Listener und Timer aufräumen
+# Paket 3 — WebSocket-Reconnect: Listener und Timer aufräumen
+
+Gehört zu `./remediation-plan.md`. Dort stehen Marke, Hash und der Stand des
+Laufs, hier die Einzelheiten dieses Pakets. Bei Widerspruch gilt der Plan.
+
 - Findings: LEAK-001 (high), LEAK-003 (high)
-- Ziel: <ein Satz>
-- Bereich: `src/net/`
-- Hängt ab von: —
-- Hash: —
+- Ziel: <ein Satz, derselbe wie im Plan>
 - Modell: mittlere Stufe
+- Effort: medium
 - Dateien: `src/net/socket.ts`, `src/net/reconnect.ts`
 - Vorgehen:
   1. <Schritt mit exakten Namen, Signaturen, Werten>
@@ -160,9 +203,24 @@ in `./remediation-plan.md`. Er ergänzt den Grobplan-Block, er ersetzt ihn nicht
   - 2026-08-06 Zug 0: Detailplan steht · LEAK-001 unverändert · LEAK-003 nach
     `reconnect.ts:41` gewandert (Paket 1 hat die Datei geteilt)
 
+## Findings im Volltext
+
 **LEAK-001 · high · src/net/socket.ts:88** — Listener wird bei Reconnect nicht entfernt
 <description im Volltext>
 Empfehlung: <recommendation im Volltext>
+```
+
+Im Plan bleibt der Block deines Pakets kurz und bekommt genau eine Zeile dazu,
+die auf die Datei zeigt:
+
+```markdown
+### [~] 3. WebSocket-Reconnect: Listener und Timer aufräumen
+- Findings: LEAK-001 (high), LEAK-003 (high)
+- Ziel: <ein Satz>
+- Bereich: `src/net/`
+- Hängt ab von: —
+- Detail: `docs/remediation/paket-3.md`
+- Hash: —
 ```
 
 Ein Durchgang gegen Platzhalter, bevor du weitergehst: kein »TBD«, kein
@@ -269,16 +327,16 @@ freigegebenen Plan ersetzt — genau das ist ihm verwehrt.
 Der Prompt besteht aus diesen fünf Teilen, in dieser Reihenfolge:
 
 1. Ein Satz: worum geht es im Projekt, wo sitzt dieses Paket.
-2. Der Pfad `./remediation-plan.md` und die Paketnummer, eingeführt als:
-   »Lies zuerst den Abschnitt zu Paket N. Das sind deine Anforderungen, mit
-   den exakten Werten, und sie sind gegen den aktuellen Stand des Codes
-   geschrieben. Die anderen Pakete gehören anderen Läufen. Dazu den Abschnitt
-   »Konventionen« im Kopf des Plans: er gilt für jede Zeile, die du schreibst,
-   Kommentare und Doku eingeschlossen.«
-3. Schnittstellen aus erledigten Paketen, soweit der Detailplan sie nicht
+2. Der Pfad `docs/remediation/paket-N.md`, eingeführt als: »Lies zuerst diese
+   Datei. Das sind deine Anforderungen, mit den exakten Werten, und sie sind
+   gegen den aktuellen Stand des Codes geschrieben. Die Paketdateien der
+   anderen Pakete gehen dich nichts an. Dazu den Abschnitt »Konventionen« im
+   Kopf von `./remediation-plan.md`: er gilt für jede Zeile, die du schreibst,
+   Kommentare und Doku eingeschlossen. Den Rest des Plans brauchst du nicht.«
+3. Schnittstellen aus erledigten Paketen, soweit die Paketdatei sie nicht
    ohnehin nennt: neue Signaturen, umbenannte Exporte, eingeführte Konstanten.
-   Quelle sind die `Schnittstellen:`-Zeilen unter den erledigten Paketen.
-   Steht es im Detailplan, wiederholst du es hier nicht.
+   Quelle sind die `Schnittstellen:`-Zeilen unter den erledigten Paketen im
+   Plan. Steht es in der Paketdatei, wiederholst du es hier nicht.
 4. Das Verify-Kommando des Pakets.
 5. Der Rückgabevertrag aus Zug 2.
 
@@ -342,13 +400,17 @@ Diff als Datei erzeugen, der Reviewer soll ihn lesen und nicht selbst
 zusammensuchen:
 
 ```bash
-git add -N -- . ':(exclude)remediation-plan.md'
-git diff -U10 -- . ':(exclude)remediation-plan.md' > "$ARBEITSDIR/paket-N.diff"
+git add -N -- . ':(exclude)remediation-plan.md' ':(exclude)docs/remediation'
+git diff -U10 -- . ':(exclude)remediation-plan.md' ':(exclude)docs/remediation' > "$ARBEITSDIR/paket-N.diff"
 ```
 
-Der Reviewer-Prompt besteht aus: Pfad zur Diff-Datei, Pfad zum Plan mit
-Paketnummer, das Verify-Ergebnis des Implementierers, der Rückgabevertrag.
-Mehr nicht. Der Satz zum Kanal aus Zug 1 steht auch hier — er gilt für jeden
+Beide Ausschlüsse sind Pflicht. Plan und Paketdateien sind während des Laufs
+ungetrackt; `git add -N` zöge sie sonst in den Diff, und der Reviewer läse den
+Detailplan als Teil der Änderung, die er beurteilen soll.
+
+Der Reviewer-Prompt besteht aus: Pfad zur Diff-Datei, Pfad zur Paketdatei, der
+Abschnitt »Konventionen« aus dem Plan-Kopf, das Verify-Ergebnis des
+Implementierers, der Rückgabevertrag. Mehr nicht. Der Satz zum Kanal aus Zug 1 steht auch hier — er gilt für jeden
 Brief, den du schreibst.
 
 Er liefert zwei Urteile:
@@ -361,7 +423,7 @@ Zur Qualität gehört der Abschnitt »Konventionen« aus dem Plan-Kopf. Eine
 Finding-ID in einem Kommentar oder ein Satz, der den Vorzustand erzählt, ist
 ein Befund wie jeder andere: `klein` im Code, `wichtig` in Doku, die
 veröffentlicht wird — dort liest ihn jemand, der weder Audit noch Vorzustand
-kennt. Die Commit-Message aus dem Detailplan prüfst du mit: auch sie bleibt im
+kennt. Die Commit-Message aus der Paketdatei prüfst du mit: auch sie bleibt im
 Repo, und eine Nummer darin verweist nach dem Lauf auf nichts.
 
 Ebenfalls Qualität: eine Stelle, die der Umbau hätte mitnehmen müssen und
@@ -382,7 +444,7 @@ entscheidest danach.
 
 ## Zug 4 — Fehlerkette
 
-Kleine Befunde gehen in den Plan unter das Paket und lösen keine Runde aus.
+Kleine Befunde gehen in die Paketdatei und lösen keine Runde aus.
 Nicht erfüllte Findings sowie kritische und wichtige Befunde lösen eine aus:
 
 1. **Runde 1** — derselbe Implementierer bekommt die Befunde im Wortlaut. Er
@@ -422,15 +484,15 @@ Runde nichts gebracht hat:
 - Arbeitsbaum sichern statt wegwerfen, und dabei den Plan draußen halten:
 
   ```bash
-  git stash push -u -m "paket-N-abgebrochen" -- . ':(exclude)remediation-plan.md'
+  git stash push -u -m "paket-N-abgebrochen" -- . ':(exclude)remediation-plan.md' ':(exclude)docs/remediation'
   ```
 
-  Der Ausschluss ist nicht optional. `remediation-plan.md` ist während des
-  ganzen Laufs untracked — `-u` nimmt ihn sonst mit in den Stash, und der Plan
-  verschwindet aus dem Arbeitsbaum, genau in dem Moment, in dem ein Paket
-  blockiert und ihn jemand braucht.
-- Der Stash-Name kommt als letzte Verlaufszeile in den Plan, der übrige Verlauf
-  bleibt stehen. Wer das Paket später aufnimmt, hat sonst einen Stash ohne
+  Die Ausschlüsse sind nicht optional. Plan und Paketdateien sind während des
+  ganzen Laufs untracked — `-u` nimmt sie sonst mit in den Stash, und beide
+  verschwinden aus dem Arbeitsbaum, genau in dem Moment, in dem ein Paket
+  blockiert und jemand sie braucht.
+- Der Stash-Name kommt als letzte Verlaufszeile in die Paketdatei, der übrige
+  Verlauf bleibt stehen. Wer das Paket später aufnimmt, hat sonst einen Stash ohne
   Vorgeschichte.
 - `Stand:` im Kopf auf das nächste Paket setzen und den Arbeitsbaum dort als
   sauber vermerken — der Stash ist gerade der Grund dafür.
@@ -475,20 +537,24 @@ git add <die Pfade aus dem Diff>
 git commit --no-gpg-sign -m "<Message aus dem Plan>"
 ```
 
-Gezielt hinzufügen, nie `git add -A` — sonst wandern der Plan und fremde
-Dateien in den Commit. Pre-Commit-Hooks laufen mit; `--no-verify` wird nicht
+Gezielt hinzufügen, nie `git add -A` — sonst wandern Plan, Paketdateien und
+fremde Dateien in den Commit. `remediation-plan.md` und `docs/remediation/`
+gehören in keinen Paket-Commit; der Abschluss nimmt sie am Ende gemeinsam auf. Pre-Commit-Hooks laufen mit; `--no-verify` wird nicht
 gesetzt. Bricht ein Hook ab, ist das ein echter Befund und geht zurück in die
 Fehlerkette.
 
-Danach sofort, im selben Zug: `[~]` auf `[x]`, Hash aus
-`git rev-parse --short HEAD` eintragen, `Stand:` im Kopf auf das nächste Paket
-setzen. Der `Verlauf:` des Pakets weicht einer `Ergebnis:`-Zeile, darunter
-stehen drei getrennte Listen — Nebenbefunde, Folgen, Schnittstellen.
+Danach sofort, im selben Zug, und in beiden Dateien.
+
+**Im Plan:** `[~]` auf `[x]`, Hash aus `git rev-parse --short HEAD` eintragen,
+`Stand:` im Kopf auf das nächste Paket setzen. Dazu die `Ergebnis:`-Zeile und
+darunter die drei Listen, die spätere Pakete brauchen — Nebenbefunde, Folgen,
+Schnittstellen:
 
 ```markdown
 ### [x] 3. WebSocket-Reconnect: Listener und Timer aufräumen
 - Findings: LEAK-001 (high), LEAK-003 (high)
 - Ziel: <ein Satz>
+- Detail: `docs/remediation/paket-3.md`
 - Hash: a3f91c2
 - Ergebnis: 2 Runden · LEAK-001 und LEAK-003 behoben · Regressionstest
   `reconnect drops its timer on close` (vor dem Fix rot) · klein: JSDoc an
@@ -500,6 +566,16 @@ stehen drei getrennte Listen — Nebenbefunde, Folgen, Schnittstellen.
   pflichtig · `socket.retryDelay` entfernt, ersetzt durch `opts.backoff`
 ```
 
+**In der Paketdatei:** der `Verlauf:` bleibt stehen, ergänzt um die Zeile zu
+Zug 5, dazu das Urteil des Reviewers je Finding-ID mit Fundstelle und die
+kleinen Befunde, die keine Runde ausgelöst haben. Das ist die Quelle, aus der
+der Abschluss später bucht, welches Finding geschlossen werden darf: der Hash
+belegt, dass etwas passiert ist, das Reviewer-Urteil, dass es das Richtige war.
+Was hier nicht steht, kann der Abschluss nicht schließen.
+
+Die `Ergebnis:`-Zeile im Plan ist die Kurzfassung davon, in einer Zeile. Sie
+ersetzt die ausführliche Fassung nicht, sie zeigt darauf.
+
 `Schnittstellen:` steht nur unter Paketen, die an der Oberfläche etwas verändert
 haben, und nennt genau das, wogegen ein späterer Implementierer compiliert: neue
 oder geänderte Signaturen, umbenannte und entfernte Exporte, eingeführte
@@ -507,14 +583,17 @@ Konstanten und Konfigschlüssel. Sie ist die Quelle für Punkt 3 des Briefings i
 Zug 1. Ohne sie gibt es dieses Wissen nach deinem Paket nicht mehr — dein
 Kontext verfällt, sobald du zurückgibst.
 
-`Nebenbefunde:` bleibt eine Zeile unter dem Paket, aber ihre Einträge werden
-**zusätzlich** in den Abschnitt »Offene Befunde« im Kopf des Plans geschrieben,
-jeder mit `[ ]`, Datei, Zeile, einem Satz, dem Paket, aus dem er stammt, und
-dem Urteil an der Scope-Regel aus Zug 0.
+`Nebenbefunde:` bleibt eine Zeile im Plan unter dem Paket, aber ihre Einträge
+werden **zusätzlich** in den Abschnitt »Offene Befunde« im Kopf des Plans
+geschrieben, jeder mit `[ ]`, Datei, Zeile, einem Satz, dem Paket, aus dem er
+stammt, und dem Urteil an der Scope-Regel aus Zug 0.
 Zwölf Pakete mit je einer eigenen Nebenbefund-Zeile sind zwölf Stellen, an
 denen jemand nachsehen müsste; ein Abschnitt ist eine. Diese Liste muss beim
 Abschluss auf null gehen, und deshalb steht sie dort, wo man sie ohne Suchen
-findet.
+findet — und deshalb ist sie auch die eine Sorte Paketdetail, die nicht in die
+Paketdatei wandert. Was jemanden angeht, der an einem anderen Paket sitzt,
+gehört in den Plan; die Queue geht jeden an. Ihre Begründung — warum dieses
+Urteil, was an der Stelle steht — gehört dagegen in die Paketdatei.
 
 Bei einem Bugfix-Paket nennt die `Ergebnis:`-Zeile den Regressionstest beim
 Namen und dass er vor dem Fix rot war. Der Nachweis aus Zug 2 lebt sonst

@@ -19,9 +19,11 @@ Rest siehst du nicht.
 4. `scripts/remediate.sh` starten und laufen lassen, bis kein Paket mehr offen ist (6).
 5. Semver bewerten, `./audit.html` nachführen, abschließen, Folgeaudit anbieten (7).
 
-Geplant wird zweistufig. Schritt 5 legt fest, **was** in welcher Reihenfolge
-passiert — das ist, was der Nutzer freigibt. **Wie** ein Paket umgesetzt wird,
-entsteht im Runner, gegen den Code, der dann tatsächlich dasteht.
+Geplant wird zweistufig, und die beiden Stufen wohnen in verschiedenen Dateien.
+Schritt 5 legt fest, **was** in welcher Reihenfolge passiert — das ist, was der
+Nutzer freigibt, und es steht in `./remediation-plan.md`. **Wie** ein Paket
+umgesetzt wird, entsteht im Runner, gegen den Code, der dann tatsächlich
+dasteht, und steht in `docs/remediation/paket-<N>.md`.
 
 | Datei | Wann |
 | --- | --- |
@@ -45,6 +47,13 @@ Diese Regeln stehen über jeder Abwägung im Einzelfall:
   gelesen.** Das ist der Runner, und er ist nicht der Implementierer — darauf
   beruht die Regel. Der Report eines Implementierers ist keine Evidenz. Deine
   Gegenprobe steht in Schritt 6.
+- **Ein Commit ohne Review-Beleg wird nachgeprüft, nicht verworfen und nicht
+  dir vorgelegt.** Hat ein Runner den Code selbst geschrieben oder ohne
+  Reviewer committet, zieht die Schleife den Review nach — das Paket steht
+  solange auf `[r]`, die Ausnahme steht im Plan. Es gibt hier nichts zu
+  entscheiden: die Arbeit ist getan, das Verify war grün, es fehlt der zweite
+  Blick, und den holt man nach. Weder du noch der Nutzer werden dafür
+  gebraucht.
 - **Kein Push, kein Merge, kein Pull Request, kein Tag, kein Publish.** Der
   Lauf endet mit lokalen Commits.
 - **Kein Worktree, kein neuer Branch von sich aus.** Gearbeitet wird auf dem
@@ -276,10 +285,19 @@ Dependency-Bumps, die APIs verändern, gehören nach vorn und nicht ans Ende;
 breitflächige Umformatierungen oder Renames liegen ganz vorn oder ganz hinten,
 nie dazwischen, weil sonst jeder folgende Diff unlesbar wird.
 
-**Der Grobplan** wird nach `./remediation-plan.md` geschrieben, überschreibt
-eine vorhandene Datei und wächst über den Lauf hinweg: du legst Kopf,
-Entscheidungen, Queue und Paketliste an, die Runner füllen Paket für Paket den
-Detailplan nach und tragen Ergebnisse ein.
+**Der Grobplan** wird nach `./remediation-plan.md` geschrieben und überschreibt
+eine vorhandene Datei. Du legst Kopf, Entscheidungen, Queue und Paketliste an;
+die Runner tragen dort Marken, Hashes und Ergebnisse nach.
+
+**Die Einzelheiten je Paket schreibst du nicht und niemand schreibt sie in
+diese Datei.** Sie entstehen im Runner und landen in einer eigenen Datei je
+Paket: `docs/remediation/paket-<N>.md`, angelegt von dessen Zug 0. Der Plan
+verweist darauf, mehr nicht. Der Grund ist der Preis des Lesens: den Plan öffnet
+jeder Runner, jeder Implementierer und jeder Reviewer, in jedem Paket — ein
+Dokument, das über zwölf Pakete alle Detailpläne, Verläufe und Finding-Volltexte
+einsammelt, wird von allen gelesen und geht fast alle nichts an. Die Trennlinie
+ist eine Frage: **braucht das jemand, der an einem anderen Paket arbeitet?**
+Dann Plan, sonst Paketdatei.
 
 Hier wird **nicht** ausformuliert, wie ein Paket umgesetzt wird. Ein Vorgehen,
 das zwölf Pakete im Voraus beschreibt, ist ab dem dritten Paket zur Hälfte
@@ -294,6 +312,7 @@ Quelle: ./audit.html vom <Datum> · Branch: <name> · erstellt: <Datum>
 Baseline: `npm run lint` ✓ · `npm run typecheck` ✓ · `npm test` 3 Fehler
 (vorbestehend, siehe unten) · `npm run build` ✓
 Arbeitsverzeichnis: <pfad> (Diffs und Verify-Logs, außerhalb der Versionierung)
+Paketdetails: docs/remediation/paket-<N>.md — je Paket eine Datei, angelegt von dessen Zug 0
 Scope: 24 von 31 Findings (3 critical, 8 high, 13 medium) · ausgenommen: info, acknowledged
 Scope-Regel: alles ab medium, jede Kategorie — gilt auch für Befunde, die erst im Lauf auffallen
 Stand (<Datum>): Paket 1 noch nicht begonnen · Arbeitsbaum sauber
@@ -303,7 +322,7 @@ seinen Stand. Wer hier weiterarbeitet: diesen Skill laden, die eingetragenen
 Hashes gegen `git log --oneline` halten, beim obersten Paket ohne `[x]`
 einsteigen. Der Lauf ist erst fertig, wenn auch »Offene Befunde« leer ist.
 Statusmarken: `[ ]` offen · `[~]` Detailplan steht, Umsetzung läuft · `[x]`
-erledigt · `[!]` blockiert.
+erledigt · `[r]` committet, Review wird nachgezogen · `[!]` blockiert.
 
 ## Entscheidungen
 - Alten `parseConfig`-Export entfernen statt deprecaten (2026-07-26)
@@ -344,15 +363,19 @@ der Zeile misst den Eintrag an der Scope-Regel oben: `→ Scope`, `→ Audit`,
 - Hash: —
 ```
 
+Die Zeile `- Detail: docs/remediation/paket-1.md` trägt Zug 0 nach, zusammen
+mit der Datei, auf die sie zeigt. Du schreibst sie nicht im Voraus — ein
+Verweis auf eine Datei, die es noch nicht gibt, ist ein toter Verweis.
+
 Der Abschnitt »Entscheidungen« ist die wichtigste Zeile im Kopf: an ihr misst
 der Runner später, ob eine Umplanung noch im Rahmen liegt oder eine Rückfrage
 braucht.
 
 Der Abschnitt »Konventionen« steht wörtlich so in der Datei und wird
 projektspezifisch ergänzt, nicht ersetzt: hat das Zielprojekt eigene Regeln für
-Kommentare oder Doku, kommen sie darunter. Er steht im Plan und nicht im Brief,
-weil ihn dort jeder liest, der ohnehin den Plan öffnet — Runner, Implementierer,
-Reviewer —, und weil er sonst in jeden Dispatch-Prompt kopiert werden müsste.
+Kommentare oder Doku, kommen sie darunter. Er steht im Plan und nicht im Brief
+und nicht in den Paketdateien, weil er für jede Zeile des ganzen Laufs gilt und
+sonst in jeden Dispatch-Prompt und jede Paketdatei kopiert werden müsste.
 Die Trennlinie dahinter: Plan und Reports sind Artefakte dieses Laufs und
 verschwinden mit ihm. Alles, was im Repo zurückbleibt — Code, Doku, CHANGELOG
 und die Commit-Message —, wird von jemandem gelesen, der weder das Audit noch
@@ -375,7 +398,8 @@ wird nicht als Redundanz zum Skill-Text weggekürzt. Er ist der Grund, warum
 jemand die Datei einordnen kann, der sie als Erstes findet und nicht diesen
 Skill. Die Zeile `Stand:` schreiben die Runner fort, das Feld `Hash:` bleibt bis
 zum Commit des Pakets leer. Eine Modellstufe steht hier nicht: die setzt der
-Runner in seinem Zug 0, wenn er den Code gesehen hat.
+Runner in seinem Zug 0, wenn er den Code gesehen hat, und sie steht dann in der
+Paketdatei.
 
 Eine Zeile im Kopf schreibst du **nicht**: `Lauf-Status:` gehört dem Skript aus
 Schritt 6, das sie beim Start setzt, bei jedem Ausgang überschreibt und beim
@@ -419,14 +443,14 @@ beliebiges weiteres Kommando dafür, voreingestellt ist dort nichts, und über
 den Weg entscheidet er, weil Paketnummern und Commit-Hashes hindurchgehen.
 
 Im selben Aufwasch der Verbleib des Plans, als Ansage statt als Frage: »am Ende
-nimmt ein Commit `./remediation-plan.md` mit ins Repo, und ein zweiter räumt ihn
-aus dem Arbeitsbaum — die Historie behält ihn, der Projektroot bleibt leer. Sag
-Bescheid, wenn er stattdessen ungetrackt liegenbleiben soll«. Ohne Widerspruch
-wird committet;
-widerspricht der Nutzer, steht das datiert in »Entscheidungen«, weil der
-Abschluss danach greift. Während des Laufs bleibt die Datei in jedem Fall
-ungetrackt: sie trägt die Hashes der Commits, in denen sie deshalb nicht liegen
-kann.
+nimmt ein Commit `./remediation-plan.md` samt den Paketdateien unter
+`docs/remediation/` mit ins Repo, und ein zweiter räumt beides aus dem
+Arbeitsbaum — die Historie behält sie, das Projekt bleibt so leer wie vorher.
+Sag Bescheid, wenn sie stattdessen ungetrackt liegenbleiben sollen«. Ohne
+Widerspruch wird committet; widerspricht der Nutzer, steht das datiert in »Entscheidungen«, weil der
+Abschluss danach greift. Während des Laufs bleiben beide in jedem Fall
+ungetrackt: sie tragen die Hashes der Commits, in denen sie deshalb nicht liegen
+können.
 
 ### 6. Die Schleife
 
@@ -526,7 +550,9 @@ zurückgekommen ist.
 Der Filter lässt genau die Zeilen durch, auf die jemand reagiert, und er lässt
 keine Abbruchform aus: jeder benannte Ausgang endet mit `ende exit=`, jeder
 unbenannte mit der verschwundenen Sperre. Der `[~]`-Vermerk nach Zug 0 fehlt
-absichtlich — halbe Pakete sind kein Anlass, jemanden anzusprechen.
+absichtlich — halbe Pakete sind kein Anlass, jemanden anzusprechen. Die Zeile
+`status=review-offen` kommt durch, weil sie auf `status=` passt; sie ist die
+eine, auf die du nichts tust (siehe Tabelle unten).
 
 #### Was du je Ereignis tust
 
@@ -539,6 +565,7 @@ Wiederholung dessen, was der Nutzer ohnehin vor sich sieht.
 | --- | --- | --- |
 | `status=committed` | Paket ist im Repo | Push mit Paketnummer, Kurzhash und Paketstand |
 | `status=dropped`, `marke=[x]` | Paket entfiel ohne Commit | Push, knapp |
+| `status=review-offen` | ein Runner hat ohne Review-Beleg committet; die Schleife zieht ihn nach | **nichts.** Kein Push, keine Rückfrage, kein Blick ins Repo. Das Paket ist noch nicht fertig, und die nächste Zeile dazu ist seine `status=committed` |
 | `status=question`, `status=blocked`, `marke=[!]` | die Schleife hält an und will eine Entscheidung | Push, der die Frage nennt, dann `references/shell-runner.md` |
 | `ende exit=0` | die Schleife ist durch | Push, und **sofort** Schritt 7 beginnen. Nicht auf ein Signal des Nutzers warten — dieses Warten ist der Fehler, gegen den der Wachposten gebaut ist |
 | `ende exit=` mit einer anderen Zahl | Abbruch | Push, der die Zahl nennt, dann die Exit-Tabelle |
@@ -589,12 +616,12 @@ Abschluss-Commit und die Übergabe.
   im Bugfix wird kein Test-Harness nachgerüstet.
 - **Der Plan ist die Wahrheit, nicht die Erinnerung.** `./remediation-plan.md`
   und `git log` schlagen das, was du zu wissen glaubst. Die Umkehrung wiegt
-  schwerer: was nur in einem Agentenkontext steht und nicht im Plan, gibt es
-  nach dessen Rückgabe nicht mehr.
+  schwerer: was nur in einem Agentenkontext steht und weder im Plan noch in
+  einer Paketdatei, gibt es nach dessen Rückgabe nicht mehr.
 - **Dein Kontext gehört der Koordination.** Du liest keine Diffs, keine
   Verify-Ausgaben außer fünfzehn Zeilen Schwanz, keine Subagenten-Reports im
-  Volltext und keine Referenzdatei, die einem anderen Zug gehört. Ein
-  Orchestrator, der über zwölf Pakete vollläuft, verliert genau das Wissen, für
+  Volltext, keine Paketdatei (außer der Abschluss verlangt es) und keine
+  Referenzdatei, die einem anderen Zug gehört. Ein Orchestrator, der über zwölf Pakete vollläuft, verliert genau das Wissen, für
   das er die ganze Zeit dagesessen hat.
 - **Sprache.** Antworten an den Nutzer in der Sprache seiner Anfrage.
   Commit-Messages in der Sprache, die `git log` des Projekts zeigt.
