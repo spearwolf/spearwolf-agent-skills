@@ -17,7 +17,7 @@ Rest siehst du nicht.
 2. Offene Entscheidungen gebündelt klären (4).
 3. Pakete schnüren, ordnen, Grobplan schreiben, Freigabe holen (5).
 4. `scripts/remediate.sh` starten und laufen lassen, bis kein Paket mehr offen ist (6).
-5. Semver bewerten, `./audit.html` nachführen, abschließen, Folgeaudit anbieten (7).
+5. Befund-Queue leeren, `./audit.html` nachführen, Report schreiben, abschließen, tmux-Session schließen (7) — ohne weitere Rückfrage.
 
 Geplant wird zweistufig, und die beiden Stufen wohnen in verschiedenen Dateien.
 Schritt 5 legt fest, **was** in welcher Reihenfolge passiert — das ist, was der
@@ -72,6 +72,14 @@ Diese Regeln stehen über jeder Abwägung im Einzelfall:
 - **Der Runner schärft den Plan, er ersetzt ihn nicht.** Freigegeben sind
   Zielsetzung, Paketschnitt und Reihenfolge aus Schritt 5. Wer davon im Kern
   abweichen will, hält an und legt es dir vor, und du legst es dem Nutzer vor.
+- **Eine Ansage ist keine Frage.** Gewartet wird nur, wo eine Frage steht:
+  unsauberer Arbeitsbaum (2), Klärungsrunde (4), Freigabe des Grobplans (5),
+  eine Rückfrage aus der Schleife (6). Alles, was als Ansage formuliert ist,
+  wird ausgeführt, sobald es ausgesprochen ist — »widersprich, sonst mache ich
+  X« heißt: X passiert jetzt, und ein späterer Widerspruch wird dann
+  eingearbeitet. Der Abschluss (7) besteht nur aus Ansagen. Eine Meldung,
+  hinter der nichts passiert, bis der Nutzer antwortet, ist der Fehler, den
+  diese Regel verbietet.
 
 ## Workflow
 
@@ -404,9 +412,9 @@ Paketdatei.
 Zwei Stellen im Plan schreibst du **nicht**, und kein Runner tut es auch: beide
 gehören dem Skript aus Schritt 6. Der Abschnitt `## Tokenverbrauch` am Ende der
 Datei trägt, was der Lauf bis dahin verbraucht hat — je Paket eine Zeile, dazu
-Summe und Ausgabe je Modell. Das Skript schreibt ihn bei jedem Ausgang neu, er
-überlebt den Abschluss, und er ist der einzige Ort, an dem diese Zahlen den Lauf
-überdauern.
+Summe und Ausgabe je Modell. Das Skript schreibt ihn bei jedem Ausgang neu; der
+Abschluss zieht ihn unverändert in den Remediation-Report um, der als einzige
+Datei des Laufs im Repo bleibt.
 
 Die Zeile `Lauf-Status:` gehört ebenfalls dem Skript, das sie beim Start setzt,
 bei jedem Ausgang überschreibt und beim Abschluss wieder wegnimmt. Sie steht
@@ -427,8 +435,9 @@ mit behoben, notfalls in zusätzlichen Paketen — die Paketzahl ist damit eine
 Untergrenze, keine Zusage. Und ein Satz zu den Nebenbefunden, der die
 Scope-Regel wörtlich wiederholt: was während des Laufs auffällt und unter sie
 fällt, wird in diesem Lauf mit behoben, der Rest geht als neues Finding ins
-Audit — vorgelegt wird beides, vor dem Abschluss, in einer Runde. Freigegeben
-werden Paketschnitt und Reihenfolge.
+Audit — beides ohne weitere Rückfrage, beides im Abschlussreport nachlesbar.
+Diese Freigabe ist die Vollmacht für den ganzen Abschluss; danach wird nicht
+mehr gefragt. Freigegeben werden Paketschnitt und Reihenfolge.
 Ohne diese Freigabe beginnt die Umsetzung nicht.
 
 In dieselbe Ansage gehört, wie es danach weitergeht: die Pakete fährt
@@ -451,12 +460,14 @@ den Weg entscheidet er, weil Paketnummern und Commit-Hashes hindurchgehen.
 Im selben Aufwasch der Verbleib des Plans, als Ansage statt als Frage: »am Ende
 nimmt ein Commit `./remediation-plan.md` samt den Paketdateien unter
 `docs/remediation/` mit ins Repo, und ein zweiter räumt beides aus dem
-Arbeitsbaum — die Historie behält sie, das Projekt bleibt so leer wie vorher.
-Sag Bescheid, wenn sie stattdessen ungetrackt liegenbleiben sollen«. Ohne
-Widerspruch wird committet; widerspricht der Nutzer, steht das datiert in »Entscheidungen«, weil der
-Abschluss danach greift. Während des Laufs bleiben beide in jedem Fall
-ungetrackt: sie tragen die Hashes der Commits, in denen sie deshalb nicht liegen
-können.
+Arbeitsbaum — die Historie behält sie. Im Projekt bleibt allein
+`docs/remediation/<YYYYMMDD>-remediation-report.md` mit Zusammenfassung,
+Tokenverbrauch und Semver-Empfehlung. Sag Bescheid, wenn Plan und
+Paketdateien stattdessen ungetrackt liegenbleiben sollen«. Ohne Widerspruch
+wird committet; widerspricht der Nutzer, steht das datiert in
+»Entscheidungen«, weil der Abschluss danach greift. Während des Laufs bleiben
+Plan und Paketdateien in jedem Fall ungetrackt: sie tragen die Hashes der
+Commits, in denen sie deshalb nicht liegen können.
 
 ### 6. Die Schleife
 
@@ -604,9 +615,10 @@ selbst an die Session — dort sitzt der Nutzer.
 ### 7. Abschluss
 
 Nach dem letzten Paket `references/semver-and-closeout.md` lesen. Dort stehen
-die Drain-Phase für die Befund-Queue, die Semver-Bewertung, der Umgang mit dem
-CHANGELOG des Zielprojekts, das Nachführen der `./audit.html`, der
-Abschluss-Commit und die Übergabe.
+der Drain der Befund-Queue, der volle Verify-Lauf, der CHANGELOG-Eintrag, das
+Nachführen der `./audit.html`, der Remediation-Report mit Tokenverbrauch und
+Semver-Empfehlung, die beiden Abschluss-Commits und die Übergabe. Der ganze
+Schritt läuft ohne Rückfrage durch; die Freigabe aus Schritt 5 deckt ihn.
 
 ## Prinzipien
 
@@ -638,19 +650,19 @@ Dieser Skill funktioniert allein und setzt keine Erweiterung voraus. Sind die
 Superpowers-Skills installiert, gilt folgende Aufteilung, damit sich nichts
 doppelt:
 
-- `js-ts-project-audit` liefert den Input und übernimmt am Ende den Folgelauf.
-  Es fixt nie selbst, dieser Skill auditiert nie selbst. Dass hier am Ende
-  trotzdem in die `./audit.html` geschrieben wird, ist kein Bruch dieser Linie:
-  gebucht wird, was Reviewer-Urteil und Commit-Hash belegen, und der Score ist
-  die Formel des Audits auf ein verändertes Backlog. Die Bewertung des Codes
-  bleibt beim Folgelauf. Auch die Optik gehört dorthin: Schritt 7 fasst die
-  Gestaltung der Seite nicht an — der nächste Audit-Lauf rendert sie ohnehin
-  nach seinen eigenen Vorgaben neu.
+- `js-ts-project-audit` liefert den Input. Es fixt nie selbst, dieser Skill
+  auditiert nie selbst. Dass hier am Ende trotzdem in die `./audit.html`
+  geschrieben wird, ist kein Bruch dieser Linie: gebucht wird, was
+  Reviewer-Urteil und Commit-Hash belegen, und der Score ist die Formel des
+  Audits auf ein verändertes Backlog. Die Bewertung des Codes bleibt beim
+  nächsten Audit-Lauf, den der Nutzer startet, wann er will — angeboten wird
+  er nicht. Auch die Optik gehört dorthin: Schritt 7 fasst die Gestaltung der
+  Seite nicht an.
 - Fährt der Nutzer die Umsetzung ausdrücklich über
   `superpowers:subagent-driven-development`, gewinnt dessen Prozess innerhalb
   eines Pakets. Findings-Quelle, Paketschnitt, der Runner als eigener Agent,
-  die Befund-Queue, die Fortschreibung von `./remediation-plan.md`, Semver und
-  Folgeaudit bleiben hier — ein fremder Umsetzungsprozess ersetzt das Briefing,
+  die Befund-Queue, die Fortschreibung von `./remediation-plan.md`,
+  Semver-Empfehlung und Report bleiben hier — ein fremder Umsetzungsprozess ersetzt das Briefing,
   nicht den Abgleich gegen den aktuellen Code und nicht das Dokument, an dem
   ein Dritter den Stand abliest.
 - Bleibt ein Verify-Lauf nach zwei Runden unerklärlich rot, ist das ein

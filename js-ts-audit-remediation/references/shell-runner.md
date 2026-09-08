@@ -257,7 +257,9 @@ deshalb läuft nie einer parallel zum anderen.
 | 40 | Eine Vorbedingung stimmt nicht | Die Meldung sagt, welche. Auch der Vertrauensdialog landet hier: die CLI kennt das Verzeichnis nicht |
 
 Entstehen im Abschluss neue Pakete — die Drain-Runde schneidet welche —, läuft
-das Skript danach noch einmal. Es fasst den Abschluss selbst nie an.
+das Skript danach noch einmal; vorher muss die alte Session weg
+(`tmux kill-session`), sonst Exit 40. Es fasst den Abschluss selbst nie an, und
+die Session am Ende des Laufs schließt der Abschluss, nicht das Skript.
 
 Jeder dieser Ausgänge legt eine Tabelle nach: Tokens je Paket, eine
 Spalte hinein und eine hinaus, daneben die Überschrift des Pakets aus dem Plan,
@@ -266,13 +268,12 @@ dazu eine Summe und die Ausgabe je Modell.
 **Sie geht an zwei Orte.** Ins Pane, wo sie jetzt jemand liest, und in den Plan,
 als Abschnitt `## Tokenverbrauch` am Ende. Der zweite Ort ist der, der zählt:
 ein Pane gehört einem Terminal, das aufgeräumt wird, ein Journal einem `/tmp`,
-das es irgendwann auch wird — der Plan liegt im Projekt und geht am Ende mit in
-die Historie. Der Abschnitt ersetzt sich bei jedem Ausgang selbst, statt sich zu
-stapeln: zwölf Tabellen untereinander wären keine Historie, sondern zwölf
-Zwischenstände desselben Laufs, von denen nur der letzte stimmt. Kein Agent
-schreibt ihn von Hand, und der Abschluss löscht ihn nicht — anders als
-`Lauf-Status:` bleibt er stehen, weil er den Lauf beschreibt und nicht seinen
-Zustand.
+das es irgendwann auch wird — der Plan liegt im Projekt. Der Abschnitt ersetzt
+sich bei jedem Ausgang selbst, statt sich zu stapeln: zwölf Tabellen
+untereinander wären keine Historie, sondern zwölf Zwischenstände desselben
+Laufs, von denen nur der letzte stimmt. Kein Agent schreibt ihn von Hand. Der
+Abschluss zieht ihn in den Remediation-Report um (`references/semver-and-closeout.md`),
+der als einzige Datei des Laufs im Repo bleibt.
 
 Beträge stehen nicht darin. »Eingabe« ist die Summe aus frischer Eingabe,
 Cache-Lesung und Cache-Anlage — drei Preisklassen desselben Postens, und die
