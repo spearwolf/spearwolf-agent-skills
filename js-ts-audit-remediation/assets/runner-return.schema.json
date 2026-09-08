@@ -12,16 +12,16 @@
       "description": "Die Paketnummer, wie sie im Plan steht. Nie neu vergeben, auch nicht bei einer Teilung: 3a bleibt 3a."
     },
     "role": {
-      "enum": ["A", "B"],
-      "description": "A hat Zug 0 ausgeführt, B die Züge 1 bis 5."
+      "enum": ["A", "B", "N"],
+      "description": "A hat Zug 0 ausgeführt, B die Züge 1 bis 5, N den nachgezogenen Review auf einem Paket, das bereits committet ist."
     },
     "status": {
       "enum": ["planned", "committed", "dropped", "blocked", "question"],
-      "description": "planned: Detailplan steht, Paket auf [~] (nur A). committed: Paket committet, auf [x] (nur B). dropped: alle Findings gegenstandslos, ohne Commit auf [x]. blocked: Paket auf [!], Arbeitsbaum im Stash. question: das Paket behält seine Marke und es ändert sich keine Zeile Code — die Frage selbst gehört trotzdem in den Plan, denn was dort nicht steht, gibt es nach deiner Rückgabe nicht mehr."
+      "description": "planned: Detailplan steht, Paket auf [~] (nur A). committed: Paket committet, auf [x] (B, und N nach dem nachgezogenen Review). dropped: alle Findings gegenstandslos, ohne Commit auf [x]. blocked: Paket auf [!], Arbeitsbaum im Stash. question: das Paket behält seine Marke und es ändert sich keine Zeile Code — die Frage selbst gehört trotzdem in den Plan, denn was dort nicht steht, gibt es nach deiner Rückgabe nicht mehr."
     },
     "hash": {
       "type": "string",
-      "description": "Bei status=committed der Commit-Hash, der auch unter dem Paket im Plan steht. Sonst leer. Die Schleife hält ihn gegen HEAD."
+      "description": "Bei status=committed der Commit-Hash, der auch unter dem Paket im Plan steht. Sonst leer. Die Schleife hält ihn gegen HEAD. Bei Rolle N ist es der Commit, auf dem das Paket am Ende steht: der vorhandene, wenn der Review nichts fand, sonst die Nachbesserung darüber."
     },
     "stash": {
       "type": "string",

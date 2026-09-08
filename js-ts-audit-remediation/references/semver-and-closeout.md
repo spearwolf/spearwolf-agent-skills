@@ -202,6 +202,13 @@ liegenblieb. Ein Plan, dessen Kopf noch »Paket 7 in Zug 3« sagt, während alle
 Pakete `[x]` tragen, schickt den nächsten Agenten auf eine Suche nach Arbeit,
 die es nicht gibt.
 
+Der Abschnitt `## Tokenverbrauch` am Ende der Datei bleibt dagegen **stehen**
+und wird nicht angefasst. Er sagt, was der Lauf verbraucht hat, nicht wie er
+gerade steht — er beschreibt also etwas, das der Abschluss nicht ungültig macht,
+sondern gerade konserviert. Was der Abschluss selbst noch kostet, steht nicht
+darin; die Tabelle nennt ihren eigenen Stand. Die Zahlen für den Bericht unten
+kommen von dort, statt neu zusammengesucht zu werden.
+
 **Und die Zeile `Lauf-Status:` verschwindet.** Sie steht im Kopf, direkt unter
 `Arbeitsverzeichnis:`, und gehört der Schleife aus Schritt 6: sie sagt, dass ein
 Lauf läuft, an einem Exit-Code hängt oder durch ist und auf genau diesen
@@ -217,9 +224,11 @@ Der Löschbefund ist prüfbar, und er wird geprüft:
 grep -n '^Lauf-Status:' remediation-plan.md   # muss leer ausgehen
 ```
 
-Ein Commit, der Versionsanhebung, CHANGELOG-Eintrag und den fortgeschriebenen
-`./remediation-plan.md` zusammenfasst. Message im Stil, den `git log` des
-Projekts zeigt.
+Ein Commit, der Versionsanhebung, CHANGELOG-Eintrag, den fortgeschriebenen
+`./remediation-plan.md` und den Ordner `docs/remediation/` zusammenfasst. Plan
+und Paketdateien gehen gemeinsam hinein — der Plan verweist auf sie, und ein
+Verweis auf eine Datei, die nie committet wurde, ist keiner. Message im Stil,
+den `git log` des Projekts zeigt.
 
 Die nachgeführte `./audit.html` geht mit hinein, sofern sie im Repo verfolgt
 wird — dann ist ihr Verlauf die Historie der Reports, und ein uncommitteter
@@ -229,10 +238,11 @@ namentlich nennen.
 
 Der Plan geht mit hinein, sofern »Entscheidungen« nichts anderes sagt — das ist
 die Ansage aus der Freigabe in Schritt 5 der `SKILL.md`. Steht dort, dass er
-draußen bleibt, wird er weder geaddet noch gelöscht noch in `.gitignore`
-eingetragen: er liegt im Arbeitsbaum, gehört dem Nutzer, und was damit geschieht,
-entscheidet er. Erwähne die Datei dann im Bericht namentlich, sonst steht am Ende
-eine ungetrackte Datei im Projektroot, deren Herkunft niemand mehr kennt.
+draußen bleibt, wird weder er noch `docs/remediation/` geaddet, gelöscht oder in
+`.gitignore` eingetragen: beides liegt im Arbeitsbaum, gehört dem Nutzer, und
+was damit geschieht, entscheidet er. Erwähne sie dann im Bericht namentlich,
+sonst stehen am Ende ungetrackte Dateien im Projekt, deren Herkunft niemand mehr
+kennt.
 
 ### Und danach aus dem Arbeitsbaum
 
@@ -241,15 +251,21 @@ winziger Commit ihn aus dem Arbeitsbaum:
 
 ```bash
 git rm remediation-plan.md
+git rm -r docs/remediation
 git commit --no-gpg-sign -m "<im Stil des Projekts: Remediation-Plan archiviert>"
 ```
 
 Der Projektroot ist damit wieder so leer wie vorher, und die Historie behält
 alles: `git log --oneline -- remediation-plan.md` zeigt beide Commits, `git show
-<hash>:remediation-plan.md` den vollen Stand.
+<hash>:remediation-plan.md` den vollen Stand, `git show
+<hash>:docs/remediation/paket-3.md` den Detailplan eines einzelnen Pakets.
 
-**Sauber geschlossen heißt: kein Paket auf `[!]`, »Offene Befunde« leer, keine
-unverteilte `Folgen:`-Zeile.** Trifft eines davon nicht zu, bleibt der Plan im
+Bestand `docs/` vor dem Lauf schon und liegt dort mehr als `remediation/`, wird
+nur das eine Unterverzeichnis entfernt — `git rm -r docs` nähme die Dokumentation
+des Projekts mit.
+
+**Sauber geschlossen heißt: kein Paket auf `[!]` oder `[r]`, »Offene Befunde«
+leer, keine unverteilte `Folgen:`-Zeile.** Trifft eines davon nicht zu, bleibt der Plan im
 Arbeitsbaum stehen, und der Bericht sagt warum. Der Grund ist nicht Ordnungssinn:
 ein blockiertes Paket hat seinen Arbeitsbaum im Stash, und der Stash-Name steht
 nur im Plan. Wer den Plan wegräumt, während dort noch etwas liegt, hat einen
@@ -288,6 +304,10 @@ Fünf bis acht Zeilen, nicht mehr:
 - wo der Plan geblieben ist: archiviert und aus dem Arbeitsbaum entfernt, oder
   stehengeblieben und warum. Eine halbe Zeile — aber ohne sie sucht jemand eine
   Datei, die es nicht mehr gibt, oder übersieht eine, die noch etwas offen hat
+- was der Lauf verbraucht hat: **eine** Zeile, aus dem Abschnitt
+  »Tokenverbrauch« im Plan abgelesen — Prozesse und Token gesamt. Die Tabelle
+  wird nicht abgeschrieben, sie steht ja da; genannt wird sie, damit jemand
+  weiß, dass es sie gibt
 - der neue Stand der `./audit.html`, sofern es eine gibt: alter und neuer
   Score, wie viele Findings geschlossen und wie viele neu eingetragen wurden —
   eine Zeile
