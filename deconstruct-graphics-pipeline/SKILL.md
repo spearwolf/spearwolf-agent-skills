@@ -38,25 +38,28 @@ Der Satz drumherum ist deutsch (oder was der User spricht), der Begriff darin bl
 1. Material beschaffen und sichten (0).
 2. Klassifikation — was für ein Bild ist das überhaupt (1). Steuert alles Folgende.
 3. Analyse in sechs Layern, Befunde sammeln (2).
-4. Machbarkeit gegen das Browser-Budget (3).
-5. Rekonstruktion: Mapping auf three.js + WebGPU (4).
-6. Report schreiben, PoC anhängen, übergeben (5).
+4. Machbarkeit gegen das Browser-Budget, daraus die Empfehlung (3).
+5. Report schreiben, übergeben, die Rekonstruktion anbieten (4). Hier endet der Lauf, bis der User entschieden hat.
+6. Rekonstruktion: Mapping auf three.js + WebGPU, als Teil II mit Roadmap und PoC an den Report angehängt (5). Nur auf sein Ja.
 
 Die Referenzdateien werden gelesen, wenn ihr Schritt dran ist — nicht vorab:
 
 | Datei | Wann lesen |
 | --- | --- |
+| `references/host-claude-web.md` | Schritt 0 — nur in der Claude-App (Web oder Desktop), siehe Erkennungsmerkmal dort |
 | `references/live-page-recon.md` | Schritt 0 — nur wenn die Referenz eine aufrufbare Seite ist |
 | `references/observation-cues.md` | Schritt 2 — immer, vor der Analyse |
-| `references/threejs-webgpu-map.md` | Schritt 4 — immer, vor der Roadmap |
-| `references/dcc-pipeline.md` | Schritt 4 — nur wenn modellierte Assets im Bild sind |
-| `references/report-template.md` | Schritt 5 — vor dem Schreiben |
+| `references/report-template.md` | Schritt 4 — vor dem Schreiben von Teil I; Schritt 5 liest den Abschnitt »Teil II« |
+| `references/threejs-webgpu-map.md` | Schritt 5 — immer, vor der Roadmap |
+| `references/dcc-pipeline.md` | Schritt 5 — nur wenn modellierte Assets im Bild sind |
 
 ## Workflow
 
 ### 0. Material beschaffen und sichten
 
 Das Bild muss **wirklich angesehen** werden. Ein Dateiname, eine URL oder eine Beschreibung des Users sind kein Material.
+
+**Läuft der Skill in der Claude-App** — per Upload installiert, Sandbox unter `/mnt/…`, Bilder kommen als Anhang der Nachricht, kein Projektverzeichnis —, **zuerst `references/host-claude-web.md` lesen.** Die Tabelle dort ersetzt die folgende; der Rest des Workflows gilt unverändert.
 
 | Was der User liefert | Was zu tun ist |
 | --- | --- |
@@ -112,7 +115,7 @@ Jeder Befund ist ein Datensatz. Erst alle sammeln, dann Schritt 3 — nicht para
 | `alternatives` | Was dasselbe Indiz sonst erzeugt, plus der Test, der die Fälle trennt |
 | `impact` | `look-defining` \| `supporting` \| `detail` — wie viel vom Gesamteindruck daran hängt |
 | `webFeasibility` | wird in Schritt 3 gesetzt |
-| `effort` | `S` \| `M` \| `L` — wird in Schritt 4 gesetzt |
+| `effort` | `S` \| `M` \| `L` — wird in Schritt 5 gesetzt, falls der User die Rekonstruktion will |
 
 **`observation` und `conclusion` dürfen nicht denselben Satz enthalten.** »SSAO in den Ecken« ist keine Beobachtung, sondern eine Schlussfolgerung ohne Beleg. »Die Innenkanten des Regals dunkeln über etwa 20 Pixel ab, unabhängig von der Lichtrichtung« ist eine.
 
@@ -134,7 +137,40 @@ Was regelmäßig auf `fake` oder `unerreichbar` fällt: path-traced global illum
 
 **Die ehrliche Ansage gehört in den Report, nicht ins Kleingedruckte.** Wenn der Referenz-Look aus einem 40-Minuten-Cycles-Render stammt, ist »das bauen wir nach« falsch und »so kommst du auf 85 % bei 60 fps, und diese 15 % fehlen dir« richtig. Der Satz, der dabei nie fehlen darf: was genau der User sieht, wenn er den Unterschied sucht.
 
-### 4. Rekonstruktion: Mapping auf three.js + WebGPU
+**Aus der Verteilung folgt die Empfehlung, ob sich die Rekonstruktion (Schritt 5) lohnt.** Ein Satz mit Begründung, und die Begründung sind die `look-defining`-Befunde:
+
+| Lage | Empfehlung |
+| --- | --- |
+| Alle `look-defining`-Befunde sind `nativ`, `addon` oder `custom` | Dafür. Der Look ist im Browser erreichbar, die Roadmap sagt, in welcher Reihenfolge. |
+| Mindestens ein `look-defining`-Befund ist `fake` | Dafür, mit Vorbehalt: der User baut eine Annäherung, und die Empfehlung nennt, woran er sie erkennen wird. |
+| Mindestens ein `look-defining`-Befund ist `unerreichbar` | Dagegen, oder nur für den Rest. Erst klären, ob der Look ohne dieses Element noch der Ziel-Look ist. |
+| Klasse Foto/Film oder 2D ohne Szenen-Rendering | Dagegen als Portierung. Anbieten als Look-Transfer: Optik, Grading, Post-Kette. |
+
+Die Empfehlung ist eine Empfehlung. Die Entscheidung trifft der User in Schritt 4, und der Skill nimmt sie ihm nicht ab — auch nicht, wenn die Lage eindeutig scheint.
+
+### 4. Report schreiben, übergeben, Rekonstruktion anbieten
+
+**Zuerst `references/report-template.md` lesen.** Dort steht die Abschnittsstruktur. Der Report hat zwei Teile: Teil I ist die Analyse und entsteht jetzt; Teil II ist die Rekonstruktion und entsteht erst in Schritt 5, falls der User sie will. Was jetzt geschrieben wird, ist ohne Teil II vollständig — Kopf, Kurzurteil, die Layer, Machbarkeit mit Empfehlung, offene Fragen. Kein Platzhalter für Teil II, kein leerer Abschnitt.
+
+**Pfad:** `./graphics-pipeline-analysis.md` im aktuellen Arbeitsverzeichnis. Kann der Host keine Datei dorthin schreiben, wird derselbe Report als herunterladbare Datei ausgeliefert und, wenn auch das nicht geht, vollständig im Chat. Die Struktur ändert sich dadurch nicht — nur der Zustellweg, und der wird im Chat benannt.
+
+**Überschreiben:** Existiert die Datei bereits, deren Abschnitt 0 lesen. Beschreibt sie dieselbe Referenz, wird sie überschrieben — der neue Lauf ist die bessere Analyse. Beschreibt sie eine andere Referenz, entsteht daneben eine `./graphics-pipeline-analysis-<slug>.md` mit einem kurzen Slug aus dem neuen Motiv. Eine fremde Analyse wird nie stillschweigend zerstört.
+
+**Im Chat** stehen danach: die Klasse, die zwei bis vier `look-defining`-Befunde im Klartext, die ehrliche Machbarkeitsansage und der Pfad zur Datei. Nicht der ganze Report — der steht ja in der Datei.
+
+**Dann die Frage.** Der Lauf endet mit der Frage, ob die Rekonstruktion folgen soll, und der Empfehlung aus Schritt 3 direkt daneben: »Empfehlung: ja — alle vier look-defining-Befunde sind nativ oder addon« oder »Empfehlung: erst klären, ob der Look ohne die Kaustiken noch dein Look ist«. Hat der Host ein Werkzeug für Rückfragen (in Claude Code: `AskUserQuestion`), wird es benutzt; sonst ist die Frage der letzte Satz im Chat. Dann wird gewartet.
+
+Die Frage wird immer gestellt:
+
+- Nicht übersprungen, weil der User eingangs »bau mir das nach« gesagt hat. Das war die Bitte vor der Machbarkeitsansage; die Entscheidung danach ist eine andere.
+- Nicht übersprungen, weil die Empfehlung eindeutig ist. Eindeutig heißt leicht zu beantworten, nicht: schon beantwortet.
+- Nicht durch Weiterarbeiten ersetzt. Kein Teil II ohne ein Ja.
+
+Sagt der User nein, ist der Lauf fertig; Teil I bleibt, wie er ist. Ein späteres »jetzt doch nachbauen« steigt bei Schritt 5 ein.
+
+### 5. Rekonstruktion: Mapping auf three.js + WebGPU
+
+**Nur nach einem Ja aus Schritt 4.** Steigt ein Lauf hier ein, weil der Report zur selben Referenz schon liegt und der User die Rekonstruktion jetzt will: Teil I lesen und die Befunde daraus übernehmen, statt neu zu analysieren.
 
 **Zuerst `references/threejs-webgpu-map.md` lesen.** Dort steht, welche Technik auf welche API abgebildet wird — Node-Materials und TSL, Post-Processing-Nodes, Compute, Instancing, Texturformate — samt der Stellen, an denen die WebGPU-Kette sich anders verhält als der alte WebGL-Weg.
 
@@ -147,21 +183,15 @@ Anschließend jedem Befund ein `effort` geben (`S` = Parameter setzen oder ein N
 3. `supporting`, aufsteigend nach Aufwand
 4. `detail` — der Feinschliff, ausdrücklich als optional markiert
 
-Diese Reihenfolge ist der eigentliche Ertrag der Analyse. Sie sagt dem User, womit er anfängt.
+Diese Reihenfolge ist der eigentliche Ertrag der Rekonstruktion. Sie sagt dem User, womit er anfängt.
 
 Dazu die Performance-Ebene, konkret für diese Szene: Draw-Call-Reduktion, Texturbudget und Kompressionsformat, Auflösung der Post-Targets, was auf Mobile zuerst bricht.
 
-### 5. Report schreiben, PoC anhängen, übergeben
+**Teil II an den Report anhängen.** Die Abschnitte stehen in `references/report-template.md` unter »Teil II«: Asset-Pipeline, Roadmap, Proof of Concept. Sie werden an die bestehende Datei angehängt; Teil I bleibt unverändert.
 
-**Zuerst `references/report-template.md` lesen.** Dort steht die Abschnittsstruktur und was in jeden Abschnitt gehört.
+**Proof of Concept:** Teil II endet mit lauffähigem Kernstück-Code — in aller Regel der Material-Block in TSL und die Post-Processing-Kette, also genau die Teile, die den Look tragen. Kompakt, kommentiert, kopierfertig. Ein vollständiges Scaffold (Renderer, Kamera, Loop, Loader) wird **nur auf Nachfrage** gebaut, dann als eigene Datei; im Report steht ein Satz, dass es auf Wunsch dazukommt.
 
-**Pfad:** `./graphics-pipeline-analysis.md` im aktuellen Arbeitsverzeichnis. Kann der Host keine Datei dorthin schreiben, wird derselbe Report als herunterladbare Datei ausgeliefert und, wenn auch das nicht geht, vollständig im Chat. Die Struktur ändert sich dadurch nicht — nur der Zustellweg, und der wird im Chat benannt.
-
-**Überschreiben:** Existiert die Datei bereits, deren Abschnitt 0 lesen. Beschreibt sie dieselbe Referenz, wird sie überschrieben — der neue Lauf ist die bessere Analyse. Beschreibt sie eine andere Referenz, entsteht daneben eine `./graphics-pipeline-analysis-<slug>.md` mit einem kurzen Slug aus dem neuen Motiv. Eine fremde Analyse wird nie stillschweigend zerstört.
-
-**Proof of Concept:** Der Report endet mit lauffähigem Kernstück-Code — in aller Regel der Material-Block in TSL und die Post-Processing-Kette, also genau die Teile, die den Look tragen. Kompakt, kommentiert, kopierfertig. Ein vollständiges Scaffold (Renderer, Kamera, Loop, Loader) wird **nur auf Nachfrage** gebaut, dann als eigene Datei; im Report steht ein Satz, dass es auf Wunsch dazukommt.
-
-**Im Chat** stehen danach: die Klasse, die zwei bis vier `look-defining`-Befunde im Klartext, die ehrliche Machbarkeitsansage und der Pfad zur Datei. Nicht der ganze Report — der steht ja in der Datei.
+**Im Chat** danach: die ersten drei Roadmap-Schritte im Klartext, was der PoC abdeckt, der Pfad zur Datei.
 
 ## Häufige Fehlschlüsse
 
@@ -170,8 +200,9 @@ Dazu die Performance-Ebene, konkret für diese Szene: Draw-Call-Reduktion, Textu
 | »Sieht nach SSR aus« | Reflexionen, die Objekte außerhalb des Bildausschnitts zeigen, sind kein SSR. Erst den Test aus dem Cue-Katalog machen, dann behaupten. |
 | Technik-Namedropping ohne Beleg | Jeder Befund braucht seine `observation`. Findet sich keine, fällt der Befund raus oder wandert nach `vermutet`. |
 | Alles ist ein Custom-Shader | Sehr viel davon ist ein `MeshPhysicalNodeMaterial` mit richtig gesetzten Parametern plus zwei Post-Nodes. Erst prüfen, was das Standard-Material schon kann, dann eigenen Code schreiben. |
-| Den Offline-Render 1:1 versprechen | GI mit mehreren Bounces, Kaustiken und echte Dispersion sind im Budget nicht drin. Die Roadmap nennt den Fake und die Lücke, nicht das Original. |
+| Den Offline-Render 1:1 versprechen | GI mit mehreren Bounces, Kaustiken und echte Dispersion sind im Budget nicht drin. Der Report nennt den Fake und die Lücke, nicht das Original. |
 | Fachbegriffe eindeutschen | »Bildschirmraum-Umgebungsverdeckung« ist in keiner Dokumentation auffindbar. Siehe »Sprache der Ausgabe«. |
 | Aus dem Thumbnail auf texel density schließen | Was die Auflösung nicht hergibt, steht unter »Offene Fragen«. |
 | Die Pipeline-Reihenfolge als Roadmap ausgeben | Der User will wissen, womit er anfängt, nicht in welcher Reihenfolge die GPU arbeitet. Sortiert wird nach `impact` × `effort`. |
 | Bei einem Foto trotzdem Render-Passes beschreiben | Erst klassifizieren. Ein Foto hat keinen G-Buffer. |
+| Nach dem Report gleich weitermachen, weil der User »nachbauen« gesagt hat | Teil I zuerst, dann die Frage. Entschieden wird mit der Machbarkeitsansage vor Augen — und vom User, nicht vom Skill. |

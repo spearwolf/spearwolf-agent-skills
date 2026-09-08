@@ -1,6 +1,6 @@
 # Mapping: Technik → three.js + WebGPU
 
-Nachschlagewerk für Schritt 4. Links steht, was in Schritt 2 befundet wurde, rechts, womit es im Browser gebaut wird.
+Nachschlagewerk für Schritt 5. Links steht, was in Schritt 2 befundet wurde, rechts, womit es im Browser gebaut wird.
 
 ## Vorab: gegen die installierte Version prüfen
 

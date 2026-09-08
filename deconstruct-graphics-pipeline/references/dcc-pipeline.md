@@ -1,6 +1,6 @@
 # Asset-Pipeline: DCC → glTF → three.js
 
-Nachschlagewerk für Schritt 4, **nur wenn im Bild modellierte Assets zu sehen sind**. Bei Fullscreen-Shadern, generativer 2D-Grafik oder reinen Post-Effekten wird diese Datei nicht gebraucht und der zugehörige Report-Abschnitt entfällt.
+Nachschlagewerk für Schritt 5, **nur wenn im Bild modellierte Assets zu sehen sind**. Bei Fullscreen-Shadern, generativer 2D-Grafik oder reinen Post-Effekten wird diese Datei nicht gebraucht und der zugehörige Report-Abschnitt entfällt.
 
 Die Frage, die dieser Abschnitt beantwortet: **Was kommt fertig aus dem `.glb`, und was muss zwingend Code werden?** Die Antwort entscheidet über den Zuschnitt der Arbeit — ein Look, der zu 80 % im Export steckt, ist ein anderes Projekt als einer, der zu 80 % im Shader steckt.
 
@@ -76,7 +76,7 @@ Backen tauscht Rechenzeit gegen Speicher und Flexibilität. Im Browser ist diese
 
 ## Die Matrix für den Report
 
-Abschnitt 6 des Reports listet die Assets dieser konkreten Szene in genau diesen drei Spalten:
+Abschnitt 8 des Reports listet die Assets dieser konkreten Szene in genau diesen drei Spalten:
 
 | Element im Bild | Kommt aus dem `.glb` | Muss Code werden |
 | --- | --- | --- |
