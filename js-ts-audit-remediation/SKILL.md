@@ -171,6 +171,24 @@ Runner, einen Implementierer, einen Reviewer, ein Verify-Gate, einen Commit
 und ein Fenster, in dem der Nutzer gebraucht wird — unabhängig davon, wie viel
 im Paket steckt. Zwölf Pakete sind nicht gründlicher als sechs.
 
+**Rechne den Preis aus, bevor du schneidest.** Der Kostentreiber ist nicht die
+Menge an Code, sondern die Zahl der **Kaltstarts**: jede Rolle beginnt bei null
+und liest sich das Modul neu an, das die vorige gerade verstanden hat. Ein
+Paket kostet mindestens drei davon — Zug 0, Implementierer, Reviewer —, und
+jede weitere Runde der Fehlerkette legt zwei drauf. Gemessen an einem
+TypeScript-Monorepo mittlerer Größe: grob vierzig Minuten Wandzeit und einige
+Millionen Eingabe-Token je Paket, je zur Hälfte Tool-Calls und Modellrechnung.
+Dieser Preis hängt am Paket, kaum an seinem Inhalt — drei Findings kosten fast
+dasselbe wie acht.
+
+Daraus die Kennzahl, die vor der Freigabe dasteht: **Findings je Paket**,
+Zielkorridor fünf bis acht. Wer darunter landet, zahlt den Aufschlag ohne
+Gegenwert. Ein Paket mit weniger als drei Findings braucht einen der Blocker
+unten als ausdrückliche Begründung; sonst gehört es an ein Nachbarpaket, das
+Domäne oder Diff-Fläche mit ihm teilt. Die Rechnung steht im Kopf des Plans und
+in der Freigabe — nachprüfbar für den Nutzer und für dich selbst, eine Stunde
+später.
+
 Zusammen kommt, was mindestens eines davon teilt: **Ursache** (ein Fehler,
 mehrere Symptome), **Verifikation** (dasselbe Gate), **fachliche Domäne**
 (dasselbe Subsystem, ablesbar aus `location`), **Diff-Fläche** (der Reviewer
@@ -222,6 +240,7 @@ Arbeitsverzeichnis: <pfad> (Diffs und Verify-Logs, außerhalb der Versionierung)
 Paketdetails: docs/remediation/paket-<N>.md — je Paket eine Datei, angelegt von dessen Zug 0
 Scope: 24 von 31 Findings (3 critical, 8 high, 13 medium) · ausgenommen: info, acknowledged
 Scope-Regel: alles ab medium, jede Kategorie — gilt auch für Befunde, die erst im Lauf auffallen
+Kaltstarts: 6 Pakete × mindestens 3 Agenten ≈ 18, je Nachrunde zwei mehr · 4,0 Findings je Paket
 Stand (<Datum>): Paket 1 noch nicht begonnen · Arbeitsbaum sauber
 
 Diese Datei führt einen Lauf des Skills `js-ts-audit-remediation` und hält
@@ -303,6 +322,11 @@ GPG-Signatur«. Dazu je ein Satz:
   kommt zurück zum Nutzer.
 - Folgen werden in diesem Lauf mit behoben, notfalls in zusätzlichen Paketen —
   die Paketzahl ist eine Untergrenze.
+- Die Kaltstart-Rechnung aus dem Plan-Kopf, in einem Satz: wie viele Agenten
+  der Schnitt kostet, wie viele Findings im Schnitt auf ein Paket entfallen und
+  was das grob an Laufzeit bedeutet. Liegt der Schnitt unter fünf Findings je
+  Paket, steht dabei, welcher Blocker das erzwingt — der Nutzer soll einen zu
+  feinen Schnitt zurückweisen können, bevor er bezahlt ist.
 - Nebenbefunde, mit der Scope-Regel wörtlich: was darunter fällt, wird in
   diesem Lauf behoben, der Rest geht als neues Finding ins Audit — beides ohne
   Rückfrage, beides im Abschlussreport nachlesbar.

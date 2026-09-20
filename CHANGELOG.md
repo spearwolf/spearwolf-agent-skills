@@ -2,6 +2,11 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-09-20
+
+### Geändert
+- **`js-ts-audit-remediation` rechnet den Paketschnitt in Kaltstarts um.** Schritt 5 beziffert jetzt, was ein Paket wirklich kostet: mindestens drei Agenten, die bei null anfangen und sich dasselbe Modul neu anlesen — Zug 0, Implementierer, Reviewer —, je Runde der Fehlerkette zwei mehr, gemessen grob vierzig Minuten Wandzeit und einige Millionen Eingabe-Token, und das fast unabhängig davon, wie viel im Paket steckt. Daraus die Kennzahl **Findings je Paket** mit Zielkorridor fünf bis acht; ein Paket unter drei Findings braucht einen der benannten Blocker als ausdrückliche Begründung, sonst gehört es an ein Nachbarpaket derselben Domäne oder Diff-Fläche. Die Rechnung steht als neue Zeile `Kaltstarts:` im Plan-Kopf und in der Freigabe — der Nutzer kann einen zu feinen Schnitt zurückweisen, bevor er bezahlt ist.
+
 ## 2026-09-08
 
 ### Geändert
