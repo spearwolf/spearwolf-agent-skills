@@ -154,6 +154,17 @@ ZUG0_POLL=${ZUG0_POLL:-5}           # Sekunden zwischen zwei Blicken auf die Dat
 ZUG0_GRACE=${ZUG0_GRACE:-20}        # Gnadenfrist, bevor das Fenster zugeht
 ZUG0_CLOSE=${ZUG0_CLOSE:-20}        # wie lange /exit Zeit bekommt, bevor kill-window folgt
 ZUG0_TIMEOUT=${ZUG0_TIMEOUT:-1800}  # Obergrenze für einen unbeaufsichtigten Zug 0, 0 = keine
+# Das Feierabendzeichen ist der einzige Weg, auf dem Zug 0 sein Ende meldet —
+# und er führt über einen Werkzeugaufruf, den ein Modell vergessen kann. Genau
+# das ist vorgekommen: Paketdatei fertig, Marke gesetzt, Fenster steht still,
+# und weil ein Client daran hing, stand auch die Uhr oben still. Ein Mensch
+# musste den touch nachholen. Deshalb hat die Schleife eine zweite Quelle, und
+# es ist dieselbe, nach der sie hinterher ohnehin entscheidet: die Marke im
+# Plan. Stehen Marke und Paketdatei, und rührt sich danach diese Frist lang
+# weder an den Dateien noch im Pane etwas, stupst die Schleife den Planer
+# einmal an; bleibt es danach genauso lange still, schließt sie das Fenster
+# selbst. 0 nimmt beides weg und wartet wieder allein auf die Datei.
+ZUG0_SETTLE=${ZUG0_SETTLE:-120}     # Stille vor dem Stupser und noch einmal vor dem Abschluss von außen
 # Der Vertrauensdialog der CLI (»Is this a project you trust?«) erscheint in
 # jedem Verzeichnis, das sie noch nie gesehen hat. Er entfällt in -p, trifft also
 # nur Zug 0, und keine Flagge nimmt ihn weg. Steht er länger als diese Frist,
@@ -630,7 +641,8 @@ Umgebung:
   ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS DENY_TOOLS EXTRA_ARGS NOTIFY_CMD
   ORCHESTRATOR_SESSION  Kennung der startenden Session; ohne sie fehlen Plan,
                         Start und Abschluss in der Schlusstabelle
-  SESSION TMUX_BIN ZUG0_POLL ZUG0_GRACE ZUG0_CLOSE ZUG0_TIMEOUT ZUG0_TRUST_GRACE ZUG0_ASSUME_USER
+  SESSION TMUX_BIN ZUG0_POLL ZUG0_GRACE ZUG0_CLOSE ZUG0_TIMEOUT ZUG0_SETTLE
+  ZUG0_TRUST_GRACE ZUG0_ASSUME_USER
 EOF
 }
 
@@ -838,7 +850,7 @@ launch_tmux() { # $@ = die Argumente, mit denen der Lauf drinnen starten soll
   for v in PLAN SESSION MODEL_A EFFORT_A MODEL_B EFFORT_B PERM BUDGET_USD \
            MAX_ITER MAX_ROUNDS ATTEMPTS BACKOFF FALLBACK_MODEL ALLOW_TOOLS \
            DENY_TOOLS EXTRA_ARGS NOTIFY_CMD ORCHESTRATOR_SESSION \
-           ZUG0_POLL ZUG0_GRACE ZUG0_CLOSE ZUG0_TIMEOUT \
+           ZUG0_POLL ZUG0_GRACE ZUG0_CLOSE ZUG0_TIMEOUT ZUG0_SETTLE \
            ZUG0_TRUST_GRACE ZUG0_ASSUME_USER; do
     eval "[ -n \"\${$v:-}\" ]" && cmd="$cmd $v=$(eval printf '%q' "\"\$$v\"")"
   done
@@ -969,7 +981,7 @@ brief_for() { # $1 = Rolle, $2 = Paketnummer
     A) rueckgabe="Dein Ergebnis sind zwei Dateien, nichts sonst: der Detailplan in deiner Paketdatei und die Marke vor deinem Paket im Plan. Du gibst kein JSON zurück, und niemand liest, was du am Ende in dieses Terminal schreibst. Was den Lauf überleben muss, steht in $PLAN und $(detail_file "$pkg"), bevor du aufhörst.
 Steht alles in beiden Dateien, tust du als allerletzte Handlung genau dies:
   touch $WORK/paket-$pkg.zug0.done
-Das ist dein Feierabendzeichen, und es ist das Einzige, worauf die Schleife wartet. Sie schließt dieses Fenster ${ZUG0_GRACE} Sekunden später selbst und fährt fort; niemand muss dafür etwas tippen, und /exit brauchst du nicht. Vor dem touch sagst du dem Nutzer in einem Satz, dass du fertig bist und das Fenster gleich zugeht.
+Das ist dein Feierabendzeichen, und es ist der Weg, auf dem die Schleife von deinem Ende erfährt. Sie schließt dieses Fenster ${ZUG0_GRACE} Sekunden später selbst und fährt fort; niemand muss dafür etwas tippen, und /exit brauchst du nicht. Vergisst du es, meldet sie sich nach ein paar Minuten Stille hier im Fenster und nennt dir das Kommando noch einmal — diese Zeile kommt von der Schleife, nicht vom Nutzer. Bleibt auch das unbeantwortet, schließt sie das Fenster von sich aus und fährt mit dem fort, was im Plan steht. Vor dem touch sagst du dem Nutzer in einem Satz, dass du fertig bist und das Fenster gleich zugeht.
 Die Reihenfolge ist keine Förmlichkeit: nach dem touch läuft eine Uhr, und was danach noch in deinem Kontext steht statt in einer der beiden Dateien, ist verloren.
 Der Nutzer ist erreichbar, am Fenster oder unterwegs — aber seine Aufmerksamkeit ist der teuerste Posten dieses Laufs, und du bist hier, damit er sie nicht braucht. Was sich begründen lässt, entscheidest du, und der Grund steht im Detailplan. Gefragt wird allein, was die Richtung umwirft; die Liste dafür ist »Wo du anhältst« in runner.md, und sie ist abschließend. Hast du eine Empfehlung, hast du entschieden." ;;
     N) rueckgabe="Deine Rückgabe ist ein JSON-Objekt nach dem Schema, das dir mitgegeben wurde, und
@@ -1025,8 +1037,52 @@ close_zug0_window() { # $1 = tmux-Fenster; erst höflich, dann bestimmt
   "$TMUX_BIN" kill-window -t "$win" >/dev/null 2>&1 || true
 }
 
+zug0_fertig_laut_plan() { # $1 = Paketnummer; wahr, sobald Zug 0 seine Rückgabe geleistet hat
+  # Die Marke ist die Rückgabe von Rolle A — run_a entscheidet hinterher allein
+  # nach ihr. Steht sie, ist der Zug fachlich fertig; ob er sich auch
+  # verabschiedet hat, ist eine zweite Frage, und genau die soll hier nicht
+  # mehr über den Lauf entscheiden.
+  case "$(marker_of "$1")" in
+    # Ein Detailplan ohne Paketdatei ist keiner: die Marke wäre gesetzt, und B
+    # fände nichts vor. Deshalb zählt sie hier mit.
+    '~') [ -s "$(detail_file "$1")" ] ;;
+    # Entfallen oder blockiert: beides ist ohne Paketdatei zu Ende gedacht.
+    'x'|'!') return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+zug0_spur() { # $1 = Paketnummer; ändert sich, sobald jemand an Plan oder Paketdatei schreibt
+  printf '%s %s' "$(cksum < "$PLAN" 2>/dev/null)" "$(cksum < "$(detail_file "$1")" 2>/dev/null)"
+}
+
+zug0_pane() { # $1 = tmux-Fenster; der Pane als Prüfsumme
+  # Die TUI zeichnet bei jedem Tick ihrer Statuszeile neu. Ein unveränderter
+  # Pane heißt deshalb nicht »nichts Wichtiges passiert«, sondern »es läuft
+  # gerade kein Zug«.
+  # Das || true ist nicht Kosmetik: unter set -e beendet eine Zuweisung aus
+  # einer fehlgeschlagenen Ersetzung den ganzen Lauf, und ein Fenster, das
+  # zwischen zwei Blicken verschwindet, ist der Normalfall, nicht der Notfall.
+  "$TMUX_BIN" capture-pane -p -t "$1" 2>/dev/null | cksum || true
+}
+
+zug0_stupser() { # $1 = tmux-Fenster, $2 = Pfad des Feierabendzeichens
+  # Der Wortlaut nennt das Kommando buchstabengetreu: nur genau dieser Aufruf
+  # ist vorab freigegeben, jede Umformulierung liefe in eine Rückfrage, die um
+  # diese Zeit niemand beantwortet. Bewusst ohne Umlaute — der Text geht durch
+  # send-keys in eine fremde TUI, und was dort ankommt, soll nicht von der
+  # Zeichensatzlaune zweier Terminals abhängen.
+  local text
+  text="Halt - dein Feierabendzeichen fehlt. Marke und Paketdatei stehen, aber seit Minuten ruehrt sich nichts mehr. Bist du fertig, fuehre jetzt genau dieses Kommando aus und sonst nichts: touch $2 - arbeitest du noch, sag es in einem Satz und mach weiter."
+  "$TMUX_BIN" send-keys -t "$1" -l "$text" >/dev/null 2>&1 || return 1
+  # Ein Moment dazwischen: die TUI nimmt den Text an, bevor sie das Enter sieht.
+  sleep 1
+  "$TMUX_BIN" send-keys -t "$1" Enter >/dev/null 2>&1 || return 1
+}
+
 dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
   local pkg=$1 brief win wname done_file log_file brieffile starter a waited=0 trusted_wait=0 saw_client=0 ents_before
+  local spur spur_prev='' pane pane_prev='' quiet=0 quiet_files=0 quiet_pane=0 nudged=0 since_nudge=0
   brief=$(brief_for A "$pkg")
   tool_args_zug0 "$pkg"
 
@@ -1132,6 +1188,57 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
       fi
     else
       trusted_wait=0
+    fi
+
+    # Marke gesetzt, aber niemand hat sich verabschiedet — der Fall, für den
+    # ZUG0_SETTLE da ist. Zwei Uhren laufen dagegen: was an Plan und Paketdatei
+    # geschrieben wird, und was sich im Pane bewegt. Erst wenn beide
+    # stillstehen, gilt der Zug als fertig. Ein Planer, der seine Marke setzt
+    # und danach weiterschreibt, wird so nicht unterbrochen.
+    if [ "$ZUG0_SETTLE" -gt 0 ] && zug0_fertig_laut_plan "$pkg"; then
+      spur=$(zug0_spur "$pkg")
+      if [ "$spur" = "$spur_prev" ]; then
+        quiet_files=$((quiet_files + ZUG0_POLL))
+      else
+        spur_prev=$spur; quiet_files=0
+        # Wer wieder an der Paketdatei arbeitet, hat einen neuen Anstoß gut.
+        nudged=0; since_nudge=0
+      fi
+      [ "$nudged" = 1 ] && since_nudge=$((since_nudge + ZUG0_POLL))
+      pane=$(zug0_pane "$win")
+      if [ "$pane" = "$pane_prev" ]; then
+        quiet_pane=$((quiet_pane + ZUG0_POLL))
+      else
+        pane_prev=$pane; quiet_pane=0
+      fi
+      # Das Maß ist die kürzere der beiden Uhren. Eine Ausnahme: eine TUI, die
+      # sich bewegt, ohne dass Plan oder Paketdatei sich ändern, hat mit diesem
+      # Paket nichts mehr zu tun — nach dem Dreifachen der Frist zählt sie
+      # nicht mehr mit, sonst hielte ein zuckender Pane die Erkennung ewig auf.
+      quiet=$quiet_files
+      [ "$quiet_pane" -lt "$quiet" ] && quiet=$quiet_pane
+      [ "$quiet_files" -ge $((ZUG0_SETTLE * 3)) ] && quiet=$quiet_files
+
+      # Nach dem Anstoß vergeht die Frist noch einmal ganz, gleich welche der
+      # beiden Uhren gerade das Maß liefert: der Planer soll ihn lesen und
+      # antworten können, bevor die Schleife an seiner Stelle entscheidet.
+      if [ "$quiet" -ge "$ZUG0_SETTLE" ] \
+         && { [ "$nudged" = 0 ] || [ "$since_nudge" -ge "$ZUG0_SETTLE" ]; }; then
+        if [ "$nudged" = 0 ]; then
+          say "  Marke steht, Feierabendzeichen fehlt — ein Anstoß ins Fenster."
+          journal "paket=$pkg rolle=A stupser nach ${quiet}s stille"
+          zug0_stupser "$win" "$done_file" || true
+          # Die Uhr des Panes beginnt beim Anstoß von vorn: bleibt es danach
+          # genauso lange still, hat ihn niemand gelesen.
+          nudged=1; quiet_pane=0; pane_prev=''
+        else
+          say "  Zug 0 hat kein Feierabendzeichen gesetzt, aber Marke [$(marker_of "$pkg")]"
+          say "  steht seit $((quiet / 60)) min unverändert — die Schleife schließt das Fenster."
+          journal "paket=$pkg rolle=A marke-ohne-zeichen still=${quiet}s"
+          close_zug0_window "$win"
+          break
+        fi
+      fi
     fi
 
     sleep "$ZUG0_POLL"

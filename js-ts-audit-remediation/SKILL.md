@@ -371,7 +371,10 @@ läuft unabhängig von dir. Vier Dinge, die ersten drei sofort:
    tmux-Session, wie er sich anhängt und wo Journal, Sperre und Mitschrift
    liegen.
 2. Ihm sagen, dass Zug 0 des ersten Pakets dort in einem eigenen Fenster auf
-   ihn wartet und dass er es nicht zu schließen braucht.
+   ihn wartet und dass er es nicht zu schließen braucht — auch dann nicht,
+   wenn es fertig aussieht und trotzdem stehen bleibt: die Schleife erkennt
+   einen Planer, der sein Feierabendzeichen vergessen hat, und macht das
+   Fenster selbst zu. Niemand legt dort Hand an.
 3. **Den Wachposten auf das Journal setzen** (unten). Ohne ihn erfährt niemand,
    dass der Lauf fertig ist — ein Abschluss ist so schon einen halben Tag
    liegengeblieben.

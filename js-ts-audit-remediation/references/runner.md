@@ -238,6 +238,13 @@ Rückfrage, die um diese Zeit niemand beantwortet. Danach läuft eine Uhr, die
 Schleife schließt dein Fenster; was dann nur in deinem Kontext steht, ist
 verloren. Vorher sagst du dem Nutzer in einem Satz, dass du fertig bist.
 
+Darunter hängt ein Netz, und es ist keine Alternative. Bleibt das Zeichen aus,
+während Marke und Paketdatei stehen und sich minutenlang nichts mehr rührt,
+stupst die Schleife dich einmal an und schließt das Fenster danach selbst —
+damit ein vergessener `touch` keinen Lauf mehr anhält, der auf einen Menschen
+wartet, der nichts davon weiß. Wer sich darauf verlässt, verschenkt pro Paket
+zwei Fristen an eine Uhr, die niemandem nützt. Setz das Zeichen.
+
 Die Marke ist deine Rückgabe:
 
 | Marke danach | Die Schleife |

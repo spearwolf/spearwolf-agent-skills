@@ -75,6 +75,7 @@ Alle über die Umgebung; die Vorgabe steht in Klammern.
 | `NOTIFY_CMD` | weiterer Meldeweg, siehe unten |
 | `ZUG0_GRACE` (20), `ZUG0_CLOSE` (20), `ZUG0_POLL` (5) | Sekunden zwischen Feierabendzeichen und Schließen des Fensters, Geduld für `/exit`, Abstand zwischen zwei Blicken |
 | `ZUG0_TIMEOUT` (1800) | Obergrenze für einen Zug 0, **den niemand beaufsichtigt**: die Uhr läuft nur, solange kein Client und kein Remote-Control-Kanal an der Session hängt, und beginnt beim Ablösen von vorn. Ablauf ist Exit 10. `0` wartet unbegrenzt — das war lange die Vorgabe und der häufigste Hänger, weil ein wartendes Fenster von außen wie ein arbeitendes aussieht |
+| `ZUG0_SETTLE` (120) | Sekunden Stille, nach denen die Schleife einen Zug 0 für fertig hält, obwohl kein Feierabendzeichen kam: Marke und Paketdatei stehen, und weder an ihnen noch im Pane rührt sich etwas. Dann ein Anstoß ins Fenster, dieselbe Frist noch einmal, dann schließt sie es selbst. `0` nimmt beides weg und wartet wieder allein auf die Datei |
 | `ZUG0_TRUST_GRACE` (60) | In einem Verzeichnis, das die CLI nicht kennt, fragt sie »Is this a project you trust?«; keine Flagge nimmt das der TUI weg. Steht der Dialog länger als diese Frist, Exit 40 mit der Abhilfe: einmal `claude` dort öffnen, bestätigen, beenden, neu starten |
 
 ### So sieht ein Paket aus
@@ -93,7 +94,22 @@ Alle über die Umgebung; die Vorgabe steht in Klammern.
 Zug 0 läuft im eigenen Fenster und sagt selbst, wann er fertig ist: `touch
 <arbeitsdir>/paket-N.zug0.done`, vorab freigegeben, damit um diese Zeit kein
 Dialog mehr wartet. Die Schleife wartet `ZUG0_GRACE`, schickt `/exit` und
-beendet das Fenster notfalls. Danach entscheidet allein die Marke im Plan
+beendet das Fenster notfalls.
+
+**Das Zeichen kann ausbleiben, der Lauf steht deshalb nicht.** Es hängt an
+einem Werkzeugaufruf, und ein Modell kann ihn vergessen; hängt dabei ein
+Client am Fenster, steht auch `ZUG0_TIMEOUT` still, und früher half nur eine
+fremde Hand am `touch`. Die Schleife hat deshalb eine zweite Quelle, und es
+ist dieselbe, nach der sie hinterher ohnehin entscheidet: die Marke im Plan.
+Steht sie — bei `[~]` samt nicht leerer Paketdatei —, und rührt sich
+`ZUG0_SETTLE` lang weder an Plan und Paketdatei noch im Pane etwas, schickt
+sie einen Anstoß ins Fenster, der den `touch` wörtlich nennt. Bleibt es
+danach genauso lange still, schließt sie das Fenster selbst und fährt fort,
+als wäre das Zeichen gekommen — `run_a` entscheidet danach ohnehin allein nach
+der Marke. Ein Planer, der seine Marke setzt und weiterschreibt, wird dabei
+nicht unterbrochen: jede Änderung an der Paketdatei stellt beide Uhren zurück
+und gibt einen neuen Anstoß frei. Im Journal stehen beide Schritte
+(`stupser nach …s stille`, `marke-ohne-zeichen still=…s`). Danach entscheidet allein die Marke im Plan
 (Tabelle in `runner.md`); eine Rückgabe gibt es nicht. Wer das Fenster selbst
 verlässt, stört nichts. Der Nutzer wird am Anfang jedes Pakets gebraucht, meist
 ein paar Minuten, und nur wenn er angehängt ist.
