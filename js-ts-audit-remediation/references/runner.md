@@ -16,7 +16,7 @@ Prozess, sagt die Marke im Plan, ob Zug 0 stattgefunden hat.
 | Rolle | Züge | Wo | Rückgabe |
 | --- | --- | --- | --- |
 | **A** | 0 — Abgleich, Triage, Detailplan, Restplan | eigenes tmux-Fenster mit den Rechten des Nutzers; er ist erreichbar, am Fenster oder per Remote Control | keine. Paketdatei, Marke im Plan und das Feierabendzeichen |
-| **B** | 1–5 — Implementierer, Report, Review, Fehlerkette, Verify, Commit | `claude -p` ohne Terminal; `AskUserQuestion`, `SendMessage`, `ScheduleWakeup`, `CronCreate`, `Edit` in `.git/` und `.claude/`, `git push`, `git tag`, `npm publish` sind entzogen | JSON nach `assets/runner-return.schema.json` |
+| **B** | 1–5 — Implementierer, Report und Verify, Review, Fehlerkette, Commit | `claude -p` ohne Terminal; `AskUserQuestion`, `SendMessage`, `ScheduleWakeup`, `CronCreate`, `Edit` in `.git/` und `.claude/`, `git push`, `git tag`, `npm publish` sind entzogen | JSON nach `assets/runner-return.schema.json` |
 | **N** | 3–5 auf einem committeten Paket, dessen Review fehlt | wie B | wie B |
 
 **B wiederholt Zug 0 nicht.** Der Detailplan steht in der Paketdatei, Stunden
@@ -80,7 +80,7 @@ liegt ein Prozesswechsel; was A nicht hineinschreibt, hat B nie erfahren.
 | --- | --- |
 | 0 | Detailplan steht, Abgleich je Finding in Kurzform, wohin die offenen Folgen gingen |
 | 1 | Implementierer beauftragt, mit Modellstufe |
-| 2 | Status des Reports, geänderte Dateien, Arbeitsbaum jetzt schmutzig |
+| 2 | Status des Reports, geänderte Dateien, Arbeitsbaum jetzt schmutzig, Exit-Code des Verify-Laufs |
 | 3 | Urteil des Reviewers in Kurzform, Pfad der Diff-Datei |
 | 4 | je Runde: was offen war, wer sie bekam, was zurückkam |
 | 5 | Zeile zum Commit; der Verlauf bleibt stehen |
@@ -310,7 +310,7 @@ Dazu der Arbeitsauftrag, in jedem Brief gleich:
   beheben. Der rote Lauf gehört in den Report.
 - Nicht committen. Abweichungen von der Empfehlung mit Grund in den Report.
 
-## Zug 2 — Report entgegennehmen
+## Zug 2 — Report entgegennehmen und verifizieren
 
 | Feld | Inhalt |
 | --- | --- |
@@ -328,6 +328,24 @@ stärkeres Modell oder kleineres Paket; unverändert wiederholt scheitert er
 erneut. Fehlt bei einem Bugfix-Paket der rote Lauf, ist das Paket nicht
 fertig: der Test wurde nach dem Fix geschrieben und beweist nichts.
 
+**Dann verifizierst du, und zwar hier und nicht später.** Das Verify-Kommando
+läufst **du** selbst und liest die Ausgabe; der Report des Implementierers ist
+kein Beleg. Volle Ausgabe und Exit-Code in eine Logdatei — der Exit-Code ist
+der Teil, den danach niemand mehr nachsehen kann, wenn er nur im Terminal
+steht:
+
+```bash
+set -o pipefail
+<verify-kommando> > "$ARBEITSDIR/paket-N.verify.log" 2>&1; echo "exit=$?" | tee -a "$ARBEITSDIR/paket-N.verify.log"
+tail -n 15 "$ARBEITSDIR/paket-N.verify.log"
+```
+
+Gegen die Baseline im Plan-Kopf halten: was dort schon rot war, blockiert
+nicht, alles Neue schon. Bei rot so viel Log lesen, wie zur Einordnung nötig
+ist, und **direkt in die Fehlerkette, ohne Zug 3**. Ein Reviewer auf einem
+roten Stand findet, was der Testlauf schon weiß, und kostet dafür einen
+eigenen Prozess samt Kontextaufbau. Erst grün, dann Review.
+
 ## Zug 3 — Review
 
 Jedes Paket bekommt einen eigenen Reviewer-Prozess, auch das kleine. Diff als
@@ -340,7 +358,7 @@ git diff -U10 -- . ':(exclude)remediation-plan.md' ':(exclude)docs/remediation' 
 ```
 
 Der Brief: Pfad zur Diff-Datei, Pfad zur Paketdatei, der Abschnitt
-»Konventionen«, das Verify-Ergebnis des Implementierers, der Rückgabevertrag.
+»Konventionen«, dein eigenes Verify-Ergebnis aus Zug 2, der Rückgabevertrag.
 Mehr nicht — wer dem Reviewer schreibt, was er nicht melden soll, spart sich
 eine Runde durch Vorverurteilen.
 
@@ -378,8 +396,9 @@ Die Obergrenze steht im Brief (voreingestellt fünf). Die eigentliche Bremse:
 > **Eine Runde, die die Zahl der offenen Befunde nicht senkt, ist die letzte.**
 
 Gezählt wird stumpf, vor und nach der Runde; ein durch einen anderen ersetzter
-Befund ist kein Fortschritt. Nach jeder Runde neuer Diff, Reviewer gezielt auf
-die offenen Befunde. Widerspricht ein Befund dem, was der Plan ausdrücklich
+Befund ist kein Fortschritt. Nach jeder Runde erst verifizieren wie in Zug 2, dann
+neuer Diff, dann der Reviewer gezielt auf die offenen Befunde — ein roter
+Lauf geht zurück in die Kette und kostet keinen Reviewer. Widerspricht ein Befund dem, was der Plan ausdrücklich
 verlangt, entscheidest weder du noch der Reviewer: beide Seiten in die
 Rückgabe, Status `question`.
 
@@ -399,22 +418,14 @@ Bleibt etwas offen:
 - Rückgabe `blocked` mit den offenen Befunden; bauen spätere Pakete darauf
   auf, sagst du das dazu.
 
-## Zug 5 — Verify, Commit, Plan fortschreiben
+## Zug 5 — Commit, Plan fortschreiben
 
-Das Verify-Kommando läufst **du** selbst und liest die Ausgabe; der Report des
-Implementierers ist kein Beleg. Volle Ausgabe und Exit-Code in eine Logdatei —
-der Exit-Code ist der Teil, den danach niemand mehr nachsehen kann, wenn er
-nur im Terminal steht:
-
-```bash
-set -o pipefail
-<verify-kommando> > "$ARBEITSDIR/paket-N.verify.log" 2>&1; echo "exit=$?" | tee -a "$ARBEITSDIR/paket-N.verify.log"
-tail -n 15 "$ARBEITSDIR/paket-N.verify.log"
-```
-
-Gegen die Baseline im Plan-Kopf halten: was dort schon rot war, blockiert
-nicht, alles Neue schon. Bei rot so viel Log lesen, wie zur Einordnung nötig
-ist, und zurück in die Fehlerkette.
+Den Commit trägt der grüne Verify-Lauf, **solange er jünger ist als die letzte
+Codeänderung**. Hat seither jemand etwas angefasst — eine Runde der
+Fehlerkette, eine Nachbesserung, ein eigener Griff in eine Datei —, läufst du
+ihn noch einmal wie in Zug 2, sonst committest du einen Stand, den niemand
+gesehen hat. Lag dazwischen keine Änderung, ist ein zweiter Lauf verschenkte
+Zeit; `verify_log` zeigt dann auf den Lauf aus Zug 2.
 
 ```bash
 git add <die Pfade aus dem Diff>
