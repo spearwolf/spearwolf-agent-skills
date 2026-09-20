@@ -275,6 +275,9 @@ Schleife vor dem Commit zählt.
   deine Rückgabe — die Züge 3 bis 5 finden dann nie statt. Der Warteblock hält
   deinen Zug offen; eine Benachrichtigung, die dich später weckt, tut es nicht.
 - Den Report liest du aus der Datei. Immer nur ein Implementierer gleichzeitig.
+- Jede Reportdatei trägt neben dem Report eine `session_id`. Über sie lässt
+  sich derselbe Prozess später fortsetzen, statt einen neuen zu starten —
+  gebraucht wird das in Zug 4.
 - Jeder Brief endet mit dem Satz zum Kanal: der Rückgabetext **ist** der
   Report, es gibt keine Adresse für etwas anderes; fehlt etwas, kommt
   `KONTEXT_FEHLT` zurück statt einer Frage.
@@ -382,10 +385,28 @@ mittlere, subtile Nebenläufigkeit oder Sicherheit die stärkste.
 Kleine Befunde gehen in die Paketdatei und lösen keine Runde aus. Nicht
 erfüllte Findings sowie kritische und wichtige Befunde lösen eine aus:
 
-1. **Runde 1** — derselbe Implementierer bekommt die Befunde im Wortlaut.
-2. **Runde 2** — ein frischer Implementierer eine Modellstufe höher, mit dem
-   Rahmen: »Ein Vorgänger hat dieses Paket versucht, hier sind die offenen
-   Befunde und was bereits probiert wurde.«
+1. **Runde 1** — derselbe Implementierer bekommt die Befunde im Wortlaut, und
+   zwar buchstäblich derselbe: seine `session_id` steht in seiner Reportdatei,
+   und `claude -p --resume <session_id> "<befunde>"` setzt ihn dort fort, wo er
+   aufgehört hat. Diff, Begründungen und gelesene Dateien hat er noch im Kopf,
+   der Brief schrumpft auf die Befunde.
+
+   **Modell, Effort und Werkzeugrechte bleiben dabei exakt die aus Runde 0.**
+   Die Werkzeugliste steckt im System-Prompt; ein einziges geändertes Flag
+   wirft den Prompt-Cache weg, und dann kostet die Fortsetzung mehr als ein
+   Neustart, weil der ganze Verlauf neu geschrieben wird. Gemessen an einem
+   kleinen Fixture: bei gleichem Profil 347 neu zwischengespeicherte Token und
+   1,3 s, bei geändertem 33.582 und 7,1 s — der Neustart daneben lag bei
+   24.689 und 20,4 s. Wer in Runde 1 die Modellstufe anheben will, startet
+   deshalb keinen Resume, sondern gleich Runde 2.
+
+   Findet die CLI die Session nicht mehr, startest du die Runde als frischen
+   Prozess mit vollem Brief. Das ist kein Fehler, nur der teurere Weg.
+2. **Runde 2** — ein frischer Implementierer eine Modellstufe höher, ohne
+   Resume, mit dem Rahmen: »Ein Vorgänger hat dieses Paket versucht, hier sind
+   die offenen Befunde und was bereits probiert wurde.« Ab hier ist der leere
+   Kopf der Zweck: wer dreimal denselben Weg gegangen ist, geht ihn auch beim
+   vierten Mal.
 3. **Runde 3** — ein frischer Implementierer auf der stärksten Stufe, mit der
    ganzen Kette aus Runde 1 und 2.
 4. **Runde 4 und 5** — dasselbe Muster; was hier hilft, ist ein anderer
