@@ -1,4 +1,4 @@
-// node --test js-ts-project-audit/tests/
+// node --test js-ts-project-audit/tests/build-report.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -131,6 +131,22 @@ test('build → extract ist verlustfrei, check nimmt den eigenen Output an', () 
   fs.writeFileSync(again, JSON.stringify(back));
   const r = spawnSync('node', [SCRIPT, 'check', again], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
+});
+
+test('läuft auch über einen Symlink auf das Skill-Verzeichnis', () => {
+  // installiert wird per Symlink (~/.claude/skills/<name> → Repo): argv[1] ist dann der
+  // Link-Pfad, import.meta.url der aufgelöste — der Aufruf darf nicht still verpuffen
+  const dir = tmp();
+  const link = path.join(dir, 'skill-link');
+  fs.symlinkSync(path.join(HERE, '..'), link, 'dir');
+  const viaLink = path.join(link, 'scripts', 'build-report.mjs');
+  const out = path.join(dir, 'audit.html');
+  const b = spawnSync('node', [viaLink, 'build', path.join(FIXTURES, 'followup-de.json'), '--out', out, '--date', '2026-09-18'], { encoding: 'utf8' });
+  assert.equal(b.status, 0, b.stderr);
+  assert.ok(fs.existsSync(out), 'build über den Symlink schreibt die Datei');
+  const e = spawnSync('node', [viaLink, 'extract', out], { encoding: 'utf8' });
+  assert.equal(e.status, 0, e.stderr);
+  assert.equal(JSON.parse(e.stdout).summary.score, 66);
 });
 
 test('ungültige Daten: Exit 1, keine Datei', () => {

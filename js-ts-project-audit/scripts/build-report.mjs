@@ -567,7 +567,11 @@ function main() {
   return 0;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// Installiert wird per Symlink (~/.claude/skills/<name> → Repo): argv[1] trägt dann den
+// Link-Pfad, import.meta.url den aufgelösten. Ohne realpath ist der Vergleich falsch, und
+// der Aufruf endet still mit Exit 0, ohne etwas zu tun.
+const invokedPath = (p) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };
+if (process.argv[1] && invokedPath(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     process.exitCode = main();
   } catch (e) {
