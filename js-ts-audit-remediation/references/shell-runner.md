@@ -174,13 +174,50 @@ längst gefahren ist, und ein Journal überlebt kein aufgeräumtes `/tmp`.
 | Exit | Heißt | Was folgt |
 | --- | --- | --- |
 | 0 | Kein Paket mehr offen | Schritt 7, `references/semver-and-closeout.md` |
-| 10 | Es braucht eine Entscheidung — oder Zug 0 stand in einer Frage, ohne dass jemand erreichbar war | Antwort datiert in »Entscheidungen«, erneut starten. Bei »ohne jede Erreichbarkeit«: Client am Fenster oder Remote-Control-Kanal herstellen, dann starten |
+| 10 | Es braucht eine Entscheidung — oder Zug 0 stand in einer Frage, ohne dass jemand erreichbar war | Bei `blocked` zuerst »Blockiert: wer entscheidet« unten. Antwort datiert in »Entscheidungen«, erneut starten. Bei »ohne jede Erreichbarkeit«: Client am Fenster oder Remote-Control-Kanal herstellen, dann starten |
 | 11 | Ein Paket steht auf `[~]` | `references/resume.md`, nicht dieses Skript |
 | 20 | Eine Probe aus »Was die Schleife nachprüft« (`runner.md`) fiel — oder Zug 0 hat Entscheidungen notiert, obwohl niemand erreichbar war | Plan und `git log` ansehen, nicht blind wiederholen. Bei »ohne Nutzer«: die neuen Zeilen unter »Entscheidungen« herausnehmen, erreichbar sein, starten. Ein fehlender Review-Beleg landet nicht hier: den zieht die Schleife nach (unten) |
 | 21 | Ein Runner hing an einer Rechteschranke | Unter `bypassPermissions` selten: es bleiben Handlungen, die kein Modus bewilligt — eine `ask`-Regel der Maschine, ein Connector-Tool auf »ask«, ein MCP-Tool mit `requiresUserInteraction`, `rm` auf einem kritischen Pfad. Die Meldung nennt das Abgelehnte. Das Paket steht auf `[~]` und gehört nach `references/resume.md` zurückgesetzt — der Runner starb mitten im Zug |
 | 30 | Der Runner-Prozess selbst ist gescheitert | `paket-N.*.stderr` im Arbeitsverzeichnis |
 | 31 | Die API blieb überlastet | Nichts ist kaputt: später dasselbe Kommando erneut |
 | 40 | Eine Vorbedingung stimmt nicht | Die Meldung sagt, welche. Auch der Vertrauensdialog landet hier |
+
+### Blockiert: wer entscheidet
+
+Ein `blocked` ist zuerst eine Frage an dich, nicht an den Nutzer. Eine Frage
+an ihn ist nur eine, wenn die Antwort nicht schon im Plan, unter
+»Entscheidungen« oder in diesem Skill steht. Lies die Paketdatei — Verlauf,
+Urteil des Reviewers, offene Befunde, Stash-Name — und die Rückgabe des
+Runners, und prüf:
+
+| Prüfung | woran du es siehst |
+| --- | --- |
+| Jeder offene Befund ist eine Folge des eigenen Paket-Diffs: der fehlende Test für einen Pfad, den das Paket eingeführt hat, ein nicht mitgezogener Aufrufer, Typ oder Doku-Satz | der Reviewer-Befund bezieht sich auf Zeilen des Diffs; die Rückgabe sagt es |
+| Was zu tun ist, schreibt der Skill schon vor — »Bugfix heißt Test zuerst«, »was die eigene Änderung umwirft, gehört zu ihr« (`runner.md`, Zug 1) | der Befund verlangt genau das, keine Wahl zwischen Wegen |
+| Kein Widerspruch zu Plan oder »Entscheidungen«, keine neue öffentliche API und kein Breaking Change über das hinaus, was das Paket ohnehin vorhat | Plan-Kopf, Paketdatei |
+| Verify war im gesicherten Stand grün, oder rot nur an der Stelle des offenen Befunds | Verify-Log, Rückgabe |
+| Dasselbe Paket ist in diesem Lauf nicht schon einmal so weitergeführt worden und wieder blockiert | »Entscheidungen« |
+
+**Trifft alles zu, entscheidest du.** Eintrag unter »Entscheidungen«, datiert
+und als deiner erkennbar, etwa: `- Paket 3: gesicherten Stand weiterführen,
+fehlenden Test für den Nachfolger-Aufbau nach Ende der Freigabe ergänzen
+(2026-09-21, Orchestrator nach »Blockiert: wer entscheidet«, Nutzer nicht
+gefragt)`. Paket von `[!]` auf `[ ]`, Stash-Name bleibt in der Paketdatei —
+wie der Lauf ihn wieder aufnimmt, steht in `runner.md` unter »Ein blockiertes
+Paket fortsetzen«. Schleife neu starten. Der Nutzer bekommt eine Push-Zeile
+mit der Entscheidung, keine Frage; widerspricht er, gilt seins, und du nimmst
+deinen Eintrag heraus.
+
+**Sonst fragst du ihn**, mit deinem Vorschlag. Das ist der Fall bei einem
+Widerspruch zwischen Befund und Plan (`status=question` geht immer an ihn),
+bei einem offenen Befund, der vorbestehend ist oder die Scope-Regel verlässt,
+bei mehreren vertretbaren Wegen mit Folgen für API oder Architektur, bei
+rotem Verify aus unklarem Grund, beim zweiten Block desselben Pakets und bei
+allem, was die Semver-Einstufung des Laufs verschiebt.
+
+Ein Eintrag von dir unter »Entscheidungen« ist kein Fall für die Probe in
+Zug 0 (»Entscheidungen ohne Nutzer«): die Schleife merkt sich den Abschnitt
+erst beim Start des Zuges, dein Eintrag gehört dann schon zur Ausgangslage.
 
 Entstehen im Abschluss neue Pakete (Drain-Runde), läuft das Skript noch
 einmal; vorher muss die alte Session weg (`tmux kill-session`), sonst Exit 40.

@@ -421,10 +421,23 @@ erfüllte Findings sowie kritische und wichtige Befunde lösen eine aus:
 
 Die Obergrenze steht im Brief (voreingestellt fünf). Die eigentliche Bremse:
 
-> **Eine Runde, die die Zahl der offenen Befunde nicht senkt, ist die letzte.**
+> **Eine Runde ohne Fortschritt ist die letzte.**
 
-Gezählt wird stumpf, vor und nach der Runde; ein durch einen anderen ersetzter
-Befund ist kein Fortschritt. Nach jeder Runde erst verifizieren wie in Zug 2, dann
+Fortschritt misst du an den Befunden selbst, nicht an ihrer Zahl. Eine Runde
+hat ihn gemacht, wenn mindestens ein Befund, der vor ihr offen war, danach
+erledigt ist und keiner, der schon erledigt war, zurückkommt. Kommt ein
+erledigter zurück, dreht sich die Kette im Kreis: Schluss, egal was die Runde
+sonst geschafft hat.
+
+Ein neuer Befund, den erst die Runde selbst verursacht hat — der Test für den
+Pfad, den sie eingeführt hat, der Aufrufer ihrer geänderten Signatur —, hebt
+den Fortschritt nicht auf. Er ist eine Folge der eigenen Änderung, gehört zum
+Paket und bekommt die nächste Runde. Tauschen aber zwei Runden hintereinander
+nur Befunde gegeneinander, ohne dass die Zahl sinkt, ist die zweite die
+letzte: dann erzeugt jeder Fix seinen Nachfolger, und eine dritte Runde ändert
+daran nichts.
+
+Nach jeder Runde erst verifizieren wie in Zug 2, dann
 neuer Diff, dann der Reviewer gezielt auf die offenen Befunde — ein roter
 Lauf geht zurück in die Kette und kostet keinen Reviewer. Widerspricht ein Befund dem, was der Plan ausdrücklich
 verlangt, entscheidest weder du noch der Reviewer: beide Seiten in die
@@ -444,7 +457,36 @@ Bleibt etwas offen:
   stehen, er ist die einzige Spur dessen, was versucht wurde.
 - `Stand:` auf das nächste Paket, Arbeitsbaum als sauber vermerkt.
 - Rückgabe `blocked` mit den offenen Befunden; bauen spätere Pakete darauf
-  auf, sagst du das dazu.
+  auf, sagst du das dazu. Schreib dazu, ob die offenen Befunde Folgen deines
+  eigenen Diffs sind und ob Verify im gesicherten Stand grün war — daran
+  entscheidet der Orchestrator, ob er selbst weitermachen darf.
+
+### Ein blockiertes Paket fortsetzen
+
+Steht dein Paket wieder auf `[ ]`, obwohl seine Paketdatei mit einem
+Stash-Namen endet, gilt der datierte Eintrag unter »Entscheidungen«, der das
+Paket wieder geöffnet hat. Sagt er, dass der gesicherte Stand weitergeführt
+wird:
+
+```bash
+ref=$(git stash list --format='%gd %gs' | awk '/: paket-N-abgebrochen$/ {print $1; exit}')
+```
+
+Die Nummer `stash@{…}` verschiebt sich mit jedem neuen Stash; gesucht wird
+deshalb jedes Mal über den Namen. Findet sich keiner, ist das `blocked` mit
+genau diesem Grund.
+
+- **A** plant gegen den Code *und* den Stash: `git stash show -p
+  --include-untracked "$ref"` lesen, nicht anwenden. Der Detailplan sagt, was
+  im Stash steht, welche Befunde offen sind und was die Entscheidung dazu
+  verlangt.
+- **B** holt den Stand vor Zug 1 zurück: `git stash apply "$ref"`. Gibt es
+  Konflikte, ist das `blocked` mit genau diesem Grund — nicht von Hand
+  zusammenführen. Danach beginnt die Fehlerkette neu bei Runde 1, mit den
+  offenen Befunden und dem, was die Entscheidung ergänzt; die Runden vor der
+  Blockade zählen nicht mehr, der Rahmen hat sich geändert. Nach dem Commit in
+  Zug 5 `git stash drop "$ref"` (neu gesucht), und die Verlaufszeile nennt
+  den Namen.
 
 ## Zug 5 — Commit, Plan fortschreiben
 

@@ -998,9 +998,9 @@ zurückgibst." ;;
     A) scope="Du bist A: du führst Zug 0 aus — Abgleich, Triage der offenen Befunde, Detailplan, Restplan prüfen. Danach hörst du auf. Du änderst keine Zeile Projektcode und startest keinen Implementierer." ;;
     N) scope="Du bist N: das Paket ist committet, aber es fehlt der Beleg, dass ein unabhängiger Reviewer den Diff gesehen hat. Du ziehst den Review nach.
 Der Abschnitt »Rolle N« in runner.md gilt und geht allem anderen vor. Kurz: der Commit bleibt stehen, du rollst nichts zurück und wirfst keine Arbeit weg. Du beginnst bei Zug 3 mit dem Diff des vorhandenen Commits, beauftragst einen Reviewer als eigenen Prozess, fährst die Fehlerkette über Implementierer-Prozesse, wenn er etwas findet, läufst Verify selbst und legst eine Nachbesserung als eigenen Commit obendrauf. Ohne Befund bleibt es bei dem einen Commit.
-Die Fehlerkette hat höchstens $MAX_ROUNDS Runden. Eine Runde, die die Zahl der offenen Befunde nicht senkt, ist die letzte." ;;
+Die Fehlerkette hat höchstens $MAX_ROUNDS Runden. Eine Runde ohne Fortschritt ist die letzte; was als Fortschritt zählt, steht in Zug 4 von runner.md — ein neuer Befund, den erst die Runde selbst verursacht hat, hebt ihn nicht auf." ;;
     B) scope="Du bist B: Zug 0 ist erledigt, dein Detailplan steht in deiner Paketdatei. Du beginnst bei Zug 1 und endest mit dem Commit aus Zug 5. Du machst Zug 0 nicht noch einmal.
-Die Fehlerkette in Zug 4 hat höchstens $MAX_ROUNDS Runden. Eine Runde, die die Zahl der offenen Befunde nicht senkt, ist die letzte — dann blockieren und berichten." ;;
+Die Fehlerkette in Zug 4 hat höchstens $MAX_ROUNDS Runden. Eine Runde ohne Fortschritt ist die letzte — dann blockieren und berichten. Was als Fortschritt zählt, steht in Zug 4 von runner.md: ein neuer Befund, den erst die Runde selbst verursacht hat, hebt ihn nicht auf." ;;
   esac
 
   cat <<EOF
@@ -1638,8 +1638,9 @@ run_b() { # $1 = Paketnummer
       ;;
     question|blocked)
       # Bei blocked steht das Paket auf [!] und die Schleife könnte weiterlaufen.
-      # Sie tut es nicht: ob spätere Pakete darauf aufbauen, entscheidet der
-      # Nutzer, und dafür hat er den Plan vor sich.
+      # Sie tut es nicht: wie es weitergeht, entscheidet der Orchestrator nach
+      # »Blockiert: wer entscheidet« in shell-runner.md, und nur wo die Antwort
+      # nicht schon feststeht, der Nutzer.
       if [ "$status" = "blocked" ]; then check_marker "$1" '!'; fi
       hand_over B "$1" "$status"
       ;;

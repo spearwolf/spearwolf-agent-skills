@@ -439,7 +439,8 @@ Antwort ohnehin — trotzdem senden, statt zu raten.
 | `status=committed` | Push mit Paketnummer, Kurzhash und Paketstand |
 | `status=dropped`, `marke=[x]` | Push, knapp |
 | `status=review-offen` | **nichts.** Die Schleife zieht den Review nach; die nächste Zeile zu dem Paket ist seine `status=committed` |
-| `status=question`, `status=blocked`, `marke=[!]` | Push, der die Frage nennt, dann `references/shell-runner.md` |
+| `status=question` | Push, der die Frage nennt, dann `references/shell-runner.md` |
+| `status=blocked`, `marke=[!]` | `references/shell-runner.md`, »Blockiert: wer entscheidet«: steht die Antwort fest, entscheidest du und pushst die Entscheidung; sonst Push mit der Frage |
 | `ende exit=0` | Push, und **sofort** Schritt 7 — nicht auf ein Signal des Nutzers warten |
 | `ende exit=` mit anderer Zahl | Push, der die Zahl nennt, dann die Exit-Tabelle |
 

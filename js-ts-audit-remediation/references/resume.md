@@ -37,7 +37,7 @@ irgendetwas läuft.
 | `[x]` | erledigt, Hash steht | überspringen |
 | `[ ]` | offen | hier setzt die Schleife auf; fortgesetzt wird mit `scripts/remediate.sh` |
 | `[r]` | committet, aber ohne Review-Beleg | nichts tun. Das Skript holt das Paket beim nächsten Start als Erstes und zieht den Review nach. Keine Rückfrage an den Nutzer, kein Zurücksetzen, kein Verwerfen der Arbeit |
-| `[!]` | bewusst blockiert, Arbeitsbaum im Stash | **nicht** stillschweigend neu versuchen — erst fragen, ob und wie |
+| `[!]` | bewusst blockiert, Arbeitsbaum im Stash | **nicht** stillschweigend neu versuchen. Erst »Blockiert: wer entscheidet« in `references/shell-runner.md`: steht die Antwort fest, datiert eintragen und fortsetzen, sonst fragen |
 | `[~]` | ein Runner ist mitten im Paket gestorben | siehe unten |
 
 ## Läuft noch eine Schleife?
