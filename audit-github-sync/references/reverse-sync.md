@@ -97,15 +97,20 @@ Nur wenn sich die Menge der Findings geändert hat, also wenn mindestens ein
 Punkt nach `acknowledged` gewandert ist. Reine Zustandsvermerke ändern keine
 Zahl und erzeugen keinen Verlaufseintrag.
 
-Dann neu berechnet: `summary.score`, beide Teilscores in
-`summary.domains.<d>.score`, `bySeverity` und `byCategory` je Domain sowie die
-Gesamtzahlen. **Die Formel wird aus der Methodik-Sektion der Datei gelesen,
-nicht aus dem Gedächtnis rekonstruiert.**
+Gerechnet wird nichts von Hand. Gebaut wird in jedem Fall:
 
-`scoreHistory` bekommt einen Eintrag `{date: <heute>, score: <neu>, source:
-"github-sync"}`, begrenzt auf 20 Einträge (FIFO). Das Feld `source` hält fest,
-dass diese Zahl aus einer Verschiebung nach `acknowledged` stammt und nicht
-aus einer frischen Prüfung am Code.
+```bash
+node ~/.claude/skills/js-ts-project-audit/scripts/build-report.mjs build "$TMP/audit-data.json" --out ./audit.html
+```
+
+Hat sich die Menge der Findings geändert, zusätzlich `--record github-sync`:
+dann bekommt der Verlauf einen Punkt, der als Neuberechnung ohne frische
+Prüfung am Code markiert ist. Dazu `summary.lastRun: {source: "github-sync",
+date: "<heute>"}`. Reine Zustandsvermerke bauen die Seite neu, ohne
+Verlaufspunkt und ohne `lastRun`.
+
+Meldet `build` Fehler, entsteht keine Datei: Datensatz korrigieren, neu
+bauen.
 
 ## Konfliktregeln
 
@@ -123,25 +128,13 @@ Wer gewinnt, wenn beide Seiten etwas zu sagen haben:
 
 ## Was in die gerenderte Seite kommt
 
-Ausschließlich Datenwerte und ihre sichtbare Entsprechung. Layout, Farben,
-Sektionsaufbau und Filterlogik bleiben, wie der Audit-Skill sie gerendert hat.
-
-- **Backlog-Zeile**: der Issue-Link als `#142` in der Metazeile, neben
-  Location und Kategorie. Ist das Issue geschlossen, ein gedämpfter Vermerk
-  daneben (`#142 · closed`); bei `not planned` steht der Punkt ohnehin im
-  Anhang und nicht mehr hier.
-- **Aufgeklappter Bereich**: `github.note`, falls gesetzt, als eigener kurzer
-  Absatz unter der Empfehlung. Zugewiesen an jemanden: eine gedämpfte Zeile
-  mit dem Login.
-- **Anhang**: bei Einträgen mit `github` der Link hinter dem `reason`.
-- **Kartenansicht unter 720 px**: dieselben Angaben in der Metazeile der
-  Karte. Zwei Darstellungen, ein Datensatz — wer nur die Tabelle bedient,
-  liefert auf dem Handy eine Seite ohne Links aus.
-
-Enthält die vorgefundene `audit.html` diese Stellen noch nicht, weil sie von
-einem älteren Audit-Lauf stammt, werden sie im vorhandenen Markup-Muster
-ergänzt: gleiche Klassen, gleiche Struktur wie die benachbarten Metaangaben.
-Kein neues CSS, keine neuen Farben, kein Icon-Satz.
+Ausschließlich Datenwerte. Die Seite stellt das Template des Audit-Skills
+aus dem Feld `github` dar: den Link `#142` in der Metazeile jeder
+Backlog-Zeile und Karte, gedämpft mit Vermerk, wenn das Issue geschlossen ist;
+`note` und `assignee` im aufgeklappten Bereich; den Link hinter dem `reason`
+im Anhang. Auch ein Report aus einem älteren Audit-Lauf bekommt diese Stellen,
+weil der Build ihn mit dem aktuellen Template neu erzeugt. Am Markup wird
+nichts ergänzt.
 
 ## Was hier nicht passiert
 

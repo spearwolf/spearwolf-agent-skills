@@ -1,0 +1,342 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/spearwolf/spearwolf-agent-skills/js-ts-project-audit/audit-data.schema.json",
+  "title": "Datenmodell der audit.html, Version 2",
+  "description": "Die JSON-Insel <script id=\"audit-data\"> in ./audit.html. Gemeinsamer Vertrag von js-ts-project-audit, js-ts-audit-remediation und audit-github-sync. Felder mit »vom Skript« schreibt scripts/build-report.mjs bei jedem Build neu; was dort in der Eingabe steht, wird überschrieben. Freitextfelder (»Markdown-Subset«) kennen Absätze, Aufzählungen mit »- «, `code`, **fett**, *kursiv* und Links [text](https://…). Kein HTML.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "meta", "summary", "portrait", "findings"],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lang"],
+      "properties": {
+        "generator": { "type": "string", "description": "Welcher Skill zuletzt gebaut hat: js-ts-project-audit, js-ts-audit-remediation oder audit-github-sync." },
+        "templateVersion": { "type": "string", "description": "Vom Skript." },
+        "lang": { "enum": ["de", "en"], "description": "Sprache der festen Beschriftungen. Die Freitexte stehen in derselben Sprache." },
+        "generatedAt": { "type": "string", "description": "Vom Skript, ISO-Zeitstempel." }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project", "stack", "date", "theme", "domains"],
+      "properties": {
+        "project": { "type": "string" },
+        "stack": { "type": "array", "items": { "type": "string" } },
+        "date": { "$ref": "#/$defs/date", "description": "Datum des Audits. Ein Remediation-Lauf lässt es stehen." },
+        "theme": { "enum": ["light", "dark"], "description": "Start-Theme. Der Leser kann es per Toggle für sich umschalten." },
+        "previousDate": { "$ref": "#/$defs/date", "description": "Datum des Vorgänger-Audits, nur im Folgelauf." },
+        "scope": { "$ref": "#/$defs/scope" },
+        "domains": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "harness"],
+          "properties": {
+            "code": { "$ref": "#/$defs/domainSummary" },
+            "harness": { "$ref": "#/$defs/domainSummary" }
+          }
+        },
+        "packages": {
+          "type": "array",
+          "description": "Nur bei Monorepos: eine Zeile je Package. Scores und Zählungen vom Skript, Zuordnung über finding.package.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "path"],
+            "properties": {
+              "name": { "type": "string" },
+              "path": { "type": "string" },
+              "reviewedLoc": { "type": "integer", "minimum": 0 },
+              "score": { "type": "number", "description": "Vom Skript." },
+              "findings": { "type": "integer", "description": "Vom Skript." }
+            }
+          }
+        },
+        "resolvedCount": { "type": "integer", "minimum": 0, "description": "Seit dem Vorgänger behobene Findings." },
+        "deltaCause": { "enum": ["code", "coverage", "mixed"] },
+        "deltaExplanation": { "type": "string", "description": "Markdown-Subset, 1–3 Sätze, bezieht sich auf deltaBreakdown." },
+        "lastRun": {
+          "type": "object",
+          "description": "Wer die Datei zuletzt inhaltlich fortgeschrieben hat, wenn das kein Audit war.",
+          "additionalProperties": false,
+          "required": ["source", "date"],
+          "properties": {
+            "source": { "enum": ["remediation", "github-sync"] },
+            "date": { "$ref": "#/$defs/date" },
+            "ref": { "type": "string" }
+          }
+        },
+        "score": { "type": "number", "description": "Vom Skript." },
+        "scoreModel": { "enum": [1, 2], "description": "Vom Skript. 2, sobald scope vorliegt." },
+        "scoring": { "type": "object", "description": "Vom Skript: Modell, Gewichte und Konstanten, aus denen die Methodik-Sektion die Formel zeigt." },
+        "bySeverity": { "$ref": "#/$defs/severityCounts", "description": "Vom Skript." },
+        "byCategory": { "type": "object", "description": "Vom Skript." },
+        "byComponent": { "type": "object", "description": "Vom Skript." },
+        "counts": { "type": "object", "description": "Vom Skript: findings, improvements, byStatus." },
+        "deltaBreakdown": {
+          "type": "object",
+          "description": "Vom Skript, nur mit --previous: neue Findings nach Herkunft.",
+          "additionalProperties": false,
+          "properties": {
+            "code": { "type": "integer" },
+            "coverage": { "type": "integer" },
+            "unknown": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "portrait": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "components"],
+      "properties": {
+        "description": { "type": "string", "description": "Markdown-Subset, 2–4 Sätze." },
+        "components": {
+          "type": "array",
+          "description": "Die 3–7 fachlichen Bereiche des Projekts. Filter »Feature« im Report, Label component:<id> auf GitHub.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label", "summary", "paths"],
+            "properties": {
+              "id": { "$ref": "#/$defs/slug" },
+              "label": { "type": "string" },
+              "summary": { "type": "string" },
+              "paths": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+            }
+          }
+        },
+        "componentRenames": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["from", "to"],
+            "properties": { "from": { "$ref": "#/$defs/slug" }, "to": { "$ref": "#/$defs/slug" } }
+          }
+        },
+        "diagram": { "oneOf": [{ "$ref": "#/$defs/layeredDiagram" }, { "$ref": "#/$defs/svgDiagram" }] }
+      }
+    },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "openQuestions": { "type": "array", "items": { "type": "string" }, "description": "Markdown-Subset, eine Frage je Eintrag." },
+    "methodology": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string", "description": "Markdown-Subset: was gelesen wurde, was nicht, was ausgeführt wurde." },
+        "notes": { "type": "array", "items": { "type": "string" }, "description": "Markdown-Subset: Merge-Strategie, Nachführungen, Besonderheiten dieses Laufs." }
+      }
+    },
+    "scoreHistory": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["date", "score"],
+        "properties": {
+          "date": { "$ref": "#/$defs/date" },
+          "score": { "type": "number" },
+          "source": { "enum": ["audit", "remediation", "github-sync"] },
+          "scoreModel": { "enum": [1, 2] },
+          "domains": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": { "code": { "type": "number" }, "harness": { "type": "number" } }
+          },
+          "coverage": { "type": "number", "minimum": 0, "maximum": 1, "description": "reviewedLoc / sourceLoc des Laufs." }
+        }
+      }
+    },
+    "fixHistory": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["date", "source", "fixed", "inducedFixed", "inducedOpen", "discovered", "attribution"],
+        "properties": {
+          "date": { "$ref": "#/$defs/date" },
+          "source": { "enum": ["remediation", "audit"] },
+          "ref": { "type": "string", "description": "Remediation: Plan-Datum oder Branch. Audit: Datum des Vorlaufs." },
+          "fixed": { "type": "integer", "minimum": 0 },
+          "inducedFixed": { "type": "integer", "minimum": 0, "description": "Durch einen Fix entstanden und im selben Lauf wieder behoben." },
+          "inducedOpen": { "type": "integer", "minimum": 0, "description": "Durch einen Fix entstanden und offen ins Backlog gegangen." },
+          "discovered": { "type": "integer", "minimum": 0, "description": "Lag schon vorher im Code, wurde bei der Arbeit gefunden." },
+          "attribution": { "enum": ["reviewed", "heuristic"] }
+        }
+      }
+    },
+    "acknowledged": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "category", "location", "reason", "acknowledgedDate"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "category": { "$ref": "#/$defs/category" },
+          "domain": { "enum": ["code", "harness"] },
+          "component": { "$ref": "#/$defs/slug" },
+          "location": { "type": "string" },
+          "reason": { "type": "string" },
+          "acknowledgedDate": { "$ref": "#/$defs/date" },
+          "github": { "$ref": "#/$defs/github" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "category": {
+      "enum": ["architecture", "build", "dx", "api", "completeness", "testing", "readability", "correctness", "resources", "async", "consistency", "types", "security", "dependencies", "performance"],
+      "description": "Die 15 Dimensionen aus Schritt 3 der SKILL.md als stabile Schlüssel. Die Beschriftung in Report-Sprache kommt aus dem Template."
+    },
+    "severityCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "critical": { "type": "integer" }, "high": { "type": "integer" }, "medium": { "type": "integer" },
+        "low": { "type": "integer" }, "info": { "type": "integer" }
+      }
+    },
+    "domainSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executiveSummary"],
+      "properties": {
+        "label": { "type": "string", "description": "Optional; fehlt es, nimmt das Template die Standardbeschriftung der Report-Sprache." },
+        "executiveSummary": { "type": "string", "description": "Markdown-Subset, 2–4 Sätze über die Befunde dieser Domain." },
+        "score": { "type": "number", "description": "Vom Skript." },
+        "penalty": { "type": "number", "description": "Vom Skript: Summe der Abzüge." },
+        "bySeverity": { "$ref": "#/$defs/severityCounts", "description": "Vom Skript." },
+        "byCategory": { "type": "object", "description": "Vom Skript." }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "description": "Gemessener Prüfumfang. Pflicht für Score-Modell 2; ohne scope rechnet das Skript Modell 1.",
+      "additionalProperties": false,
+      "required": ["sourceFiles", "sourceLoc", "reviewedLoc", "exclusions"],
+      "properties": {
+        "sourceFiles": { "type": "integer", "minimum": 0 },
+        "sourceLoc": { "type": "integer", "minimum": 0 },
+        "reviewedFiles": { "type": "array", "items": { "type": "string" }, "description": "Vollständig gelesene Quelldateien, Pfade relativ zum Projekt-Root. Ab 2000 Einträgen stattdessen reviewedDirs." },
+        "reviewedDirs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "files", "loc"],
+            "properties": { "path": { "type": "string" }, "files": { "type": "integer" }, "loc": { "type": "integer" } }
+          }
+        },
+        "reviewedLoc": { "type": "integer", "minimum": 0 },
+        "exclusions": { "type": "array", "items": { "type": "string" }, "description": "Globs, die nicht als Quelltext zählen, damit der Folgelauf gleich misst." }
+      }
+    },
+    "github": {
+      "type": "object",
+      "description": "Gehört audit-github-sync (Felder dort in references/reverse-sync.md: number, url, state, stateReason, assignee, note, lastSynced). Andere Skills tragen es unverändert mit; das Template liest url, number, state, note und assignee."
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "domain", "severity", "title", "location", "description", "recommendation"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Z][A-Z0-9]*-\\d+$" },
+        "category": { "$ref": "#/$defs/category" },
+        "domain": { "enum": ["code", "harness"] },
+        "component": { "$ref": "#/$defs/slug", "description": "Eine id aus portrait.components. Fehlt bei Querschnittlichem." },
+        "package": { "type": "string", "description": "Nur bei Monorepos: name aus summary.packages." },
+        "severity": { "enum": ["critical", "high", "medium", "low", "info"] },
+        "kind": { "enum": ["defect", "improvement"], "description": "improvement = Optimierungspotenzial ohne Defekt; zählt nicht im Score. Fehlt es, gilt defect." },
+        "title": { "type": "string" },
+        "location": { "type": "string", "description": "Hauptfundstelle: Pfad, wenn möglich mit :Zeile." },
+        "locations": { "type": "array", "items": { "type": "string" }, "description": "Weitere Fundstellen desselben Musters." },
+        "description": { "type": "string" },
+        "evidence": { "type": "string", "description": "Optional: Beleg, etwa ein kurzer Code-Auszug in `…` oder eine Messung." },
+        "recommendation": { "type": "string" },
+        "effort": { "enum": ["S", "M", "L"] },
+        "status": { "enum": ["new", "unchanged", "improved", "carried-over"] },
+        "previousSeverity": { "enum": ["critical", "high", "medium", "low", "info"] },
+        "origin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "enum": ["induced", "discovered"] },
+            "run": { "type": "string" }
+          }
+        },
+        "github": { "$ref": "#/$defs/github" }
+      }
+    },
+    "layeredDiagram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "layers", "caption"],
+      "properties": {
+        "kind": { "const": "layered" },
+        "caption": { "type": "string" },
+        "layers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "nodes"],
+            "properties": {
+              "label": { "type": "string" },
+              "nodes": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["id", "label"],
+                  "properties": {
+                    "id": { "$ref": "#/$defs/slug" },
+                    "label": { "type": "string" },
+                    "detail": { "type": "string" },
+                    "component": { "$ref": "#/$defs/slug" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["from", "to"],
+            "properties": {
+              "from": { "$ref": "#/$defs/slug" },
+              "to": { "$ref": "#/$defs/slug" },
+              "label": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "svgDiagram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "svg", "caption"],
+      "properties": {
+        "kind": { "const": "svg" },
+        "caption": { "type": "string" },
+        "svg": { "type": "string", "description": "Ein <svg> mit viewBox, ohne feste Farben. Klassen: node, edge, label, muted, accent. Kein script, kein on*, kein foreignObject, keine externen href." }
+      }
+    }
+  }
+}

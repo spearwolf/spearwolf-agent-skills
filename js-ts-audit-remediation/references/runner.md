@@ -457,8 +457,13 @@ Zeit; `verify_log` zeigt dann auf den Lauf aus Zug 2.
 
 ```bash
 git add <die Pfade aus dem Diff>
-git commit --no-gpg-sign -m "<Message aus der Paketdatei>"
+git commit --no-gpg-sign -m "<Message aus der Paketdatei>" --trailer "Remediation-Run: <erstellt-Datum aus dem Plan-Kopf>"
 ```
+
+Der Trailer ist keine Finding-Nummer und kein Rückblick, sondern eine
+Herkunftsangabe: Der nächste Audit-Lauf findet per `git blame` die Commits,
+die ein neues Finding verursacht haben, und erkennt an diesem Trailer, ob es
+eine Reparatur war. Ohne ihn fällt der Commit aus der Fix-Bilanz heraus.
 
 Gezielt hinzufügen, nie `git add -A`. Pre-Commit-Hooks laufen mit, kein
 `--no-verify`; bricht einer ab, ist das ein Befund für die Fehlerkette.

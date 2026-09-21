@@ -8,23 +8,41 @@ prüfen.
 
 ## 5b. Merge
 
-### Altdatei parsen
+### Altdatei lesen
 
-Die JSON-Insel `<script id="audit-data" type="application/json">` extrahieren
-(Audits älterer Skill-Versionen können ein anders eingebettetes JS-Objekt
-haben — auch das akzeptieren). Daraus übernehmen: Findings, Altdatum,
-Altscore, `scoreHistory`, `theme`, `acknowledged`.
+```bash
+node <skill-dir>/scripts/build-report.mjs extract ./audit.html > "$TMP/previous.json"
+```
 
-- Fehlt `scoreHistory`, aus Altscore und Altdatum einen einzelnen Eintrag
-  synthetisieren: `[{date: <altDatum>, score: <altScore>}]`.
-- Fehlt `domain` an den alten Findings (Audits vor der Domain-Trennung), aus
-  der Kategorie nach Schritt 3 der `SKILL.md` ableiten. Der neue Lauf setzt
-  die Domain ohnehin selbst; die Ableitung dient nur dem Vergleich alter
-  Zahlen. Teilscores des Vorlaufs werden nicht rückwirkend rekonstruiert.
-- Ist gar nichts parsebar, Findings best-effort aus der Backlog-Tabelle
-  rekonstruieren (Titel, Severity, Location, Kategorie). Auch das schlägt
-  fehl? Dann reiner Neu-Audit, Vermerk in der Methodik-Sektion, keinen Merge
-  erzwingen.
+Das Skript liest die JSON-Insel und gibt sie als Schema 2 aus. Ältere Reports
+migriert es dabei: Kategorien werden zu Schlüsseln, fehlende Domains aus der
+Kategorie abgeleitet, Offene Fragen und Methodik vereinheitlicht, Features aus
+dem alten Portrait oder aus `component`-Angaben der Findings übernommen. Was es
+dabei ergänzen musste, steht in `methodology.notes` der Ausgabe — diese
+Hinweise wandern nicht in den neuen Datensatz, sie erklären nur den alten.
+
+Daraus übernimmst du: `findings`, `summary.date` (wird `previousDate`),
+`scoreHistory`, `fixHistory`, `theme`, `acknowledged`, `portrait.components`
+und `summary.scope.exclusions`.
+
+Findet das Skript keine Insel, gibt es keinen Merge: reiner Neu-Audit, ein
+Satz dazu in `methodology.notes`. Findings aus dem Markup zu rekonstruieren
+lohnt nicht mehr — jeder Report, den dieser Skill je geschrieben hat, trägt
+eine Insel.
+
+### Umfang und Features stabil halten
+
+- **Gleiche Ausschlüsse beim Messen.** Den Prüfumfang misst du mit den
+  `exclusions` des Vorlaufs, nicht mit neu ausgedachten. Ändern sie sich,
+  weil das Projekt sich geändert hat (ein neues Demo-Verzeichnis, ein
+  entfernter Codegenerator), steht das mit Grund in `methodology.notes`.
+  Sonst vergleicht der Score zwei verschieden gezählte Nenner.
+- **Gleiche Feature-IDs.** Der neue Lauf übernimmt die `id`s aus
+  `portrait.components` des Vorlaufs. Label, Satz und Pfade darfst du
+  schärfen. Eine neue `id` gibt es nur für eine neue fachliche Einheit; eine
+  umbenannte wird in `portrait.componentRenames` als `{from, to}`
+  festgehalten, damit Filter-Links und GitHub-Labels nachziehen können. Ein
+  Feature, das es nicht mehr gibt, fällt einfach weg.
 
 ### Matching
 
@@ -73,36 +91,86 @@ Finding. Bevor es wieder ins Backlog darf, zwei Prüfungen:
 Nur was beide Prüfungen übersteht, wird `carried-over`. Ohne diesen Filter
 läuft das Backlog mit veralteten Halluzinationen voll.
 
-### Score-Historie & Delta
+### Score-Historie
 
-`scoreHistory` aus dem Altdatensatz übernehmen, um `{date: <heute>, score:
-<neuer Score>}` ergänzen, auf 20 Einträge begrenzen (FIFO). Score-Delta mit
-Tendenz-Indikator (`▲` / `▼` / `–`) für den Header bereitstellen.
+`scoreHistory` und `fixHistory` aus dem Vorlauf unverändert in den neuen
+Datensatz übernehmen. Den Eintrag dieses Laufs hängt `--record audit` beim
+Bauen an; Delta und Tendenz zeigt das Template. Einträge des alten
+Score-Modells bleiben, wie sie sind — das Diagramm bricht die Linie am
+Modellwechsel, statt zwei Skalen zu verbinden.
 
 ### Große Sprünge einordnen — Pflicht ab ±15 Punkten
 
-Ein Score bewertet immer nur, was der jeweilige Lauf geprüft hat. Liest dieser
-Lauf Dateien, die der vorherige übersprungen hat, stürzt der Score ab, ohne
-dass sich eine Zeile Code verschlechtert hätte. Ein Leser, der nur die Zahl
-sieht, liest daraus einen Zusammenbruch. Deshalb: Beträgt `|Delta| ≥ 15`,
-werden zwei Felder im `summary` gesetzt — sonst bleiben beide weg.
+Beim Bauen bekommt das Skript den Vorlauf mit:
+
+```bash
+node <skill-dir>/scripts/build-report.mjs build "$TMP/audit-data.json" --out ./audit.html \
+  --record audit --previous "$TMP/previous.json"
+```
+
+Es teilt die neuen Findings (`status: "new"`) nach ihrer Fundstelle auf und
+schreibt das Ergebnis nach `summary.deltaBreakdown`:
+
+- `code` — die Datei hatte schon der Vorlauf vollständig gelesen. Der Befund
+  ist neu im Code.
+- `coverage` — die Datei liest dieser Lauf zum ersten Mal. Der Befund war
+  vermutlich schon da.
+- `unknown` — der Vorlauf hat seinen Umfang nicht gemessen.
+
+Beträgt der Unterschied zum letzten Score **desselben Modells** mindestens 15
+Punkte, setzt du zwei Felder im `summary` — sonst bleiben beide weg:
 
 | Feld | Wert |
 | --- | --- |
 | `deltaCause` | `code` \| `coverage` \| `mixed` |
-| `deltaExplanation` | 1–3 Sätze, die konkrete Dateien oder Bereiche benennen |
+| `deltaExplanation` | 1–3 Sätze, die konkrete Dateien oder Bereiche benennen und sich auf die Zahlen aus `deltaBreakdown` beziehen |
 
-- `code` — der Sprung stammt aus tatsächlichen Änderungen am Projekt.
-- `coverage` — dieser Lauf hat anders oder tiefer geprüft: andere
-  Sampling-Auswahl, Dateien erstmals bewertet, Altfindings beim Re-Check
-  entfallen. Ein solcher Absturz ist **keine Verschlechterung**, und genau das
-  muss dastehen.
-- `mixed` — beides; dann beide Anteile benennen, nicht nur den bequemeren.
+Der Score bewertet Dichte, deshalb verschiebt tieferes Lesen ihn weniger als
+früher, aber nicht gar nicht: die zuerst gelesenen Hotspots sind die
+schlechtesten Stellen, und was danach kommt, ist meist sauberer. Die Zahlen
+entscheiden, nicht das Gefühl. Überwiegt `coverage`, ist ein Absturz **keine
+Verschlechterung**, und genau das muss dastehen. Bei `mixed` nennst du beide
+Anteile, nicht nur den bequemeren. Überwiegt `unknown`, lautet die Ursache
+`mixed`, mit dem Hinweis, dass der Vorlauf seinen Umfang nicht gemessen hat.
 
-Die Einordnung entsteht aus dem Vergleich der Methodik-Angaben: Welche Dateien
-hat der Vorlauf ausgewiesen, welche dieser Lauf? Fehlt die Angabe im
-Altdatensatz, ist das selbst die Antwort — dann ist die Prüftiefe des
-Vorlaufs unbekannt und `deltaCause` lautet `mixed`, mit dem Hinweis darauf.
+Wechselt mit diesem Lauf das Score-Modell (der Vorlauf hatte Modell 1), gibt
+es keinen vergleichbaren Vorwert und keine Einordnung; ein Satz in
+`methodology.notes` sagt, dass die Skala gewechselt hat.
+
+### Fix-Bilanz
+
+Nur wenn seit dem Vorlauf Remediation-Commits entstanden sind:
+
+```bash
+git log --since="<previousDate>" --format=%h --grep="^Remediation-Run:" | head
+```
+
+Kommt nichts, entfällt der Abschnitt. Sonst ordnest du jedes neue Finding mit
+Zeilenangabe zu:
+
+```bash
+git blame -L <zeile>,<zeile> --porcelain -- <datei> | head -1 | cut -d' ' -f1   # verantwortlicher Commit
+git log -1 --format='%cs %(trailers:key=Remediation-Run,valueonly)' <hash>
+```
+
+| Commit | Zählt als |
+| --- | --- |
+| nach `previousDate`, mit Trailer `Remediation-Run` | `inducedOpen` — ein Fix hat es verursacht, und der Review des Laufs hat es nicht gefangen |
+| vor `previousDate` | `discovered` — lag schon da, dieser Lauf hat es erst gefunden |
+| nach `previousDate`, ohne Trailer | nicht in der Bilanz — normale Weiterentwicklung |
+
+Findings ohne Zeilenangabe bleiben außen vor; geraten wird nicht. Dazu ein
+Eintrag in `fixHistory`:
+
+```json
+{ "date": "<heute>", "source": "audit", "ref": "<previousDate>", "fixed": <resolvedCount>,
+  "inducedFixed": 0, "inducedOpen": <n>, "discovered": <n>, "attribution": "heuristic" }
+```
+
+`inducedFixed` ist im Audit immer 0: was ein Lauf selbst repariert hat, sieht
+nur dieser Lauf, und er hat es in seinem eigenen Eintrag gebucht. Findings,
+die als `inducedOpen` zählen, bekommen `origin: {kind: "induced", run:
+"<Wert des Trailers>"}`.
 
 ## 5c. Akzeptierte / zurückgestellte Punkte
 
@@ -124,10 +192,11 @@ Zwei verschiedene Nutzeranweisungen, sauber trennen:
 ### Datenmodell
 
 ```
-acknowledged: [{id, title, category, location, reason, acknowledgedDate}, …]
+acknowledged: [{id, title, category, domain, component, location, reason, acknowledgedDate}, …]
 ```
 
-`reason` = warum akzeptabel bzw. wo dokumentiert. `acknowledgedDate` = Datum
+`category` ist der Schlüssel wie am Finding, `domain` und `component` sind
+optional. `reason` = warum akzeptabel bzw. wo dokumentiert. `acknowledgedDate` = Datum
 der Akzeptanz. Ein Eintrag kann zusätzlich ein `github`-Unterobjekt tragen —
 dann gilt für ihn dieselbe Regel wie für Findings: unverändert mitführen,
 Inhalt nicht anfassen.
@@ -151,7 +220,7 @@ Inhalt nicht anfassen.
 ## Was im Report davon sichtbar wird
 
 Behobene Findings tauchen **nirgends** einzeln auf — kein Badge, keine
-durchgestrichene Zeile, keine Archiv-Tabelle. Nur als Zähler im Diff-Header
-und in der Methodik-Sektion. Wer Details braucht, hat den git-Verlauf der
-`./audit.html`. Aufbau von Diff-Header, Status-Badges und Anhang: siehe
-`references/report-rendering.md`.
+durchgestrichene Zeile, keine Archiv-Tabelle. Nur als Zähler im Header und in
+der Fix-Bilanz. Wer Details braucht, hat den git-Verlauf der `./audit.html`.
+Status-Badges, Vergleichszeile, Diagramme und Anhang stellt das Template aus
+den Daten dar.

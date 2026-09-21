@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 2,
+  "meta": { "generator": "js-ts-project-audit", "lang": "en" },
+  "summary": {
+    "project": "acme-platform",
+    "stack": ["Turborepo", "Next.js 15", "NestJS 11", "Prisma 6"],
+    "date": "2026-09-19",
+    "theme": "light",
+    "scope": { "sourceFiles": 610, "sourceLoc": 71200, "reviewedDirs": [{ "path": "apps/api/src/", "files": 140, "loc": 18800 }, { "path": "apps/web/app/", "files": 96, "loc": 12100 }, { "path": "packages/ui/src/", "files": 40, "loc": 3900 }], "reviewedLoc": 34800, "exclusions": ["**/*.spec.ts", "**/*.test.tsx", "**/generated/**"] },
+    "domains": {
+      "code": { "label": "Code & Runtime", "executiveSummary": "The API has two authorization gaps on admin routes. The web app re-renders the dashboard on every websocket tick." },
+      "harness": { "label": "Project Harness", "executiveSummary": "No findings in the harness." }
+    },
+    "packages": [
+      { "name": "api", "path": "apps/api", "reviewedLoc": 18800 },
+      { "name": "web", "path": "apps/web", "reviewedLoc": 12100 },
+      { "name": "ui", "path": "packages/ui", "reviewedLoc": 3900 }
+    ]
+  },
+  "portrait": {
+    "description": "A B2B scheduling platform: NestJS API, Next.js front end, shared UI kit.",
+    "components": [
+      { "id": "auth", "label": "Auth", "summary": "Sessions, roles, guards.", "paths": ["apps/api/src/auth/**"] },
+      { "id": "scheduling", "label": "Scheduling", "summary": "Bookings and calendars.", "paths": ["apps/api/src/scheduling/**", "apps/web/app/calendar/**"] },
+      { "id": "dashboard", "label": "Dashboard", "summary": "Live metrics.", "paths": ["apps/web/app/dashboard/**"] }
+    ],
+    "diagram": {
+      "kind": "svg",
+      "caption": "Request flow: browser → Next.js → NestJS → Postgres; the websocket feeds the dashboard directly.",
+      "svg": "<svg viewBox=\"0 0 560 150\" xmlns=\"http://www.w3.org/2000/svg\"><defs><marker id=\"a\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"6\" markerHeight=\"6\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" class=\"muted\"/></marker></defs><rect class=\"node\" x=\"10\" y=\"50\" width=\"100\" height=\"44\" rx=\"8\"/><text x=\"60\" y=\"77\" text-anchor=\"middle\">Browser</text><rect class=\"node\" x=\"160\" y=\"50\" width=\"100\" height=\"44\" rx=\"8\"/><text x=\"210\" y=\"77\" text-anchor=\"middle\">Next.js</text><rect class=\"node\" x=\"310\" y=\"50\" width=\"100\" height=\"44\" rx=\"8\"/><text x=\"360\" y=\"77\" text-anchor=\"middle\">NestJS</text><rect class=\"node\" x=\"460\" y=\"50\" width=\"90\" height=\"44\" rx=\"8\"/><text x=\"505\" y=\"77\" text-anchor=\"middle\">Postgres</text><path class=\"edge\" d=\"M110,72 L158,72\" marker-end=\"url(#a)\"/><path class=\"edge\" d=\"M260,72 L308,72\" marker-end=\"url(#a)\"/><path class=\"edge\" d=\"M410,72 L458,72\" marker-end=\"url(#a)\"/><path class=\"edge accent\" d=\"M360,50 C360,10 60,10 60,48\" marker-end=\"url(#a)\"/><text class=\"muted\" x=\"210\" y=\"22\" text-anchor=\"middle\" font-size=\"11\">websocket</text></svg>"
+    }
+  },
+  "findings": [
+    { "id": "SEC-001", "category": "security", "domain": "code", "component": "auth", "package": "api", "severity": "critical", "title": "Guard admin export route", "location": "apps/api/src/admin/export.controller.ts:18", "description": "`GET /admin/export` has no `@Roles('admin')` guard; any session can download all bookings.", "recommendation": "Add the guard and an e2e test for a non-admin session.", "effort": "S" },
+    { "id": "SEC-002", "category": "security", "domain": "code", "component": "auth", "package": "api", "severity": "high", "title": "Check tenant id on booking updates", "location": "apps/api/src/scheduling/booking.service.ts:120", "description": "The update path trusts the tenant id from the body.", "recommendation": "Derive it from the session.", "effort": "M" },
+    { "id": "PERF-001", "category": "performance", "domain": "code", "component": "dashboard", "package": "web", "severity": "medium", "title": "Throttle dashboard updates", "location": "apps/web/app/dashboard/Live.tsx:33", "locations": ["apps/web/app/dashboard/Chart.tsx:12"], "description": "Every websocket tick (~20/s) re-renders the whole tree.", "recommendation": "Batch into `requestAnimationFrame` and memoize the chart.", "effort": "M" },
+    { "id": "API-001", "category": "api", "domain": "code", "package": "ui", "severity": "low", "title": "Export prop types from the UI kit", "location": "packages/ui/src/index.ts:1", "description": "Consumers re-declare `ButtonProps`.", "recommendation": "Add `export type`.", "effort": "S" }
+  ],
+  "methodology": { "text": "Read the three packages listed under *Review scope* in full; sampled `apps/worker`. Ran `turbo lint typecheck test`." }
+}

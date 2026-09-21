@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "meta": { "generator": "js-ts-project-audit", "lang": "de" },
+  "summary": {
+    "project": "tiny-cli",
+    "stack": ["Node 22", "TypeScript 5.6", "tsup", "node:test"],
+    "date": "2026-09-20",
+    "theme": "dark",
+    "scope": { "sourceFiles": 12, "sourceLoc": 1480, "reviewedFiles": ["src/cli.ts", "src/args.ts", "src/run.ts"], "reviewedLoc": 1480, "exclusions": ["**/*.test.ts", "dist/**"] },
+    "domains": {
+      "code": { "executiveSummary": "Ein kleines, gut lesbares CLI. Ein ungeschütztes `JSON.parse` beendet den Prozess bei kaputter Config mit einem Stacktrace statt einer Meldung." },
+      "harness": { "executiveSummary": "Keine Befunde von Gewicht; die Tests decken die Argument-Parser vollständig ab." }
+    }
+  },
+  "portrait": {
+    "description": "`tiny-cli` konvertiert CSV-Exporte in JSON-Lines. Kein Diagramm: drei Module, ein Datenfluss.",
+    "components": [
+      { "id": "args", "label": "Argumente", "summary": "Parsen und Validieren der Flags.", "paths": ["src/args.ts"] },
+      { "id": "convert", "label": "Konvertierung", "summary": "CSV lesen, Zeilen umwandeln, schreiben.", "paths": ["src/run.ts", "src/cli.ts"] }
+    ]
+  },
+  "findings": [
+    { "id": "BUG-001", "category": "correctness", "domain": "code", "component": "convert", "severity": "medium", "title": "Kaputte Config mit Meldung statt Stacktrace abbrechen", "location": "src/run.ts:14", "description": "`JSON.parse(readFileSync(cfg))` ohne `try`.", "recommendation": "Fehler abfangen, Pfad und Zeile ausgeben, Exit 2.", "effort": "S" },
+    { "id": "DX-001", "category": "dx", "domain": "harness", "severity": "low", "title": "`--help` um Beispiele ergänzen", "location": "src/args.ts:40", "description": "Die Hilfe listet Flags, zeigt aber keinen Aufruf.", "recommendation": "Zwei Beispielzeilen.", "effort": "S" }
+  ],
+  "methodology": { "text": "Alle 12 Quelldateien vollständig gelesen. Ausgeführt: `npm test` (grün), `npm run build`." }
+}

@@ -125,10 +125,10 @@ keine Vorgeschichte, keine Anläufe, kein Audit, keine Finding-IDs.
 ## 4. Audit-Report nachführen
 
 Liegt eine `./audit.html` im Projekt: behobene Findings raus, Nebenbefunde mit
-Urteil `→ Audit` und `→ Rückfrage` rein, Zahlen nachziehen. Regeln und
-Belegpflicht in `references/audit-report-update.md`, jetzt lesen. Gestaltung
-unangetastet — sie gehört dem Audit-Skill. Ohne `audit.html` entfällt der
-Schritt.
+Urteil `→ Audit` und `→ Rückfrage` rein, Fix-Bilanz eintragen, neu bauen.
+Regeln, Belegpflicht und Werkzeug in `references/audit-report-update.md`,
+jetzt lesen. Die Seite baut das Skript des Audit-Skills; Markup fasst dieser
+Lauf nicht an. Ohne `audit.html` entfällt der Schritt.
 
 ## 5. Remediation-Report schreiben
 

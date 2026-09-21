@@ -77,7 +77,11 @@ die Findings ab« meint fast nie einen zweiten Lauf, sondern den offenen; wie
 der vorige endete, steht in der Datei, nicht in der Frage.
 
 Quelle ist die JSON-Insel `<script id="audit-data" type="application/json">` in
-`./audit.html`: Findings, `summary`, `acknowledged`.
+`./audit.html`: Findings, `summary`, `acknowledged`. Gelesen wird sie mit
+`node ~/.claude/skills/js-ts-project-audit/scripts/build-report.mjs extract
+./audit.html` — das gibt auch Reports älterer Audit-Läufe im aktuellen Schema
+aus, mit `category` als festem Schlüssel und `component` als Feature. Fehlt
+das Skript, die Insel direkt parsen.
 
 - Insel nicht parsebar: Findings best effort aus der Backlog-Tabelle
   rekonstruieren (Titel, Severity, Location, Kategorie, Empfehlung) und im Plan

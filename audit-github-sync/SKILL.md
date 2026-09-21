@@ -40,15 +40,15 @@ Diese Regeln stehen über jeder Abwägung im Einzelfall:
 
 Fünf Tore, in dieser Reihenfolge. Jedes ist ein Stopp mit Begründung, kein Umweg.
 
-1. **Report vorhanden und lesbar.** `./audit.html` existiert und die JSON-Insel `<script id="audit-data" type="application/json">` ist parsebar. Ist sie es nicht, endet der Lauf hier: aus einer best-effort rekonstruierten Backlog-Tabelle entstehen keine dauerhaften Issues. Anbieten, `js-ts-project-audit` neu laufen zu lassen.
+1. **Report vorhanden und lesbar.** `./audit.html` existiert, die JSON-Insel `<script id="audit-data" type="application/json">` ist parsebar, und `~/.claude/skills/js-ts-project-audit/scripts/build-report.mjs` ist da — ohne das Skript lässt sich der Rückweg nicht bauen. Ist sie es nicht, endet der Lauf hier: aus einer best-effort rekonstruierten Backlog-Tabelle entstehen keine dauerhaften Issues. Anbieten, `js-ts-project-audit` neu laufen zu lassen.
 2. **GitHub-Remote.** `git remote -v` auswerten, `owner/repo` bestimmen. Kein GitHub-Remote: Stopp. Mehrere Kandidaten: fragen, nicht raten.
 3. **Zugang und Rechte.** Erst `gh auth status`, sonst die GitHub-MCP-Tools, sonst Stopp mit der Angabe, was zu konfigurieren wäre. Schreibrecht am Repo prüfen (`gh repo view --json viewerPermission` oder das MCP-Äquivalent). Nur Leserecht heißt: ausschließlich der Rückweg läuft, und das wird gesagt, bevor irgendetwas anderes geplant wird.
-4. **Sichtbarkeit.** Repo-Visibility ermitteln. Ist das Repo öffentlich, werden Findings der Kategorie »Sicherheit« nicht veröffentlicht — sie erscheinen im Plan als zurückgehalten, mit Verweis auf private Security Advisories, und gehen nur nach ausdrücklicher Freigabe einzeln raus. Ein Finding, das ein ungeprüftes `JSON.parse` an einer benannten Zeile beschreibt, ist auf einem Public-Repo eine Anleitung. Diese Regel gilt auch dann, wenn der Nutzer pauschal »alles veröffentlichen« gesagt hat; sie wird einzeln aufgehoben, nicht pauschal.
+4. **Sichtbarkeit.** Repo-Visibility ermitteln. Ist das Repo öffentlich, werden Findings der Kategorie »Sicherheit« (`category: "security"`) nicht veröffentlicht — sie erscheinen im Plan als zurückgehalten, mit Verweis auf private Security Advisories, und gehen nur nach ausdrücklicher Freigabe einzeln raus. Ein Finding, das ein ungeprüftes `JSON.parse` an einer benannten Zeile beschreibt, ist auf einem Public-Repo eine Anleitung. Diese Regel gilt auch dann, wenn der Nutzer pauschal »alles veröffentlichen« gesagt hat; sie wird einzeln aufgehoben, nicht pauschal.
 5. **Issues aktiviert.** Sind Issues im Repo deaktiviert, endet der Lauf mit dem Hinweis darauf.
 
 ### 2. Findings laden
 
-Quelle ist die JSON-Insel. Daraus: `findings`, `summary`, `acknowledged`, und aus dem Projektportrait die fachlichen Domänen samt ihrer repräsentativen Pfade.
+Quelle ist die JSON-Insel, gelesen mit `node ~/.claude/skills/js-ts-project-audit/scripts/build-report.mjs extract ./audit.html > "$TMP/audit-data.json"` — das gibt auch Reports älterer Audit-Läufe im aktuellen Schema aus. Daraus: `findings`, `summary`, `acknowledged` und `portrait.components`, die Features des Projekts. `$TMP` ist ein Verzeichnis außerhalb des Projekts.
 
 - **Scope-Vorschlag**: alle Findings außer `severity: "info"` und außer `acknowledged`. Zahlen je Severity nennen, bestätigen lassen. Der Nutzer kann auf Severity-Stufen oder einzelne Findings eingrenzen.
 - `acknowledged` wird nicht veröffentlicht. Diese Punkte hat der Nutzer bewusst zurückgestellt; ein Issue dafür wäre Rauschen. Der Rückweg bleibt trotzdem offen: ein auf GitHub als »not planned« geschlossenes Issue landet in Schritt 6 in genau dieser Liste.
@@ -88,7 +88,7 @@ Schlägt ein Schreibvorgang fehl, wird der Lauf nicht fortgesetzt, als wäre nic
 
 Jetzt `references/reverse-sync.md` lesen. Dort stehen die Zustandstabelle GitHub → Audit, die Übernahme nach `acknowledged` und die Konfliktregeln.
 
-Geschrieben wird in `./audit.html` ausschließlich innerhalb der JSON-Insel und in den daraus gerenderten Textstellen. `./audit-sync.json` ist zu diesem Zeitpunkt bereits vollständig, weil Schritt 5 sie fortlaufend geführt hat; hier kommt nur noch der Kopf dazu (Repo, Datum des Laufs, Datum des zugrundeliegenden Audits).
+Geschrieben wird in den Datensatz aus Schritt 2; die Seite baut danach das Skript des Audit-Skills neu, Markup fasst dieser Lauf nicht an. `./audit-sync.json` ist zu diesem Zeitpunkt bereits vollständig, weil Schritt 5 sie fortlaufend geführt hat; hier kommt nur noch der Kopf dazu (Repo, Datum des Laufs, Datum des zugrundeliegenden Audits).
 
 ### 7. Bericht
 
@@ -110,6 +110,6 @@ Maximal 5–8 Zeilen, in der Sprache der Nutzeranfrage:
 
 ## Zusammenspiel mit anderen Skills
 
-- `js-ts-project-audit` liefert die Grundlage und rendert die Datei. Damit die Issue-Links einen Folgelauf überleben, führt der Audit-Skill das Feld `github` an gematchten Findings mit und rendert es. Dieser Skill setzt das Feld, der Audit-Skill trägt es.
+- `js-ts-project-audit` liefert die Grundlage, das Datenschema und das Skript, das die Datei baut. Damit die Issue-Links einen Folgelauf überleben, führt der Audit-Skill das Feld `github` an gematchten Findings mit und rendert es. Dieser Skill setzt das Feld, der Audit-Skill trägt es.
 - `js-ts-audit-remediation` arbeitet die Findings ab. Nach so einem Lauf ist ein Sync sinnvoll: die geschlossenen Findings tauchen als Schließ-Kandidaten auf, mit dem Commit-Hash aus `./remediation-plan.md` als Beleg. Dieser Skill startet keinen Remediation-Lauf und fixt nichts.
 - Wird der Sync direkt nach einem Audit-Lauf angefragt, läuft er trotzdem als eigener Lauf mit eigener Freigabe. Ein Audit, das ungefragt Issues auf GitHub anlegt, ist eine Überraschung, die niemand zurücknehmen kann.

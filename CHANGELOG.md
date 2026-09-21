@@ -2,6 +2,24 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-09-21
+
+### Hinzugefügt
+- **`js-ts-project-audit` baut die `audit.html` aus einem fertigen Template, statt sie jedes Mal neu zu schreiben.** Der Agent liefert nur noch einen Datensatz nach `assets/audit-data.schema.json`; `scripts/build-report.mjs` (Node, ohne Dependencies) prüft ihn, rechnet alle Zahlen und setzt ihn in `assets/report-template.html` ein. Die Seite rendert komplett aus der JSON-Insel und bringt mit: Theme-Umschalter (Default aus `summary.theme`, Wahl pro Browser gemerkt), Filter nach Domain, Severity, Feature, Kategorie und Status, Volltextsuche, Deep Links im URL-Hash, »Als Markdown kopieren« je Finding, Druckansicht. `extract` liest jeden älteren Report und migriert ihn ins neue Schema; `node --test js-ts-project-audit/tests/` prüft Skript und Fixtures.
+- **Feature-Filter.** Die fachlichen Bereiche des Portraits heißen jetzt Features (`portrait.components`, mit stabiler `id`), jedes Finding trägt höchstens eines in `component`. Dazu eine Matrix Feature × Severity in der Zusammenfassung und klickbare Knoten im Architektur-Diagramm.
+- **Fix-Bilanz als zweites Diagramm.** `fixHistory` hält je Lauf fest, wie viele Findings geschlossen wurden und wie viele die Fixes selbst verursacht haben — im Lauf wieder repariert oder offen geblieben —, getrennt von vorgefundenen Altlasten. Die Induktionsrate darüber zeigt, ob die Codebasis mit jeder Reparaturrunde stabiler wird. Remediation-Läufe buchen belegt aus Plan und Paketdateien, Folgeaudits heuristisch per `git blame`.
+
+### Geändert
+- **Der Health-Score bewertet die Dichte der Befunde, nicht ihre Summe.** Der Code-Score rechnet Abzüge je gelesener kLOC, der Harness-Score bleibt absolut, ein offenes `critical` kappt seine Domain bei 49, der Gesamtscore ist das geometrische Mittel. Bisher fiel der Score bei jeder gründlicheren Prüfung, bei `twopoint5d` binnen drei Läufen von 48 auf 0; kalibriert an 56 alten Ständen aus vier Projekten schrumpfen solche Einbrüche auf 10–15 Punkte, echte Tiefs bleiben sichtbar. Dafür misst jeder Audit seinen Prüfumfang per Shell (`summary.scope`), und im Folgelauf rechnet das Skript aus, welcher Teil eines Sprungs auf tiefere Prüfung und welcher auf Codeänderung geht. Das Diagramm zeigt die Prüfabdeckung als Fläche und bricht die Linie am Modellwechsel.
+- **Ein Muster ist ein Finding.** Derselbe Fehler an mehreren Stellen wird mit `locations` gebündelt, statt die Zahl der Findings mit der Lesetiefe wachsen zu lassen.
+- **Diagramme nie mehr als ASCII.** Standard ist ein Schichtendiagramm aus Daten, das das Template im aktuellen Theme zeichnet; freies SVG nur ohne feste Farben und nach Prüfung auf Skripte und externe Links.
+- **`category` ist ein fester Schlüssel** (`testing`, `types`, …) statt eines übersetzten Labels; die Beschriftung kommt aus dem Template.
+- **`js-ts-audit-remediation` führt die `audit.html` über `extract`/`build` nach** und trägt dabei einen belegten Eintrag in die Fix-Bilanz ein. Jeder Paket-Commit bekommt den Trailer `Remediation-Run: <Plan-Datum>`, damit ein späteres Audit die Reparatur-Commits erkennt. Fehlt das Build-Skript, bleibt die Seite unangetastet, statt von Hand geflickt zu werden.
+- **`audit-github-sync` liest und schreibt die `audit.html` ebenfalls über `extract`/`build`.** Das Label `component:` kommt direkt aus `finding.component` statt aus einem eigenen Pfad-Abgleich; die `area:`-Slugs und damit alle Fingerprints bleiben unverändert.
+
+### Entfernt
+- `js-ts-project-audit/references/report-rendering.md`. Die Layout-Vorschriften stecken im Template; was der Agent inhaltlich schreibt, steht in `references/report-content.md`.
+
 ## 2026-09-20
 
 ### Geändert

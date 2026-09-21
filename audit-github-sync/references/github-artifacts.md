@@ -130,7 +130,7 @@ nicht überschrieben.
 | `domain:code` \| `domain:harness` | `finding.domain` | `#1d76db` `#5319e7` |
 | `area:<slug>` | `finding.category` (Tabelle unten) | `#ededed` |
 | `effort:s` \| `m` \| `l` | `finding.effort` | `#c5def5` |
-| `component:<slug>` | fachliche Domäne aus dem Projektportrait | `#bfd4f2` |
+| `component:<slug>` | `finding.component` | `#bfd4f2` |
 
 `severity:info` gibt es nicht: `info`-Findings werden standardmäßig nicht
 veröffentlicht. Wird der Scope ausdrücklich darauf erweitert, bekommen sie
@@ -145,42 +145,44 @@ sie nicht optional, weil das Label allein kryptisch ist:
 
 ### Kategorie-Slugs
 
-Fest verdrahtet, nicht pro Lauf neu erfunden. Die Kategorie steht im Report in
-der Report-Sprache; der Slug ist immer dieser hier.
+Fest verdrahtet, nicht pro Lauf neu erfunden. `finding.category` ist ein
+fester Schlüssel aus dem Schema des Audit-Skills; der Slug ist immer dieser
+hier.
 
-| Kategorie im Report | `area:` | Anzeigename in der Fußzeile |
+| `finding.category` | `area:` | Anzeigename in der Fußzeile |
 | --- | --- | --- |
-| Architektur & Struktur | `architecture` | Architecture |
-| Projektaufbau & Build | `build` | Build setup |
-| Developer Experience | `dx` | Developer experience |
-| Öffentliche API | `public-api` | Public API |
-| Implementierungsstand | `completeness` | Completeness |
-| Testabdeckung & Teststrategie | `testing` | Testing |
-| Lesbarkeit & Clean Code | `readability` | Readability |
-| Bugs & Korrektheitsrisiken | `correctness` | Correctness |
-| Memory Leaks & Ressourcen | `resources` | Resource management |
-| Async & Concurrency | `async` | Concurrency |
-| Konsistenz | `consistency` | Consistency |
-| Typsicherheit (TS) | `typing` | Type safety |
-| Sicherheit | `security` | Security |
-| Dependencies | `dependencies` | Dependencies |
-| Performance | `performance` | Performance |
+| `architecture` | `architecture` | Architecture |
+| `build` | `build` | Build setup |
+| `dx` | `dx` | Developer experience |
+| `api` | `public-api` | Public API |
+| `completeness` | `completeness` | Completeness |
+| `testing` | `testing` | Testing |
+| `readability` | `readability` | Readability |
+| `correctness` | `correctness` | Correctness |
+| `resources` | `resources` | Resource management |
+| `async` | `async` | Concurrency |
+| `consistency` | `consistency` | Consistency |
+| `types` | `typing` | Type safety |
+| `security` | `security` | Security |
+| `dependencies` | `dependencies` | Dependencies |
+| `performance` | `performance` | Performance |
 
 Führt ein Report eine Kategorie, die hier nicht steht, wird kein Slug
 erfunden: das Issue bekommt kein `area:`-Label, und der Fall steht im Bericht.
 Ein selbst ausgedachter Slug zerreißt den Filter beim nächsten Lauf.
 
-### `component:` aus dem Projektportrait
+### `component:` aus dem Feature des Findings
 
-Das Portrait aus Schritt 1b des Audits führt 3–7 fachliche Domänen, je mit
-repräsentativen Pfaden. Fällt die Fundstelle eines Findings unter die Pfade
-**genau einer** dieser Domänen, bekommt das Issue `component:<slug>` mit dem
-kleingeschriebenen Domänennamen als Slug.
+Das Audit ordnet jedes Finding höchstens einem Feature aus
+`portrait.components` zu und schreibt dessen `id` nach `finding.component`.
+Das Label ist genau diese `id`: `component:<id>`. Fehlt das Feld, gibt es kein
+Label — das Audit hat das Finding bewusst als projektweit eingestuft.
 
-Fällt sie unter mehrere oder unter keine, gibt es kein Label. Kein Raten nach
-Dateinamen, keine Vererbung über Verzeichnisgrenzen. Ein falsches
+Keine eigene Zuordnung über Pfade, kein Raten nach Dateinamen. Ein falsches
 `component:`-Label ist schlimmer als keins, weil es eine Filterung
-vortäuscht, die nicht stimmt.
+vortäuscht, die nicht stimmt. Führt `portrait.componentRenames` eine
+Umbenennung, wird das alte Label an den betroffenen Issues durch das neue
+ersetzt.
 
 ### Label-Abgleich beim Aktualisieren
 

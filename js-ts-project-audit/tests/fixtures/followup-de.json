@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 2,
+  "meta": { "generator": "js-ts-project-audit", "lang": "de" },
+  "summary": {
+    "project": "lumen-grid",
+    "stack": ["TypeScript 5.6", "three.js r170", "Vite 6", "Vitest 3", "pnpm-Monorepo"],
+    "date": "2026-09-18",
+    "theme": "light",
+    "previousDate": "2026-09-02",
+    "resolvedCount": 14,
+    "deltaCause": "mixed",
+    "deltaExplanation": "Der Lauf hat `src/render/` und `src/tiles/` erstmals vollständig gelesen; sechs der neun neuen Findings liegen dort. Die übrigen drei stammen aus dem Umbau des Loaders seit dem Vorlauf.",
+    "scope": {
+      "sourceFiles": 84,
+      "sourceLoc": 12840,
+      "reviewedFiles": ["src/index.ts", "src/render/Renderer.ts", "src/render/passes/BloomPass.ts", "src/tiles/TileCache.ts", "src/tiles/TileLoader.ts", "src/loader/AssetLoader.ts", "src/core/Scheduler.ts", "src/core/EventBus.ts"],
+      "reviewedLoc": 9320,
+      "exclusions": ["**/*.spec.ts", "dist/**", "examples/**"]
+    },
+    "domains": {
+      "code": { "executiveSummary": "Der Renderer ist sauber geschichtet, aber der Tile-Cache räumt nie auf: Bei langen Kamerafahrten wächst der Speicher **linear**. Zwei Race Conditions im Loader treffen nur bei schnellem Zoom." },
+      "harness": { "executiveSummary": "Build und Typen sind solide (`strict`, `noUncheckedIndexedAccess`). Die Browser-Tests laufen in CI nicht, und zwei Dependencies sind eine Major-Version zurück." }
+    }
+  },
+  "portrait": {
+    "description": "`lumen-grid` rendert gekachelte Karten und Szenen in WebGL2/WebGPU. Die Bibliothek richtet sich an Apps, die große 2,5D-Welten streamen, und kapselt Tile-Laden, Caching und Render-Passes.",
+    "components": [
+      { "id": "renderer", "label": "Renderer", "summary": "Render-Loop, Passes und Post-Processing.", "paths": ["src/render/**"] },
+      { "id": "tiles", "label": "Tiles & Cache", "summary": "Kachelverwaltung, LRU-Cache, Sichtbarkeitsprüfung.", "paths": ["src/tiles/**"] },
+      { "id": "loader", "label": "Asset-Loader", "summary": "Laden, Dekodieren und Abbrechen von Texturen und Geometrie.", "paths": ["src/loader/**"] },
+      { "id": "core", "label": "Kern", "summary": "Scheduler und Event-Bus, auf denen alles andere läuft.", "paths": ["src/core/**"] }
+    ],
+    "diagram": {
+      "kind": "layered",
+      "caption": "Schichten von oben nach unten: die öffentliche API ruft Renderer und Tiles; beide stützen sich auf Loader und Kern. Pfeile zeigen Aufrufrichtung.",
+      "layers": [
+        { "label": "API", "nodes": [{ "id": "api", "label": "LumenGrid", "detail": "src/index.ts" }] },
+        { "label": "Fachlogik", "nodes": [
+          { "id": "render", "label": "Renderer", "detail": "Passes, Bloom", "component": "renderer" },
+          { "id": "tiles", "label": "TileCache", "detail": "LRU", "component": "tiles" }
+        ] },
+        { "label": "Infrastruktur", "nodes": [
+          { "id": "loader", "label": "AssetLoader", "component": "loader" },
+          { "id": "sched", "label": "Scheduler", "component": "core" },
+          { "id": "bus", "label": "EventBus", "component": "core" }
+        ] }
+      ],
+      "edges": [
+        { "from": "api", "to": "render" }, { "from": "api", "to": "tiles" },
+        { "from": "tiles", "to": "loader", "label": "lädt" }, { "from": "render", "to": "sched" },
+        { "from": "tiles", "to": "bus" }, { "from": "render", "to": "tiles", "label": "fragt Sichtbarkeit" }
+      ]
+    }
+  },
+  "findings": [
+    { "id": "MEM-001", "category": "resources", "domain": "code", "component": "tiles", "severity": "high", "title": "Tile-Cache ohne Eviction begrenzen", "location": "src/tiles/TileCache.ts:48", "locations": ["src/tiles/TileCache.ts:112"], "description": "`TileCache.set()` fügt ein, `evict()` wird nirgends aufgerufen. Bei einer Kamerafahrt über 10 km wuchs der Heap im Test von 80 auf 1,4 GB.", "evidence": "`this.#tiles.set(key, tile)` ohne Größenprüfung; `evict()` hat 0 Aufrufer.", "recommendation": "LRU-Grenze aus der Config lesen und in `set()` durchsetzen; `dispose()` der verdrängten Tiles aufrufen.", "effort": "M", "status": "carried-over", "github": { "number": 142, "url": "https://github.com/example/lumen-grid/issues/142", "state": "open", "assignee": "maintainer-a", "note": "Diskussion im Issue: Grenze in MB statt Anzahl." } },
+    { "id": "ASYNC-001", "category": "async", "domain": "code", "component": "loader", "severity": "high", "title": "Abgebrochene Loads nicht mehr in den Cache schreiben", "location": "src/loader/AssetLoader.ts:201", "description": "Ein per `AbortController` abgebrochener Load schreibt sein Ergebnis trotzdem, wenn die Antwort schon unterwegs war. Beim schnellen Zoom landen veraltete Kacheln im Bild.", "recommendation": "Nach jedem `await` `signal.aborted` prüfen, bevor geschrieben wird; Regressionstest mit verzögertem Fetch.", "effort": "S", "status": "new", "origin": { "kind": "induced", "run": "remediation 2026-09-08" } },
+    { "id": "ASYNC-002", "category": "async", "domain": "code", "component": "loader", "severity": "medium", "title": "Doppelte Loads derselben URL zusammenführen", "location": "src/loader/AssetLoader.ts:88", "description": "Zwei gleichzeitige Anfragen derselben Textur laden doppelt.", "recommendation": "In-flight-Map `url → Promise`.", "effort": "S", "status": "new" },
+    { "id": "BUG-001", "category": "correctness", "domain": "code", "component": "renderer", "severity": "critical", "title": "Division durch null bei Fenstergröße 0 abfangen", "location": "src/render/Renderer.ts:77", "description": "Ist der Container unsichtbar (`display:none`), wird `aspect = w / h` zu `NaN`, die Projektionsmatrix wird ungültig und bleibt es auch nach dem Wiedereinblenden.", "recommendation": "Resize bei `w === 0 || h === 0` überspringen.", "effort": "S", "status": "new" },
+    { "id": "PERF-001", "category": "performance", "domain": "code", "component": "renderer", "severity": "medium", "title": "Bloom-Pass nur bei aktiver Option allozieren", "location": "src/render/passes/BloomPass.ts:23", "description": "Zwei Render-Targets in voller Auflösung werden immer angelegt.", "recommendation": "Lazy anlegen.", "effort": "S", "status": "improved", "previousSeverity": "high" },
+    { "id": "CONS-001", "category": "consistency", "domain": "code", "component": "core", "severity": "low", "title": "Fehlerbehandlung im Event-Bus vereinheitlichen", "location": "src/core/EventBus.ts:40", "description": "Mal wird geworfen, mal geloggt, mal geschluckt.", "recommendation": "Eine Strategie, dokumentiert in der README.", "effort": "S", "status": "unchanged" },
+    { "id": "READ-001", "category": "readability", "domain": "code", "severity": "low", "title": "Magische Zahlen für Tile-Größen benennen", "location": "src/tiles/TileLoader.ts:15", "locations": ["src/render/Renderer.ts:30", "src/tiles/TileCache.ts:9"], "description": "`256`, `512` und `0.75` stehen ohne Namen an drei Stellen.", "recommendation": "Konstanten in `src/core/constants.ts`.", "effort": "S", "status": "carried-over" },
+    { "id": "SEC-001", "category": "security", "domain": "code", "component": "loader", "severity": "medium", "title": "Tile-URLs gegen Allow-List prüfen", "location": "src/loader/AssetLoader.ts:52", "description": "Die URL-Vorlage kommt aus der Konfiguration der einbettenden App und wird ungeprüft an `fetch` gereicht.", "recommendation": "Schema und Host gegen eine konfigurierbare Allow-List prüfen.", "effort": "M", "status": "new" },
+    { "id": "TEST-001", "category": "testing", "domain": "harness", "severity": "high", "title": "Browser-Tests in CI ausführen", "location": ".github/workflows/ci.yml:31", "description": "Die WebGL-Tests laufen nur lokal; CI führt `vitest --project unit` aus.", "recommendation": "Playwright-Projekt in CI mit Chromium, Cache für die Browser.", "effort": "M", "status": "carried-over", "github": { "number": 131, "url": "https://github.com/example/lumen-grid/issues/131", "state": "closed" } },
+    { "id": "DEP-001", "category": "dependencies", "domain": "harness", "severity": "medium", "title": "three.js auf r172 heben", "location": "package.json:41", "description": "Zwei Major-Versionen hinter dem aktuellen Stand; r171 behebt einen Leak in `WebGLRenderer.dispose()`.", "recommendation": "Upgrade, Changelog-Einträge zu `ColorManagement` prüfen.", "effort": "M", "status": "unchanged" },
+    { "id": "DX-001", "category": "dx", "domain": "harness", "severity": "low", "title": "Beispiel-Setup in der README vervollständigen", "location": "README.md:20", "description": "Das Quickstart-Snippet importiert einen Pfad, den es seit 2.0 nicht mehr gibt.", "recommendation": "Snippet aus `examples/basic` übernehmen.", "effort": "S", "status": "new" },
+    { "id": "TYPE-001", "category": "types", "domain": "harness", "severity": "info", "title": "Rückgabetyp von `createGrid` explizit machen", "location": "src/index.ts:12", "description": "Der inferierte Typ leakt interne Klassen in die d.ts.", "recommendation": "Öffentliches Interface exportieren.", "effort": "S", "status": "new" },
+    { "id": "OPT-001", "category": "performance", "domain": "code", "component": "renderer", "severity": "info", "kind": "improvement", "title": "Instancing für Marker nutzen", "location": "src/render/MarkerLayer.ts", "description": "Marker werden als einzelne Meshes gezeichnet; ab ~2000 Markern dominiert der Draw-Call-Overhead.", "recommendation": "`InstancedMesh` mit Attribut-Buffer." }
+  ],
+  "openQuestions": [
+    "Ist `LumenGrid.destroy()` als öffentliche API gedacht? Die README erwähnt sie nicht, zwei Beispiele rufen sie auf.",
+    "Soll der Loader **offline** funktionieren (Service Worker), oder ist das außerhalb des Scopes?"
+  ],
+  "methodology": {
+    "text": "Vollständig gelesen: alle Quelldateien unter `src/render/`, `src/tiles/`, `src/loader/` und `src/core/`. Nicht gelesen: `examples/` und die Specs (nur Stichproben).\n\nAusgeführt: `pnpm lint`, `pnpm typecheck`, `pnpm test --coverage` (grün, 412 Tests), `pnpm outdated`.",
+    "notes": ["Match-Strategie: Kategorie plus überlappende Fundstelle, danach Titelähnlichkeit.", "Zwei Altfindings kontextbedingt entfernt: ADR-007 sanktioniert den globalen Event-Bus."]
+  },
+  "scoreHistory": [
+    { "date": "2026-07-10", "score": 41, "source": "audit", "scoreModel": 1 },
+    { "date": "2026-07-22", "score": 58, "source": "remediation", "scoreModel": 1 },
+    { "date": "2026-08-05", "score": 12.5, "source": "audit", "scoreModel": 1 },
+    { "date": "2026-08-12", "score": 30, "source": "remediation", "scoreModel": 1 },
+    { "date": "2026-09-02", "score": 62, "source": "audit", "scoreModel": 2, "domains": { "code": 66, "harness": 58 }, "coverage": 0.41 },
+    { "date": "2026-09-08", "score": 70, "source": "remediation", "scoreModel": 2, "domains": { "code": 77, "harness": 64 }, "coverage": 0.41 }
+  ],
+  "fixHistory": [
+    { "date": "2026-07-22", "source": "remediation", "ref": "plan 2026-07-11", "fixed": 18, "inducedFixed": 5, "inducedOpen": 3, "discovered": 4, "attribution": "reviewed" },
+    { "date": "2026-08-05", "source": "audit", "ref": "2026-07-10", "fixed": 21, "inducedFixed": 0, "inducedOpen": 2, "discovered": 7, "attribution": "heuristic" },
+    { "date": "2026-08-12", "source": "remediation", "ref": "plan 2026-08-06", "fixed": 16, "inducedFixed": 3, "inducedOpen": 1, "discovered": 2, "attribution": "reviewed" },
+    { "date": "2026-09-08", "source": "remediation", "ref": "plan 2026-09-03", "fixed": 12, "inducedFixed": 1, "inducedOpen": 1, "discovered": 3, "attribution": "reviewed" }
+  ],
+  "acknowledged": [
+    { "id": "ARCH-004", "title": "Globalen Event-Bus durch Injektion ersetzen", "category": "architecture", "domain": "code", "component": "core", "location": "src/core/EventBus.ts", "reason": "Bewusste Entscheidung, dokumentiert in `docs/adr/007-event-bus.md`.", "acknowledgedDate": "2026-08-12" }
+  ]
+}
