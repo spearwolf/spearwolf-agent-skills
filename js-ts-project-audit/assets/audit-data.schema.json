@@ -27,7 +27,7 @@
         "project": { "type": "string" },
         "stack": { "type": "array", "items": { "type": "string" } },
         "date": { "$ref": "#/$defs/date", "description": "Datum des Audits. Ein Remediation-Lauf lässt es stehen." },
-        "theme": { "enum": ["light", "dark"], "description": "Start-Theme. Der Leser kann es per Toggle für sich umschalten." },
+        "theme": { "enum": ["auto", "light", "dark"], "description": "auto: der Report folgt prefers-color-scheme von System und Browser. light/dark nur auf ausdrückliche Nutzeranweisung; der Wert legt das Start-Theme dann fest. Der Leser kann in jedem Fall per Toggle für sich umschalten." },
         "previousDate": { "$ref": "#/$defs/date", "description": "Datum des Vorgänger-Audits, nur im Folgelauf." },
         "scope": { "$ref": "#/$defs/scope" },
         "domains": {

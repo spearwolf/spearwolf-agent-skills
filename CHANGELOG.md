@@ -2,6 +2,14 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-09-25
+
+### Geändert
+- **`js-ts-project-audit`: der Report folgt dem Farbschema von System und Browser.** Neuer Default `summary.theme: "auto"` wertet `prefers-color-scheme` aus, auch live; `light`/`dark` nur noch auf ausdrückliche Anweisung. Der Umschalter bleibt, und wer zurück auf die Vorgabe schaltet, folgt wieder dem System. Ein `light` aus Template 2.0.0 gilt im Folgelauf als Default und wird zu `auto`.
+- **`js-ts-project-audit`: breiteres Layout.** Großzügigerer Seitenrand; Portrait-Text und Offene Fragen nutzen die volle Breite statt 72 Zeichen. Jede Domain-Karte teilt sich in drei Spalten (Zusammenfassung · Schweregrade · Kategorien), unter 1100 px in zwei, unter 720 px in eine. Das Architektur-Diagramm steht zentriert mit mehr Luft zwischen den Schichten.
+- **`js-ts-project-audit`: Backlog mit vollständigen Spalten** in der Reihenfolge Prio · ID · Feature · Description · Section · Type · Size · Status; Feature nur bei vorhandenen Features, Status nur im Folgelauf. Feature und Type sind ab 1200 px eigene Spalten, darunter stehen sie unter dem Titel. Optimierungspotenzial nutzt dieselbe Tabelle ohne Prio-Spalte (das immer gleiche »Verbesserung«-Badge entfällt) und ohne Status.
+- **`js-ts-project-audit`: ein vorhandenes `audit.html` bekommt immer das aktuelle Template.** Das war schon so, weil der Build nur die Daten des Vorgängers übernimmt; jetzt steht es ausdrücklich in Schritt 6, und `build-report.mjs` meldet einen Versionssprung (`Template 2.0.0 → 2.1.0`), der in den Begleittext kommt. Gilt ebenso für Remediation- und GitHub-Sync-Läufe.
+
 ## 2026-09-21
 
 ### Hinzugefügt

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="audit-template-version" content="2.0.0">
+<meta name="audit-template-version" content="2.1.0">
 <title>Audit</title>
 <script id="audit-data" type="application/json">/*__AUDIT_DATA__*/</script>
 <script>
@@ -11,9 +11,13 @@
   try {
     var d = JSON.parse(document.getElementById('audit-data').textContent);
     window.__AUDIT__ = d;
+    // Vorrang: Wahl des Lesers in diesem Browser, dann ein im Datensatz festgelegtes
+    // Theme, sonst das Farbschema des Systems.
     var t = null;
     try { t = localStorage.getItem('audit-theme:' + d.summary.project); } catch (e) {}
-    document.documentElement.setAttribute('data-theme', t === 'light' || t === 'dark' ? t : (d.summary.theme === 'dark' ? 'dark' : 'light'));
+    var pinned = d.summary.theme === 'light' || d.summary.theme === 'dark' ? d.summary.theme : null;
+    var system = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t === 'light' || t === 'dark' ? t : pinned || system);
     document.documentElement.lang = d.meta && d.meta.lang === 'en' ? 'en' : 'de';
   } catch (e) {}
 })();
@@ -55,7 +59,7 @@ html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--text);
   font: 400 1rem/1.65 ui-sans-serif, -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
-  padding: clamp(16px, 3vw, 40px) clamp(16px, 4vw, 64px) 64px;
+  padding: clamp(16px, 3vw, 40px) clamp(16px, 7vw, 160px) 64px;
   overflow-wrap: break-word;
 }
 h1, h2, h3 { font-weight: 600; line-height: 1.25; margin: 0; }
@@ -67,6 +71,7 @@ code { font: 0.9em/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace; back
 p { margin: 0 0 0.8em; }
 ul { margin: 0 0 0.8em; padding-left: 1.3em; }
 .prose { max-width: 72ch; }
+.prose.wide { max-width: none; }
 .prose > :last-child { margin-bottom: 0; }
 .muted { color: var(--muted); }
 .faint { color: var(--faint); }
@@ -106,9 +111,11 @@ section { margin-top: clamp(32px, 4vw, 52px); }
 /* Diagramme */
 figure { margin: 22px 0 0; }
 figcaption { font-size: 0.875rem; color: var(--muted); margin-top: 10px; max-width: 72ch; }
-.layered { position: relative; max-width: 960px; display: flex; flex-direction: column; gap: 44px; padding: 8px 0; }
+.diagram { margin-top: clamp(28px, 4vw, 48px); padding: clamp(20px, 3vw, 40px) clamp(0px, 3vw, 40px); }
+.diagram figcaption { margin: 18px auto 0; text-align: center; }
+.layered { position: relative; max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 64px; padding: 8px 0; }
 .layer { position: relative; z-index: 1; }
-.layer-label { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; }
+.layer-label { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); margin-bottom: 8px; }
 .layer-nodes { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
 .node { border: 1px solid var(--border-strong); background: var(--surface); border-radius: 8px; padding: 8px 14px; text-align: center; font-size: 0.9rem; max-width: 260px; color: var(--text); font-family: inherit; line-height: 1.35; }
 .node small { display: block; color: var(--muted); font-size: 0.78rem; margin-top: 2px; }
@@ -119,7 +126,7 @@ button.node:hover { border-color: var(--accent); }
 .edges text { fill: var(--muted); font-size: 11px; paint-order: stroke; stroke: var(--bg); stroke-width: 4px; }
 .edges marker path { fill: var(--chart-light); stroke: none; }
 .svg-diagram { overflow-x: auto; }
-.svg-diagram svg { width: 100%; height: auto; max-width: 720px; display: block; }
+.svg-diagram svg { width: 100%; height: auto; max-width: 900px; display: block; margin: 0 auto; }
 .svg-diagram text, .svg-diagram .label { fill: var(--text); font-family: inherit; }
 .svg-diagram .node { fill: var(--surface); stroke: var(--border-strong); }
 .svg-diagram .edge { fill: none; stroke: var(--chart-light); }
@@ -127,10 +134,14 @@ button.node:hover { border-color: var(--accent); }
 .svg-diagram .accent { stroke: var(--accent); }
 .svg-diagram text.accent { fill: var(--accent); stroke: none; }
 
-/* Domain-Blöcke */
-.domains { display: grid; gap: 16px; grid-template-columns: 1fr; }
-@media (min-width: 900px) { .domains { grid-template-columns: 1fr 1fr; } }
+/* Domain-Blöcke: je Domain eine Karte über die volle Breite, innen Zusammenfassung · Schweregrade · Kategorien */
+.domains { display: grid; gap: 20px; grid-template-columns: 1fr; }
 .domain-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.domain-cols { display: grid; gap: 4px clamp(24px, 3vw, 48px); grid-template-columns: 1fr; }
+.domain-cols > * { min-width: 0; }
+@media (min-width: 720px) { .domain-cols { grid-template-columns: 1fr 1fr; } .domain-cols > .col-summary { grid-column: 1 / -1; } }
+@media (min-width: 1100px) { .domain-cols { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); } .domain-cols > .col-summary { grid-column: auto; } }
+@media (min-width: 1100px) { .domain-cols .col-summary .prose { max-width: none; } .domain-cols h4 { margin-top: 4px; } }
 .domain-score { font-size: 2rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
 .domain h4 { font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--faint); margin: 20px 0 8px; }
 .bars { display: grid; grid-template-columns: max-content 1fr max-content; gap: 6px 10px; align-items: center; font-size: 0.875rem; }
@@ -171,33 +182,43 @@ select, input[type="search"] { font: inherit; font-size: 0.9rem; color: var(--te
 input[type="search"] { flex: 1 1 220px; }
 .fstatus { font-size: 0.875rem; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 
-/* Backlog */
+/* Backlog und Optimierungspotenzial. Die Spaltenbreiten setzt findingTable() als
+   --cols-md/--cols-lg, weil Prio, Feature und Status je Tabelle entfallen können.
+   Ab 720 px Tabelle, ab 1200 px zusätzlich Feature und Kategorie als eigene Spalten;
+   darunter stehen sie in der Meta-Zeile unter dem Titel. */
 .rows { border-top: 1px solid var(--border); }
 .row-head-labels { display: none; }
 details.row { border-bottom: 1px solid var(--border); }
 details.row > summary { list-style: none; cursor: pointer; display: grid; gap: 4px 12px; padding: 12px 4px; min-height: 44px;
-  grid-template-columns: auto auto 1fr; grid-template-areas: "sev id dom" "title title title" "meta meta meta"; align-items: center; }
+  grid-template-columns: auto auto 1fr; grid-template-areas: "sev id dom" "desc desc desc"; align-items: center; }
+.no-prio details.row > summary { grid-template-columns: auto 1fr; grid-template-areas: "id dom" "desc desc"; }
 details.row > summary::-webkit-details-marker { display: none; }
 details.row > summary:hover { background: var(--surface-2); }
 details.row[open] > summary { background: var(--surface-2); }
 .c-sev { grid-area: sev; }
 .c-id { grid-area: id; font: 0.8125rem/1.4 ui-monospace, Menlo, Consolas, monospace; color: var(--muted); }
 .c-dom { grid-area: dom; justify-self: end; }
-.c-title { grid-area: title; font-weight: 500; }
-.c-meta { grid-area: meta; font-size: 0.8125rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 2px 12px; }
-.c-effort, .c-status { display: none; }
-.c-meta .c-status-m { display: inline; }
+.c-desc { grid-area: desc; min-width: 0; display: grid; gap: 4px; }
+.c-title { font-weight: 500; }
+.c-meta { font-size: 0.8125rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 2px 12px; }
+.c-feat, .c-cat, .c-effort, .c-status { display: none; }
 @media (min-width: 720px) {
-  .row-head-labels { display: grid; grid-template-columns: 92px 92px minmax(0, 1fr) 150px 64px 118px; gap: 12px; padding: 0 4px 6px; font-size: 0.75rem; color: var(--faint); letter-spacing: 0.04em; text-transform: uppercase; }
-  .no-status .row-head-labels { grid-template-columns: 92px 92px minmax(0, 1fr) 150px 64px; }
-  details.row > summary { grid-template-columns: 92px 92px minmax(0, 1fr) 150px 64px 118px; grid-template-areas: "sev id title dom effort status" "sev id meta dom effort status"; align-items: start; }
-  .no-status details.row > summary { grid-template-columns: 92px 92px minmax(0, 1fr) 150px 64px; grid-template-areas: "sev id title dom effort" "sev id meta dom effort"; }
+  .row-head-labels { display: grid; grid-template-columns: var(--cols-md); gap: 12px; padding: 0 4px 6px; font-size: 0.75rem; color: var(--faint); letter-spacing: 0.04em; text-transform: uppercase; }
+  .row-head-labels .h-lg { display: none; }
+  details.row > summary, .no-prio details.row > summary { grid-template-columns: var(--cols-md); grid-template-areas: none; align-items: start; }
+  .c-sev, .c-id, .c-feat, .c-desc, .c-dom, .c-cat, .c-effort, .c-status { grid-area: auto; }
   .c-dom { justify-self: start; }
   .c-effort, .c-status { display: block; font-size: 0.875rem; }
-  .c-effort { grid-area: effort; color: var(--muted); }
-  .c-status { grid-area: status; }
-  .c-meta .c-status-m { display: none; }
+  .c-effort { color: var(--muted); }
+  .c-meta .m-md { display: none; }
   .c-sev, .c-id { padding-top: 2px; }
+}
+@media (min-width: 1200px) {
+  .row-head-labels, details.row > summary, .no-prio details.row > summary { grid-template-columns: var(--cols-lg); }
+  .row-head-labels .h-lg { display: block; }
+  .c-feat, .c-cat { display: block; font-size: 0.875rem; }
+  .c-cat { color: var(--muted); }
+  .c-meta .m-lg { display: none; }
 }
 .badge { display: inline-block; border-radius: 5px; padding: 1px 8px; font-size: 0.78rem; font-weight: 600; line-height: 1.6; white-space: nowrap;
   color: var(--b); background: color-mix(in srgb, var(--b) 13%, var(--surface)); }
@@ -207,7 +228,8 @@ details.row[open] > summary { background: var(--surface-2); }
 .st-unchanged { --b: var(--muted); font-weight: 500; }
 .st-carried-over { --b: var(--faint); font-weight: 500; background: transparent; border: 1px dashed var(--border-strong); }
 .row-body { padding: 4px 4px 20px; display: grid; gap: 12px; }
-@media (min-width: 720px) { .row-body { padding-left: 200px; } }
+@media (min-width: 720px) { .row-body { padding-left: var(--indent-md); } }
+@media (min-width: 1200px) { .row-body { padding-left: var(--indent-lg); } }
 .row-body h5 { font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--faint); margin: 0 0 4px; font-weight: 600; }
 .locs { display: flex; flex-direction: column; gap: 2px; }
 .copy-btn { justify-self: start; border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 8px; padding: 6px 12px; min-height: 36px; font: inherit; font-size: 0.8125rem; cursor: pointer; }
@@ -261,10 +283,10 @@ var STRINGS = {
     domain: 'Bereich', severity: 'Schwere', category: 'Kategorie', status_: 'Status', search: 'Suche in Titel, ID, Fundstelle',
     allCategories: 'Alle Kategorien', reset: 'Filter zurücksetzen', shown: function (a, b) { return a + ' von ' + b + ' angezeigt'; },
     nothingMatches: 'Kein Finding passt zu diesen Filtern.',
-    colSev: 'Schwere', colId: 'ID', colTitle: 'Finding', colDom: 'Bereich', colEffort: 'Aufwand', colStatus: 'Status',
+    colSev: 'Prio', colId: 'ID', colFeat: 'Feature', colTitle: 'Description', colDom: 'Section', colCat: 'Type', colEffort: 'Size', colStatus: 'Status',
     effort: 'Aufwand', location: 'Fundstelle', locations: 'Fundstellen', description: 'Problem', evidence: 'Beleg', recommendation: 'Empfehlung',
     copy: 'Als Markdown kopieren', copied: 'Kopiert', induced: 'entstanden durch Fix', discoveredOrigin: 'bei Fix-Arbeit vorgefunden',
-    ghAssignee: 'Zugewiesen', closed: 'geschlossen', improvementBadge: 'Verbesserung',
+    ghAssignee: 'Zugewiesen', closed: 'geschlossen',
     scoreChart: 'Health-Score', scoreCaption: function (d) { return 'Verlauf der Health-Scores seit ' + d + '.'; },
     lgAudit: 'Audit', lgRemediation: 'nachgerechnet (Remediation, GitHub-Sync)', lgCoverage: 'Prüfabdeckung',
     fixChart: 'Fix-Bilanz', lgFixed: 'behoben', lgInducedOpen: 'durch Fix entstanden, offen', lgInducedFixed: 'durch Fix entstanden, im Lauf behoben',
@@ -274,7 +296,7 @@ var STRINGS = {
     fixSingle: function (e) { return 'Bisher ein Eintrag (' + e.date + '): ' + e.fixed + ' behoben, ' + (e.inducedFixed + e.inducedOpen) + ' durch Fixes entstanden. Das Diagramm erscheint ab dem zweiten Lauf.'; },
     fixCaption: 'Pro Lauf: geschlossene Findings nach oben, durch die Fixes entstandene nach unten. Vorgefundene Altlasten zählen nicht in die Rate.',
     formulaTitle: 'Score-Berechnung', scopeTitle: 'Prüfumfang', notesTitle: 'Anmerkungen zu diesem Lauf',
-    theme: function (t) { return 'Start-Theme: ' + (t === 'dark' ? 'dunkel' : 'hell') + '. Der Schalter oben rechts überschreibt es für diesen Browser.'; },
+    theme: function (t) { return (t === 'dark' || t === 'light' ? 'Start-Theme: ' + (t === 'dark' ? 'dunkel' : 'hell') + '.' : 'Das Farbschema folgt der Einstellung von System und Browser.') + ' Der Schalter oben rechts überschreibt es für diesen Browser.'; },
     sourceFiles: 'Quelldateien', sourceLoc: 'Quelltext', reviewedLoc: 'davon gelesen', exclusions: 'nicht gezählt',
     deltaBreakdown: function (b) { return 'Neue Findings nach Herkunft: ' + b.code + ' in schon zuvor gelesenen Dateien (Code), ' + b.coverage + ' in erstmals gelesenen Dateien (Prüftiefe)' + (b.unknown ? ', ' + b.unknown + ' ohne Vergleichsbasis' : '') + '.'; },
     formula2: function (s) {
@@ -316,10 +338,10 @@ var STRINGS = {
     domain: 'Domain', severity: 'Severity', category: 'Category', status_: 'Status', search: 'Search title, ID, location',
     allCategories: 'All categories', reset: 'Reset filters', shown: function (a, b) { return a + ' of ' + b + ' shown'; },
     nothingMatches: 'No finding matches these filters.',
-    colSev: 'Severity', colId: 'ID', colTitle: 'Finding', colDom: 'Domain', colEffort: 'Effort', colStatus: 'Status',
+    colSev: 'Prio', colId: 'ID', colFeat: 'Feature', colTitle: 'Description', colDom: 'Section', colCat: 'Type', colEffort: 'Size', colStatus: 'Status',
     effort: 'Effort', location: 'Location', locations: 'Locations', description: 'Problem', evidence: 'Evidence', recommendation: 'Recommendation',
     copy: 'Copy as Markdown', copied: 'Copied', induced: 'introduced by a fix', discoveredOrigin: 'found during fix work',
-    ghAssignee: 'Assignee', closed: 'closed', improvementBadge: 'Improvement',
+    ghAssignee: 'Assignee', closed: 'closed',
     scoreChart: 'Health score', scoreCaption: function (d) { return 'Health score history since ' + d + '.'; },
     lgAudit: 'Audit', lgRemediation: 'recalculated (remediation, GitHub sync)', lgCoverage: 'Review coverage',
     fixChart: 'Fix balance', lgFixed: 'resolved', lgInducedOpen: 'introduced by fixes, open', lgInducedFixed: 'introduced by fixes, fixed in run',
@@ -329,7 +351,7 @@ var STRINGS = {
     fixSingle: function (e) { return 'One entry so far (' + e.date + '): ' + e.fixed + ' resolved, ' + (e.inducedFixed + e.inducedOpen) + ' introduced by fixes. The chart appears from the second run on.'; },
     fixCaption: 'Per run: resolved findings up, findings introduced by the fixes down. Pre-existing issues found along the way do not count toward the rate.',
     formulaTitle: 'Score calculation', scopeTitle: 'Review scope', notesTitle: 'Notes on this run',
-    theme: function (t) { return 'Default theme: ' + t + '. The toggle at the top right overrides it for this browser.'; },
+    theme: function (t) { return (t === 'dark' || t === 'light' ? 'Default theme: ' + t + '.' : 'The color scheme follows the system and browser setting.') + ' The toggle at the top right overrides it for this browser.'; },
     sourceFiles: 'Source files', sourceLoc: 'Source', reviewedLoc: 'Read', exclusions: 'Not counted',
     deltaBreakdown: function (b) { return 'New findings by origin: ' + b.code + ' in files read before (code), ' + b.coverage + ' in files read for the first time (review depth)' + (b.unknown ? ', ' + b.unknown + ' without a baseline' : '') + '.'; },
     formula2: function (s) {
@@ -485,16 +507,36 @@ function fold(id, title, content, open) { return h('details', { id: id, 'class':
 var ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
 var ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
 
+var THEME_KEY = 'audit-theme:' + S.project;
+var SYSTEM_DARK = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+function baseTheme() {
+  if (S.theme === 'light' || S.theme === 'dark') return S.theme;
+  return SYSTEM_DARK && SYSTEM_DARK.matches ? 'dark' : 'light';
+}
+function storedTheme() {
+  var t = null;
+  try { t = localStorage.getItem(THEME_KEY); } catch (e) {}
+  return t === 'light' || t === 'dark' ? t : null;
+}
+
 function themeToggle() {
   var btn = h('button', { 'class': 'theme-toggle', type: 'button', 'aria-label': T.themeToggle, title: T.themeToggle });
   function paint() { btn.innerHTML = document.documentElement.getAttribute('data-theme') === 'dark' ? ICON_SUN : ICON_MOON; }
+  function apply(t) { document.documentElement.setAttribute('data-theme', t); paint(); drawEdges(); }
   btn.addEventListener('click', function () {
     var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    try { localStorage.setItem('audit-theme:' + S.project, next); } catch (e) {}
-    paint();
-    drawEdges();
+    // Wer zurück auf die Vorgabe schaltet, folgt danach wieder dem System.
+    try {
+      if (next === baseTheme()) localStorage.removeItem(THEME_KEY);
+      else localStorage.setItem(THEME_KEY, next);
+    } catch (e) {}
+    apply(next);
   });
+  if (SYSTEM_DARK) {
+    var onSystem = function () { if (!storedTheme()) apply(baseTheme()); };
+    if (SYSTEM_DARK.addEventListener) SYSTEM_DARK.addEventListener('change', onSystem);
+    else if (SYSTEM_DARK.addListener) SYSTEM_DARK.addListener(onSystem);
+  }
   paint();
   return btn;
 }
@@ -610,7 +652,7 @@ function layeredDiagram(d) {
   else window.addEventListener('resize', draw);
   requestAnimationFrame(draw);
   var hasLinks = d.layers.some(function (l) { return l.nodes.some(function (n) { return n.component && COMP[n.component]; }); });
-  return h('figure', null, wrap, h('figcaption', null, inline(d.caption), hasLinks ? ' ' + T.diagramFilter : null));
+  return h('figure', { 'class': 'diagram' }, wrap, h('figcaption', null, inline(d.caption), hasLinks ? ' ' + T.diagramFilter : null));
 }
 
 // Zweite Prüfung neben build-report.mjs: nur erlaubte Elemente und Attribute gelangen ins DOM.
@@ -640,7 +682,7 @@ function sanitizeSvg(src) {
 function portrait() {
   var p = D.portrait || {};
   var box = h('div');
-  box.appendChild(md(p.description));
+  box.appendChild(md(p.description, 'wide'));
   if (COMPONENTS.length) {
     var byComp = S.byComponent || {};
     box.appendChild(h('div', { 'class': 'components' }, COMPONENTS.map(function (c) {
@@ -655,7 +697,7 @@ function portrait() {
   if (p.diagram && p.diagram.kind === 'layered') box.appendChild(layeredDiagram(p.diagram));
   if (p.diagram && p.diagram.kind === 'svg') {
     var el = sanitizeSvg(p.diagram.svg);
-    if (el) box.appendChild(h('figure', null, h('div', { 'class': 'svg-diagram' }, el), h('figcaption', null, inline(p.diagram.caption))));
+    if (el) box.appendChild(h('figure', { 'class': 'diagram' }, h('div', { 'class': 'svg-diagram' }, el), h('figcaption', null, inline(p.diagram.caption))));
   }
   return section('portrait', T.portrait, box);
 }
@@ -667,29 +709,29 @@ function domainBlock(d) {
   var block = h('div', { 'class': 'card domain' },
     h('div', { 'class': 'domain-head' }, h('h3', null, domLabel(d)), h('div', { 'class': 'domain-score' }, fmtScore(ds.score))));
   if (!list.length) {
-    block.appendChild(ds.executiveSummary ? md(ds.executiveSummary, 'muted') : h('p', { 'class': 'muted' }, T.noFindings(domLabel(d))));
+    block.appendChild(ds.executiveSummary ? md(ds.executiveSummary, 'muted wide') : h('p', { 'class': 'muted' }, T.noFindings(domLabel(d))));
     return block;
   }
-  block.appendChild(md(ds.executiveSummary));
+  var cols = h('div', { 'class': 'domain-cols' });
+  block.appendChild(cols);
+  cols.appendChild(h('div', { 'class': 'col-summary' }, md(ds.executiveSummary)));
   var bs = ds.bySeverity || {};
   var max = Math.max.apply(null, SEVS.map(function (x) { return bs[x] || 0; }).concat([1]));
-  block.appendChild(h('h4', null, T.severities));
-  block.appendChild(h('div', { 'class': 'bars' }, SEVS.map(function (x) {
+  cols.appendChild(h('div', null, h('h4', null, T.severities), h('div', { 'class': 'bars' }, SEVS.map(function (x) {
     var n = bs[x] || 0;
     return [h('span', null, T.sev[x]),
       h('div', { 'class': 'bar' }, h('span', { style: 'width:' + (100 * n / max) + '%;background:var(--sev-' + x + ')' })),
       h('span', { 'class': 'n' }, n)];
-  })));
+  }))));
   var bc = ds.byCategory || {};
   var cats = Object.keys(CAT_DOMAIN).filter(function (c) { return CAT_DOMAIN[c] === d || bc[c]; })
     .sort(function (a, b) { return (bc[b] || 0) - (bc[a] || 0) || T.cat[a].localeCompare(T.cat[b]); });
-  block.appendChild(h('h4', null, T.categories));
-  block.appendChild(h('ul', { 'class': 'cats' }, cats.map(function (c) {
+  cols.appendChild(h('div', null, h('h4', null, T.categories), h('ul', { 'class': 'cats' }, cats.map(function (c) {
     var n = bc[c] || 0;
     return h('li', { 'class': n ? '' : 'zero' },
       n ? h('button', { 'class': 'linkish', type: 'button', onclick: function () { setFilter({ dom: [d], cat: c }); } }, T.cat[c]) : h('span', null, T.cat[c]),
       h('span', { 'class': 'n' }, n || '–'));
-  })));
+  }))));
   return block;
 }
 
@@ -893,25 +935,27 @@ function ghMeta(g) {
 }
 
 var ROWS = {};
-function row(f) {
+// cfg: { prio, feat, status } — welche optionalen Spalten die Tabelle führt.
+function row(f, cfg) {
   var comp = f.component && COMP[f.component];
   var meta = h('div', { 'class': 'c-meta' },
     h('span', { 'class': 'mono' }, f.location + (f.locations && f.locations.length ? ' +' + f.locations.length : '')),
-    h('span', null, T.cat[f.category]),
-    comp ? h('span', null, comp.label) : null,
+    h('span', { 'class': 'm-lg' }, T.cat[f.category]),
+    comp ? h('span', { 'class': 'm-lg' }, comp.label) : null,
     f['package'] ? h('span', null, f['package']) : null,
-    f.effort ? h('span', { 'class': 'c-status-m' }, T.effort + ' ' + f.effort) : null,
-    f.status ? h('span', { 'class': 'c-status-m' }, statusBadge(f)) : null,
+    f.effort ? h('span', { 'class': 'm-md' }, T.effort + ' ' + f.effort) : null,
+    cfg.status && f.status ? h('span', { 'class': 'm-md' }, statusBadge(f)) : null,
     f.origin ? h('span', null, f.origin.kind === 'induced' ? T.induced : T.discoveredOrigin) : null,
     ghMeta(f.github));
   var summary = h('summary', null,
-    h('span', { 'class': 'c-sev' }, f.kind === 'improvement' ? h('span', { 'class': 'badge soft' }, T.improvementBadge) : sevBadge(f.severity)),
+    cfg.prio ? h('span', { 'class': 'c-sev' }, sevBadge(f.severity)) : null,
     h('span', { 'class': 'c-id' }, f.id),
-    h('span', { 'class': 'c-title' }, inline(f.title)),
-    meta,
+    cfg.feat ? h('span', { 'class': 'c-feat' + (comp ? '' : ' faint') }, comp ? comp.label : '–') : null,
+    h('span', { 'class': 'c-desc' }, h('span', { 'class': 'c-title' }, inline(f.title)), meta),
     h('span', { 'class': 'c-dom' }, h('span', { 'class': 'badge soft' }, domLabel(f.domain))),
+    h('span', { 'class': 'c-cat' }, T.cat[f.category]),
     h('span', { 'class': 'c-effort' }, f.effort || '–'),
-    h('span', { 'class': 'c-status' }, statusBadge(f)));
+    cfg.status ? h('span', { 'class': 'c-status' }, statusBadge(f)) : null);
   var copyBtn = h('button', { 'class': 'copy-btn', type: 'button' }, T.copy);
   copyBtn.addEventListener('click', function () { copyText(toMarkdown(f), copyBtn); });
   var body = h('div', { 'class': 'row-body' },
@@ -929,6 +973,41 @@ function row(f) {
   });
   ROWS[f.id] = d;
   return d;
+}
+
+// Spalten in Anzeigereihenfolge; lg: erst ab 1200 px eine eigene Spalte.
+function tableColumns(cfg) {
+  var c = [];
+  if (cfg.prio) c.push({ w: 92, label: T.colSev });
+  c.push({ w: 92, label: T.colId });
+  if (cfg.feat) c.push({ w: 140, label: T.colFeat, lg: true });
+  c.push({ w: 0, label: T.colTitle, desc: true });
+  c.push({ w: 140, label: T.colDom });
+  c.push({ w: 180, label: T.colCat, lg: true });
+  c.push({ w: 56, label: T.colEffort });
+  if (cfg.status) c.push({ w: 118, label: T.colStatus });
+  return c;
+}
+
+function findingTable(list, cfg, extra) {
+  var cols = tableColumns(cfg);
+  function vars(lg) {
+    var shown = cols.filter(function (c) { return lg || !c.lg; });
+    var indent = 0;
+    for (var i = 0; !shown[i].desc; i++) indent += shown[i].w + 12;
+    return { cols: shown.map(function (c) { return c.desc ? 'minmax(0, 1fr)' : c.w + 'px'; }).join(' '), indent: indent };
+  }
+  var md_ = vars(false), lg = vars(true);
+  var labels = h('div', { 'class': 'row-head-labels', 'aria-hidden': 'true' },
+    cols.map(function (c) { return h('span', { 'class': c.lg ? 'h-lg' : null }, c.label); }));
+  var rows = h('div', { 'class': 'rows' }, list.map(function (f) { return row(f, cfg); }));
+  return {
+    rows: rows,
+    el: h('div', {
+      'class': cfg.prio ? null : 'no-prio',
+      style: '--cols-md:' + md_.cols + ';--cols-lg:' + lg.cols + ';--indent-md:' + md_.indent + 'px;--indent-lg:' + lg.indent + 'px'
+    }, extra, labels, rows)
+  };
 }
 
 function chipGroup(label, key, values, labelOf, counts) {
@@ -983,11 +1062,11 @@ function backlog() {
   ui.reset.addEventListener('click', function () { setFilter({}); });
   filters.appendChild(h('div', { 'class': 'fstatus' }, ui.count, ui.reset));
 
-  ui.rows = h('div', { 'class': 'rows' }, DEFECTS.map(row));
+  var table = findingTable(DEFECTS, { prio: true, feat: COMPONENTS.length > 0, status: FOLLOWUP }, filters);
+  ui.rows = table.rows;
   ui.empty = h('div', { 'class': 'empty', hidden: true }, T.nothingMatches);
-  var labels = h('div', { 'class': 'row-head-labels', 'aria-hidden': 'true' },
-    h('span', null, T.colSev), h('span', null, T.colId), h('span', null, T.colTitle), h('span', null, T.colDom), h('span', null, T.colEffort), FOLLOWUP ? h('span', null, T.colStatus) : null);
-  return section('backlog', T.backlog, h('div', { 'class': FOLLOWUP ? '' : 'no-status' }, filters, labels, ui.rows, ui.empty));
+  table.el.appendChild(ui.empty);
+  return section('backlog', T.backlog, table.el);
 }
 
 function matches(f) {
@@ -1038,17 +1117,15 @@ function openFinding(id) {
 function openQuestions() {
   var q = D.openQuestions || [];
   if (!q.length) return null;
-  return section('open-questions', T.openQuestions, h('ul', { 'class': 'prose' }, q.map(function (x) { return h('li', null, md(x)); })));
+  return section('open-questions', T.openQuestions, h('ul', { 'class': 'prose wide' }, q.map(function (x) { return h('li', null, md(x, 'wide')); })));
 }
 
 function improvements() {
   if (!IMPROVEMENTS.length) return null;
-  return section('improvements', T.improvements, h('div', { 'class': 'rows no-status' }, IMPROVEMENTS.map(function (f) {
-    var d = row(f);
-    delete ROWS[f.id];
-    d.id = 'f-' + f.id;
-    return d;
-  })));
+  var table = findingTable(IMPROVEMENTS, { prio: false, feat: COMPONENTS.length > 0, status: false });
+  // Nicht in ROWS: die Backlog-Filter gelten nur für Defekte. openFinding() findet sie über die id.
+  IMPROVEMENTS.forEach(function (f) { delete ROWS[f.id]; });
+  return section('improvements', T.improvements, table.el);
 }
 
 function methodology() {

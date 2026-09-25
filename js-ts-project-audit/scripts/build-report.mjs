@@ -459,7 +459,8 @@ export function migrate(old) {
     project: String(s.project ?? s.name ?? 'Projekt'),
     stack,
     date: isDate(s.date) ? s.date : (history.at(-1)?.date ?? '1970-01-01'),
-    theme: s.theme === 'dark' ? 'dark' : 'light',
+    // »light« war vor Schema 2 nur der Default, keine Entscheidung; »dark« setzte immer jemand.
+    theme: s.theme === 'dark' ? 'dark' : 'auto',
     domains: { code: dom('code'), harness: dom('harness') },
   };
   if (isDate(s.previousDate)) summary.previousDate = s.previousDate;
@@ -560,10 +561,14 @@ function main() {
   const line = `Score ${s.score} (Modell ${s.scoreModel}) — Code ${s.domains.code.score}, Harness ${s.domains.harness.score} · ${s.counts.findings} Findings, ${s.counts.improvements} Verbesserungen`;
   if (cmd === 'check') { process.stderr.write(`✓ gültig · ${line}\n`); return 0; }
 
+  // Die Seite entsteht immer aus dem Template dieses Skills, nie aus dem Markup des
+  // Vorgängers. Ein Versionssprung wird gemeldet, damit er im Begleittext landet.
+  const before = data.meta.templateVersion ?? previous?.meta?.templateVersion;
   const out = opts.out ?? './audit.html';
   const html = render(data);
   fs.writeFileSync(out, html);
-  process.stderr.write(`✓ ${out} (${Math.round(html.length / 1024)} KB) · ${line}\n`);
+  const upgrade = before && before !== data.meta.templateVersion ? ` · Template ${before} → ${data.meta.templateVersion}` : '';
+  process.stderr.write(`✓ ${out} (${Math.round(html.length / 1024)} KB) · ${line}${upgrade}\n`);
   return 0;
 }
 

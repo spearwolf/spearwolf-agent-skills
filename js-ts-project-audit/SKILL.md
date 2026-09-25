@@ -133,13 +133,13 @@ Gab es kein Vorgänger-Audit, entfällt der Schritt ersatzlos.
 
 ### 6a. Theme bestimmen
 
-Auflösungsreihenfolge für `summary.theme`, `"light"` oder `"dark"`:
+Auflösungsreihenfolge für `summary.theme`, `"auto"`, `"light"` oder `"dark"`:
 
-1. Explizite Nutzeranweisung in der laufenden Konversation, auch in verneinter Form („nicht so dunkel" → light).
-2. Sonst `summary.theme` des vorherigen Audits — so bleibt die Optik über Folgeläufe stabil.
-3. Sonst `"light"`.
+1. Explizite Nutzeranweisung in der laufenden Konversation, auch in verneinter Form („nicht so dunkel" → light, „wie mein System" → auto).
+2. Sonst `summary.theme` des vorherigen Audits — so bleibt eine einmal getroffene Wahl über Folgeläufe stabil. Ausnahme: `"light"` aus einem Report mit `meta.templateVersion` `2.0.0` war der damalige Default, keine Wahl, und wird zu `"auto"`.
+3. Sonst `"auto"`.
 
-Das ist das Start-Theme. Der Leser kann es im Report umschalten; seine Wahl merkt sich sein Browser, nicht die Datei. `prefers-color-scheme` wertet das Template bewusst nicht aus: der Default ist eine getroffene Entscheidung.
+`"auto"` lässt den Report `prefers-color-scheme` von System und Browser folgen, auch wenn es sich bei offener Seite ändert; `"light"`/`"dark"` legen das Start-Theme fest. Der Leser kann in jedem Fall umschalten; seine Wahl merkt sich sein Browser, nicht die Datei, und wer zurück auf die Vorgabe schaltet, folgt wieder ihr.
 
 ### 6. `./audit.html` bauen
 
@@ -151,6 +151,7 @@ Im Folgelauf zusätzlich `--previous "$TMP/previous.json"` (siehe `references/fo
 
 - **Meldet das Skript Fehler, entsteht keine Datei.** Jede Meldung nennt den JSON-Pfad. Den Datensatz korrigieren und neu bauen — nicht das Schema umgehen, nicht das Template anfassen, nicht selbst HTML schreiben.
 - **Zielpfad** `./audit.html` relativ zum Projekt-Root. Eine vorhandene Datei wird überschrieben, kein Suffix — der Merge ist zu diesem Zeitpunkt erledigt, Historie liefert git.
+- **Das Template kommt immer aus diesem Skill**, auch wenn schon ein `./audit.html` existiert: vom Vorgänger werden nur die Daten übernommen (`extract`), nie sein Markup. Ein älterer Report bekommt so bei jedem Lauf das aktuelle Layout. Meldet das Skript `Template <alt> → <neu>`, gehört das als ein Halbsatz in den Begleittext.
 - Was die Datei garantiert — standalone ohne externe Ressourcen, genau eine JSON-Insel `<script id="audit-data" type="application/json">`, responsiv bis 390 px, Filter nach Domain, Severity, Feature, Kategorie und Status, Deep Links, Theme-Umschalter —, garantiert das Template. Nichts davon wird nachträglich in der erzeugten Datei geändert.
 - Die Zeile, die das Skript auf stderr ausgibt (Score, Teilscores, Zahl der Findings), ist die Grundlage für Schritt 7.
 
