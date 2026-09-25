@@ -87,7 +87,7 @@ Alle über die Umgebung; die Vorgabe steht in Klammern.
   Zug 0 ist fertig — das Fenster geht in 20s zu.
   Detailplan steht
 → Runner B · Paket 2 · opus/medium
-  a3f91c2 · Speicherleck im Cache behoben · 1 Runde(n)
+  a3f91c2 · Speicherleck im Cache behoben · 0 Nachrunde(n)
 → Runner A · Paket 3 · opus/xhigh · tmux-Fenster »p3-plan«
 ```
 
@@ -174,15 +174,18 @@ längst gefahren ist, und ein Journal überlebt kein aufgeräumtes `/tmp`.
 | Exit | Heißt | Was folgt |
 | --- | --- | --- |
 | 0 | Kein Paket mehr offen | Schritt 7, `references/semver-and-closeout.md` |
-| 10 | Es braucht eine Entscheidung — oder Zug 0 stand in einer Frage, ohne dass jemand erreichbar war | Bei `blocked` zuerst »Blockiert: wer entscheidet« unten. Antwort datiert in »Entscheidungen«, erneut starten. Bei »ohne jede Erreichbarkeit«: Client am Fenster oder Remote-Control-Kanal herstellen, dann starten |
+| 10 | Es braucht eine Entscheidung — oder Zug 0 stand in einer Frage, ohne dass jemand erreichbar war | Das Paket steht auf `[!]`, ein angefangener Stand im Stash. Bei `blocked` zuerst »Blockiert: wer entscheidet« unten; `question` geht immer an den Nutzer. Antwort datiert in »Entscheidungen«, Paket auf `[ ]`, erneut starten. Bei »ohne jede Erreichbarkeit«: Client am Fenster oder Remote-Control-Kanal herstellen, dann starten |
 | 11 | Ein Paket steht auf `[~]` | `references/resume.md`, nicht dieses Skript |
-| 20 | Eine Probe aus »Was die Schleife nachprüft« (`runner.md`) fiel — oder Zug 0 hat Entscheidungen notiert, obwohl niemand erreichbar war | Plan und `git log` ansehen, nicht blind wiederholen. Bei »ohne Nutzer«: die neuen Zeilen unter »Entscheidungen« herausnehmen, erreichbar sein, starten. Ein fehlender Review-Beleg landet nicht hier: den zieht die Schleife nach (unten) |
+| 20 | Eine Probe aus »Was die Schleife nachprüft« (`runner.md`) fiel — oder Zug 0 hat Entscheidungen notiert, obwohl niemand erreichbar war | Fiel eine Probe, steht das Paket auf `[!]` mit der Zeile `Gegenprobe gescheitert` darunter; ein Neustart überspringt es, bis der **Nutzer** entscheidet — Plan und `git log` ansehen, dann Paket auf `[ ]` (wird nachgebessert) oder Commit zurücknehmen. Du entscheidest das nicht selbst. Bei »ohne Nutzer«: die neuen Zeilen unter »Entscheidungen« herausnehmen, erreichbar sein, starten. Ein fehlender Review-Beleg landet nicht hier: den zieht die Schleife nach (unten) |
 | 21 | Ein Runner hing an einer Rechteschranke | Unter `bypassPermissions` selten: es bleiben Handlungen, die kein Modus bewilligt — eine `ask`-Regel der Maschine, ein Connector-Tool auf »ask«, ein MCP-Tool mit `requiresUserInteraction`, `rm` auf einem kritischen Pfad. Die Meldung nennt das Abgelehnte. Das Paket steht auf `[~]` und gehört nach `references/resume.md` zurückgesetzt — der Runner starb mitten im Zug |
 | 30 | Der Runner-Prozess selbst ist gescheitert | `paket-N.*.stderr` im Arbeitsverzeichnis |
 | 31 | Die API blieb überlastet | Nichts ist kaputt: später dasselbe Kommando erneut |
 | 40 | Eine Vorbedingung stimmt nicht | Die Meldung sagt, welche. Auch der Vertrauensdialog landet hier |
 
 ### Blockiert: wer entscheidet
+
+Das gilt für `blocked`. Ein `question` und ein `[!]` mit der Zeile
+`Gegenprobe gescheitert` gehen immer an den Nutzer.
 
 Ein `blocked` ist zuerst eine Frage an dich, nicht an den Nutzer. Eine Frage
 an ihn ist nur eine, wenn die Antwort nicht schon im Plan, unter
@@ -203,8 +206,10 @@ und als deiner erkennbar, etwa: `- Paket 3: gesicherten Stand weiterführen,
 fehlenden Test für den Nachfolger-Aufbau nach Ende der Freigabe ergänzen
 (2026-09-21, Orchestrator nach »Blockiert: wer entscheidet«, Nutzer nicht
 gefragt)`. Paket von `[!]` auf `[ ]`, Stash-Name bleibt in der Paketdatei —
-wie der Lauf ihn wieder aufnimmt, steht in `runner.md` unter »Ein blockiertes
-Paket fortsetzen«. Schleife neu starten. Der Nutzer bekommt eine Push-Zeile
+wie der Lauf ihn wieder aufnimmt, steht in `runner.md` unter »Ein geparktes
+Paket fortsetzen«. Auch ein blockiertes N kommt auf `[ ]`, nicht auf `[r]`:
+steht unter dem Paket ein Hash, macht die Schleife selbst das `[r]` daraus.
+Schleife neu starten. Der Nutzer bekommt eine Push-Zeile
 mit der Entscheidung, keine Frage; widerspricht er, gilt seins, und du nimmst
 deinen Eintrag heraus.
 

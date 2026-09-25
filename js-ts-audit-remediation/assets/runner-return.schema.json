@@ -17,7 +17,7 @@
     },
     "status": {
       "enum": ["planned", "committed", "dropped", "blocked", "question"],
-      "description": "planned: Detailplan steht, Paket auf [~] (nur A). committed: Paket committet, auf [x] (B, und N nach dem nachgezogenen Review). dropped: alle Findings gegenstandslos, ohne Commit auf [x]. blocked: Paket auf [!], Arbeitsbaum im Stash. question: das Paket behält seine Marke und es ändert sich keine Zeile Code — die Frage selbst gehört trotzdem in den Plan, denn was dort nicht steht, gibt es nach deiner Rückgabe nicht mehr."
+      "description": "planned: Detailplan steht, Paket auf [~] (nur A, wird nie gesendet — A gibt kein JSON zurück). committed: Paket committet, auf [x] (B, und N nach dem nachgezogenen Review). dropped: alle Findings gegenstandslos, ohne Commit auf [x]. blocked: Paket auf [!], angefangener Stand im Stash, Baum sauber. question: parkt genauso wie blocked — Paket auf [!], Stand im Stash, Baum sauber —, die Frage steht in for_you und unter dem Paket im Plan; entscheiden kann nur der Nutzer."
     },
     "hash": {
       "type": "string",
@@ -25,7 +25,7 @@
     },
     "stash": {
       "type": "string",
-      "description": "Bei status=blocked der Name des Stash, sonst leer."
+      "description": "Bei status=blocked oder question der Name des Stash (paket-N-abgebrochen), leer, wenn der Baum schon sauber war."
     },
     "findings": {
       "type": "string",
@@ -42,7 +42,7 @@
     "rounds": {
       "type": "integer",
       "minimum": 0,
-      "description": "Anzahl der Runden in der Fehlerkette. 1 heißt: der erste Anlauf saß."
+      "description": "Anzahl der Runden in der Fehlerkette. Runde 0 ist der Implementierer aus Zug 1 und zählt nicht mit: 0 heißt, der erste Anlauf saß. Die Schleife erlaubt höchstens rounds + 1 Implementierer-Reports dieses Prozesses."
     },
     "plan_changes": {
       "type": "string",

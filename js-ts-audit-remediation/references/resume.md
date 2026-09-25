@@ -37,7 +37,7 @@ irgendetwas läuft.
 | `[x]` | erledigt, Hash steht | überspringen |
 | `[ ]` | offen | hier setzt die Schleife auf; fortgesetzt wird mit `scripts/remediate.sh` |
 | `[r]` | committet, aber ohne Review-Beleg | nichts tun. Das Skript holt das Paket beim nächsten Start als Erstes und zieht den Review nach. Keine Rückfrage an den Nutzer, kein Zurücksetzen, kein Verwerfen der Arbeit |
-| `[!]` | bewusst blockiert, Arbeitsbaum im Stash | **nicht** stillschweigend neu versuchen. Erst »Blockiert: wer entscheidet« in `references/shell-runner.md`: steht die Antwort fest, datiert eintragen und fortsetzen, sonst fragen |
+| `[!]` | geparkt: blockiert, offene Frage oder gescheiterte Gegenprobe; angefangener Stand im Stash | **nicht** stillschweigend neu versuchen. Erst »Blockiert: wer entscheidet« in `references/shell-runner.md`: steht die Antwort fest, datiert eintragen und auf `[ ]` setzen, sonst fragen. Ein committetes Paket führt die Schleife danach selbst als `[r]` weiter |
 | `[~]` | ein Runner ist mitten im Paket gestorben | siehe unten |
 
 ## Läuft noch eine Schleife?
@@ -88,12 +88,14 @@ Skript wieder startet. Kurz: `10` will eine Entscheidung, die datiert nach
 `20`, `30` und `40` wollen, dass jemand hinsieht, bevor derselbe Aufruf ein
 zweites Mal dasselbe tut.
 
-`20` hat seit dem 2026-09-08 einen Sonderfall weniger und einen mehr. Ein
-fehlender Review-Beleg endet nicht mehr hier — den zieht die Schleife selbst
-nach. Bleibt er auch danach aus, steht das Paket auf `[r]`, der Commit im Repo,
-und der Nutzer entscheidet: Review von Hand nachholen lassen, den Commit stehen
-lassen und die Marke auf `[x]` setzen, oder ihn zurücknehmen. Was hier nicht
-passiert: die Arbeit stillschweigend verwerfen.
+`20` nach einer gescheiterten Gegenprobe lässt das Paket auf `[!]` mit der
+Zeile `Gegenprobe gescheitert` darunter — nie auf dem `[x]`, das der Runner
+selbst gesetzt hatte. Ein fehlender Review-Beleg endet dagegen nicht hier, den
+zieht die Schleife selbst nach. Bleibt er auch danach aus, steht das Paket auf
+`[r]`, der Commit im Repo, und der Nutzer entscheidet: Review von Hand
+nachholen lassen, den Commit stehen lassen und die Marke auf `[x]` setzen,
+oder ihn zurücknehmen. Was hier nicht passiert: die Arbeit stillschweigend
+verwerfen.
 
 `21` ist ein Fall für sich, weil er zwei Dinge auf einmal hinterlässt: eine zu
 enge Allowlist **und** ein Paket, das mitten im Zug stehengeblieben ist. Die

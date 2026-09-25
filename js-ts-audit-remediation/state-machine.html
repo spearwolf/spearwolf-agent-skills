@@ -1,0 +1,969 @@
+<meta charset="utf-8">
+<title>Zustandsmaschine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+
+<style>
+  :root {
+    --ground: #E7ECF1;
+    --surface: #FBFCFD;
+    --surface-2: #F1F5F8;
+    --ink: #131A22;
+    --muted: #58636F;
+    --line: #C3CFDA;
+    --line-soft: #DBE3EA;
+    --accent: #2E5FA3;
+    --accent-wash: #DEE8F5;
+    --signal: #A94E1B;
+    --signal-wash: #F3E1D4;
+    --good: #16776A;
+    --good-wash: #D8ECE8;
+
+    --display: "Bricolage Grotesque", "Archivo", system-ui, sans-serif;
+    --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+    --measure: 68ch;
+    --wide: 1080px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E1318;
+      --surface: #151B22;
+      --surface-2: #1B222B;
+      --ink: #E2E8EE;
+      --muted: #919EAB;
+      --line: #2B343E;
+      --line-soft: #222A33;
+      --accent: #83AEEC;
+      --accent-wash: #1C2A3D;
+      --signal: #E39258;
+      --signal-wash: #33241A;
+      --good: #58C3AC;
+      --good-wash: #16302C;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0E1318;
+    --surface: #151B22;
+    --surface-2: #1B222B;
+    --ink: #E2E8EE;
+    --muted: #919EAB;
+    --line: #2B343E;
+    --line-soft: #222A33;
+    --accent: #83AEEC;
+    --accent-wash: #1C2A3D;
+    --signal: #E39258;
+    --signal-wash: #33241A;
+    --good: #58C3AC;
+    --good-wash: #16302C;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16.5px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: var(--wide);
+    margin: 0 auto;
+    padding: clamp(28px, 5vw, 72px) clamp(18px, 4vw, 48px) 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .prose { max-width: var(--measure); }
+
+  /* ---------- masthead ---------- */
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 14px;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-optical-sizing: auto;
+    font-size: clamp(38px, 7vw, 68px);
+    font-weight: 700;
+    line-height: .98;
+    letter-spacing: -.025em;
+    margin: 0 0 20px;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-size: clamp(18px, 2.2vw, 21px);
+    line-height: 1.5;
+    color: var(--ink);
+    max-width: 58ch;
+    margin: 0 0 34px;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 28px;
+    padding: 14px 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .meta b { color: var(--ink); font-weight: 500; }
+
+  /* ---------- sections ---------- */
+
+  section { margin-top: 68px; }
+
+  h2 {
+    font-family: var(--display);
+    font-size: clamp(25px, 3.4vw, 34px);
+    font-weight: 700;
+    letter-spacing: -.018em;
+    line-height: 1.1;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+
+  .kicker {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 10px;
+  }
+
+  h3 {
+    font-family: var(--display);
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    margin: 34px 0 8px;
+  }
+
+  p { margin: 0 0 16px; }
+  .prose > p:last-child { margin-bottom: 0; }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  code {
+    font-family: var(--mono);
+    font-size: .875em;
+    background: var(--surface-2);
+    border: 1px solid var(--line-soft);
+    border-radius: 3px;
+    padding: .08em .32em;
+  }
+
+  ul, ol { margin: 0 0 16px; padding-left: 1.25em; }
+  li { margin-bottom: 8px; }
+  li::marker { color: var(--muted); }
+
+  /* ---------- figures ---------- */
+
+  figure {
+    margin: 30px 0 34px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 20px 20px 16px;
+  }
+  .fig-scroll { overflow-x: auto; }
+  figure svg { display: block; width: 100%; min-width: 620px; height: auto; color: var(--ink); }
+  figcaption {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line-soft);
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--muted);
+    max-width: 78ch;
+  }
+  figcaption b { color: var(--ink); font-weight: 500; }
+
+  .fig text { font-family: var(--mono); font-size: 12px; fill: currentColor; }
+  .fig .t-strong { font-weight: 600; }
+  .fig .t-sub { font-size: 10.5px; fill: var(--muted); }
+  .fig .t-lane { font-size: 11.5px; fill: var(--muted); }
+  .fig .t-edge { font-size: 10.5px; fill: var(--muted); }
+  .fig .t-tick { font-size: 10.5px; fill: var(--muted); }
+  .fig .t-warn { font-size: 10.5px; fill: var(--signal); }
+
+  .fig .box { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.25; }
+  .fig .box-agent { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.25; }
+  .fig .box-long { fill: var(--signal-wash); stroke: var(--signal); stroke-width: 1.25; }
+  .fig .box-shell { fill: var(--good-wash); stroke: var(--good); stroke-width: 1.5; }
+  .fig .frame { fill: none; stroke: var(--line); stroke-width: 1.25; stroke-dasharray: 5 4; }
+
+  .fig .bar-agent { fill: var(--accent); opacity: .82; }
+  .fig .bar-agent-soft { fill: var(--accent); opacity: .42; }
+  .fig .bar-long { fill: var(--signal); opacity: .8; }
+  .fig .bar-shell { fill: none; stroke: var(--good); stroke-width: 1.5; }
+
+  .fig .edge { stroke: currentColor; stroke-width: 1.25; fill: none; opacity: .5; }
+  .fig .edge-dot { stroke-dasharray: 4 3; }
+  .fig .axis { stroke: var(--line); stroke-width: 1; }
+  .fig .grid { stroke: var(--line-soft); stroke-width: 1; }
+  .fig .mk { fill: currentColor; opacity: .5; }
+
+  /* ---------- tables ---------- */
+
+  .table-wrap { overflow-x: auto; margin: 26px 0 30px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  thead th {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line);
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td code { white-space: nowrap; }
+  .who { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 2.5px 7px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .tag-shell { background: var(--good-wash); color: var(--good); border: 1px solid var(--good); }
+  .tag-agent { background: var(--accent-wash); color: var(--accent); border: 1px solid var(--accent); }
+
+  /* ---------- callouts ---------- */
+
+  .note {
+    border-left: 2px solid var(--signal);
+    background: var(--surface);
+    padding: 16px 20px;
+    margin: 26px 0;
+    max-width: var(--measure);
+    font-size: 15px;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note .lbl {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--signal);
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .quote {
+    font-size: 14.5px;
+    color: var(--muted);
+    border-left: 2px solid var(--line);
+    padding: 4px 0 4px 18px;
+    margin: 0 0 18px;
+    max-width: 74ch;
+  }
+  .quote cite { display: block; margin-top: 6px; font-family: var(--mono); font-size: 11px; font-style: normal; letter-spacing: .04em; }
+
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    margin: 26px 0;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.62;
+    tab-size: 2;
+  }
+  pre code { background: none; border: 0; padding: 0; font-size: inherit; }
+  .c-cmt { color: var(--muted); }
+  .c-kw { color: var(--accent); font-weight: 500; }
+  .c-str { color: var(--good); }
+
+  /* ---------- verdict ---------- */
+
+  .verdict {
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--accent);
+    background: var(--surface);
+    border-radius: 4px;
+    padding: clamp(22px, 3vw, 34px);
+    margin-top: 30px;
+  }
+  .verdict h2 { margin-bottom: 14px; }
+  .verdict p { max-width: 66ch; }
+  .verdict p:last-child { margin-bottom: 0; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 14px; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .sw { width: 22px; height: 9px; border-radius: 2px; display: inline-block; }
+  .sw-agent { background: var(--accent); opacity: .82; }
+  .sw-long { background: var(--signal); opacity: .8; }
+  .sw-wait { background: var(--accent); opacity: .42; height: 5px; }
+  .sw-shell { border: 1.5px solid var(--good); height: 9px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    a { transition: opacity .15s ease; }
+  }
+</style>
+
+<style>
+  .fig .st-open { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.5; }
+  .fig .st-run { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+  .fig .st-done { fill: var(--good-wash); stroke: var(--good); stroke-width: 1.5; }
+  .fig .st-sink { fill: var(--signal-wash); stroke: var(--signal); stroke-width: 1.5; }
+  .fig .edge-warn { stroke: var(--signal); stroke-width: 1.25; fill: none; stroke-dasharray: 5 4; }
+  .fig .mk-warn { fill: var(--signal); }
+  .fig .t-big { font-size: 13.5px; font-weight: 600; }
+
+  .mk {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  td.num, th.num { text-align: right; font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
+  .gate { font-family: var(--mono); font-size: 11px; color: var(--signal); white-space: nowrap; }
+  .toc { columns: 2 260px; column-gap: 32px; margin: 26px 0 0; padding-left: 1.25em; font-size: 15px; }
+  .toc li { break-inside: avoid; margin-bottom: 4px; }
+  dl.inv { margin: 22px 0 0; max-width: var(--measure); }
+  dl.inv dt { font-weight: 600; margin-top: 14px; }
+  dl.inv dd { margin: 2px 0 0; color: var(--ink); }
+  .formula {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 14px 18px;
+    margin: 18px 0 22px;
+    max-width: var(--measure);
+    line-height: 1.7;
+    overflow-x: auto;
+  }
+</style>
+
+<div class="page">
+
+  <header>
+    <p class="eyebrow">Spezifikation · js-ts-audit-remediation</p>
+    <h1>Zustandsmaschine</h1>
+    <p class="standfirst">Der Remediation-Lauf als Automat: welche Zustände es gibt, wo jeder davon gespeichert ist, wer ihn ändert und unter welcher Bedingung. Beschreibt, was gebaut ist, nicht was gedacht war — mit den Stellen, an denen beides auseinanderläuft.</p>
+    <div class="meta">
+      <span><b>Stand</b> 2026-09-25, nach der Korrektur der vier Lücken</span>
+      <span><b>Quelle</b> <code>scripts/remediate.sh</code> · <code>SKILL.md</code> · <code>references/*.md</code> · <code>assets/runner-return.schema.json</code></span>
+      <span><b>Begleitend</b> <a href="./runner-topologie.html">runner-topologie.html</a> — wer wen startet</span>
+    </div>
+    <ol class="toc">
+      <li><a href="#ebenen">Sechs Automaten ineinander</a></li>
+      <li><a href="#zustand">Der Zustandsvektor</a></li>
+      <li><a href="#lauf">Ebene 1 · der Lauf</a></li>
+      <li><a href="#schleife">Ebene 2 · die Schleife</a></li>
+      <li><a href="#marken">Ebene 3 · das Paket</a></li>
+      <li><a href="#zug0">Ebene 4 · das Fenster von Zug 0</a></li>
+      <li><a href="#zuege">Ebene 5 · die Züge 1–5</a></li>
+      <li><a href="#dispatch">Ebene 6 · ein Prozessstart</a></li>
+      <li><a href="#exits">Exit-Codes und Rückweg</a></li>
+      <li><a href="#invarianten">Invarianten</a></li>
+      <li><a href="#luecken">Was die Formalisierung aufdeckt</a></li>
+    </ol>
+  </header>
+
+  <section id="ebenen">
+    <p class="kicker">Aufbau</p>
+    <h2>Sechs Automaten ineinander</h2>
+    <div class="prose">
+      <p>Es gibt nicht <i>die</i> Zustandsmaschine des Laufs. Es gibt sechs, geschachtelt, und jede speichert ihren Zustand an einem anderen Ort. Das ist die wichtigste Eigenschaft des ganzen Entwurfs und zugleich der Grund, warum er sich schwer überblicken lässt: kein einzelner Prozess hält den Zustand, und keiner muss es. Wer stirbt, hinterlässt ihn in Dateien.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Ebene</th><th>Automat</th><th>Zustand liegt in</th><th>Getrieben von</th><th>Lebt</th></tr></thead>
+        <tbody>
+          <tr><td class="who">1</td><td>der Lauf, Schritt 1–7</td><td>Existenz von <code>./remediation-plan.md</code>, Zeile <code>Lauf-Status:</code>, »Offene Befunde«</td><td><span class="tag tag-agent">Orchestrator</span></td><td>Tage</td></tr>
+          <tr><td class="who">2</td><td>die Schleife</td><td>Prozess <code>remediate.sh</code>, Sperre <code>.remediate.lock</code>, Journal</td><td><span class="tag tag-shell">Shell</span></td><td>Stunden</td></tr>
+          <tr><td class="who">3</td><td>das Paket</td><td>die Marke in <code>### [·] N. Titel</code></td><td>A, B, N, Schleife, Orchestrator</td><td>den Lauf</td></tr>
+          <tr><td class="who">4</td><td>das Fenster von Zug 0</td><td>tmux-Fenster <code>p&lt;N&gt;-plan</code>, <code>paket-N.zug0.*</code>, Variablen der Shell</td><td><span class="tag tag-shell">Shell</span> beaufsichtigt <span class="tag tag-agent">A</span></td><td>Minuten</td></tr>
+          <tr><td class="who">5</td><td>die Züge 1–5</td><td><code>Verlauf:</code> der Paketdatei, Reportdateien, Verify-Log, Stash</td><td><span class="tag tag-agent">B</span> bzw. <span class="tag tag-agent">N</span></td><td>ein Paket</td></tr>
+          <tr><td class="who">6</td><td>ein Prozessstart</td><td>Ergebnis-JSON, Stderr, Fingerabdruck</td><td><span class="tag tag-shell">Shell</span></td><td>ein Runner</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose">
+      <p>Die Ebenen reden nur über Dateien miteinander. Ebene 2 liest von Ebene 3 allein die Marke; Ebene 3 erfährt von Ebene 5 allein, was der Runner am Ende in den Plan schreibt, und die Schleife prüft es gegen <code>git</code> nach. Wer eine Ebene nachbauen will, muss ihre Schnittstelle zu den Nachbarn exakt einhalten — der Rest ist ihr Inneres.</p>
+      <p>Akteure, wie sie in den Tabellen stehen: <b>Orchestrator</b> ist die Session, die plant, startet und abschließt. <b>A</b> fährt Zug 0 im tmux-Fenster, <b>B</b> die Züge 1–5 als <code>claude -p</code>, <b>N</b> den nachgezogenen Review. <b>Schleife</b> ist <code>remediate.sh</code>, <b>Nutzer</b> der Mensch.</p>
+    </div>
+  </section>
+
+  <section id="zustand">
+    <p class="kicker">Persistenz</p>
+    <h2>Der Zustandsvektor</h2>
+    <div class="prose">
+      <p>Alles, was einen Prozessabsturz überlebt. Die Spalte »maßgeblich« sagt, wer bei einem Widerspruch gewinnt; <code>resume.md</code> hält sich genau an diese Rangfolge: <code>git log</code> vor Plan, Plan vor Journal, Journal vor Erinnerung.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Träger</th><th>Schreibt</th><th>Liest</th><th>Maßgeblich für</th></tr></thead>
+        <tbody>
+          <tr><td><code>git</code>: <code>HEAD</code>, Commits, Stash <code>paket-N-abgebrochen</code></td><td>B, N, Implementierer (nur Arbeitsbaum)</td><td>Schleife, Orchestrator</td><td>ob etwas passiert ist. Ein Hash im Plan, den es nicht gibt, macht den Plan falsch</td></tr>
+          <tr><td>Paketmarke <code>[ ] [~] [r] [x] [!]</code></td><td>A, B, N, Schleife (<code>[r]</code>), Orchestrator (<code>[!]</code>→<code>[ ]</code>, <code>[~]</code>→<code>[ ]</code>)</td><td>Schleife per <code>sed</code></td><td>welches Paket als Nächstes wer bekommt</td></tr>
+          <tr><td><code>Lauf-Status:</code> im Plan-Kopf</td><td>nur die Schleife; der Abschluss-Commit löscht</td><td>Orchestrator, <code>resume.md</code></td><td>ob der Lauf läuft, steht oder auf den Abschluss wartet</td></tr>
+          <tr><td>»Entscheidungen«</td><td>Orchestrator, A (nur mit erreichbarem Nutzer)</td><td>alle Runner</td><td>was als beschlossen gilt und nie neu aufgeworfen wird</td></tr>
+          <tr><td>»Offene Befunde«, <code>Folgen:</code>, <code>Schnittstellen:</code></td><td>A, B, N</td><td>A des nächsten Pakets, Abschluss</td><td>was der Lauf noch schuldet</td></tr>
+          <tr><td><code>docs/remediation/paket-N.md</code> mit <code>Verlauf:</code></td><td>A legt an, B und N schreiben fort</td><td>B, N, Implementierer, Reviewer; der Orchestrator nur bei <code>[~]</code>, <code>[!]</code></td><td>wie weit ein Paket kam</td></tr>
+          <tr><td><code>$WORK/paket-N.{impl,review}-*.json</code>, <code>.exit</code></td><td>Implementierer, Reviewer (über B/N)</td><td>B, N, Schleife (Anzahl)</td><td>dass delegiert wurde</td></tr>
+          <tr><td><code>$WORK/paket-N.verify.log</code> mit <code>exit=</code></td><td>B, N</td><td>Schleife</td><td>dass grün committet wurde</td></tr>
+          <tr><td><code>$WORK/paket-N.zug0.done</code></td><td>A (einziges vorab freigegebenes Kommando)</td><td>Schleife</td><td>dass Zug 0 sich verabschiedet hat</td></tr>
+          <tr><td><code>$WORK/remediate.log</code> (Journal)</td><td>Schleife, inkl. EXIT-Trap</td><td>Wachposten</td><td>was passiert ist, in Reihenfolge</td></tr>
+          <tr><td><code>$WORK/.remediate.lock</code></td><td>Schleife (<code>mkdir</code>), Trap (<code>rmdir</code>)</td><td>Schleife, Wachposten</td><td>dass jetzt eine Schleife arbeitet</td></tr>
+          <tr><td>tmux-Session <code>remediate-&lt;projekt&gt;</code></td><td>Start, Abschluss (<code>kill-session</code>)</td><td>Schleife (Exit 40, wenn schon da), Nutzer</td><td>wo man zusieht und antwortet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="lauf">
+    <p class="kicker">Ebene 1</p>
+    <h2>Der Lauf</h2>
+    <div class="prose">
+      <p>Gefahren vom Orchestrator. Vier Zustände warten auf den Nutzer, alle anderen sind Ansagen. Nach der Freigabe in L5 wartet der Lauf nur noch auf Antworten aus der Schleife, nie mehr auf eine Bestätigung.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Zustand</th><th>Tut</th><th>Übergang</th><th>Wartet</th></tr></thead>
+        <tbody>
+          <tr><td class="who">L0 Eingang</td><td>sieht nach, ob <code>./remediation-plan.md</code> existiert</td><td>ja → Wiederaufnahme (Tabelle unten) · nein → L1</td><td>—</td></tr>
+          <tr><td class="who">L1 Findings</td><td><code>build-report.mjs extract ./audit.html</code></td><td>→ L2 · keine <code>audit.html</code> → Frage · Insel kaputt → aus der Backlog-Tabelle rekonstruieren, vermerken</td><td>nur ohne Audit</td></tr>
+          <tr><td class="who">L2 Baseline</td><td>Verify-Kommandos einmal fahren, Arbeitsbaum prüfen</td><td>→ L3 · Baum schmutzig → Frage: stashen, committen, abbrechen</td><td><span class="gate">Halt</span> bei schmutzigem Baum</td></tr>
+          <tr><td class="who">L3 Scope</td><td>Vorschlag »alles außer info«, Scope-Regel als Satz</td><td>→ L4</td><td><span class="gate">Halt</span> Bestätigung</td></tr>
+          <tr><td class="who">L4 Klärung</td><td>offene Entscheidungen gebündelt, je mit Vorschlag</td><td>→ L5 · nichts offen → L5 ohne Frage</td><td><span class="gate">Halt</span> eine Runde</td></tr>
+          <tr><td class="who">L5 Grobplan</td><td>Pakete schneiden, ordnen, Kaltstarts rechnen, Plan schreiben</td><td>Freigabe → L6</td><td><span class="gate">Halt</span> Freigabe</td></tr>
+          <tr><td class="who">L6 Schleife</td><td>startet <code>remediate.sh</code>, setzt den Wachposten, reagiert auf Journalzeilen</td><td><code>ende exit=0</code> → L7 · anderer Code → Exit-Tabelle</td><td>nur auf <code>question</code> und <code>blocked</code>, die er nicht selbst entscheiden kann</td></tr>
+          <tr><td class="who">L7 Abschluss</td><td>die Unterzustände unten</td><td>→ L8, oder zurück nach L6, wenn der Drain Pakete schneidet</td><td>nie</td></tr>
+          <tr><td class="who">L8 Fertig</td><td>—</td><td>Endzustand. <code>Lauf-Status:</code> ist weg</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>L7 im Inneren</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Unterzustand</th><th>Übergang</th></tr></thead>
+        <tbody>
+          <tr><td class="who">D0 Drain</td><td>unverteilte <code>Folgen:</code> → Triage-Runner schneidet Pakete → <code>kill-session</code>, zurück nach L6 · Queue-Eintrag <code>→ Scope</code> → neues Paket am Ende, zurück nach L6 · <code>→ Audit</code>, <code>→ Rückfrage</code> → vorgemerkt für D4 · ab der dritten Drain-Runde: Rest <code>→ Audit</code> · Queue leer → D1</td></tr>
+          <tr><td class="who">D1 Verify</td><td>alle Baseline-Kommandos wörtlich aus dem Plan-Kopf · rot, was vorher grün war → Bericht, Lauf endet hier · sonst → D2</td></tr>
+          <tr><td class="who">D2–D5</td><td>Semver-Empfehlung, CHANGELOG im Abschnitt für Unveröffentlichtes, <code>audit.html</code> per <code>extract</code>/<code>build</code>, Remediation-Report — linear</td></tr>
+          <tr><td class="who">D6 Commits</td><td>erster Commit immer · zweiter (<code>git rm</code> Plan und <code>paket-*.md</code>) nur, wenn kein <code>[!]</code>, kein <code>[r]</code>, Queue leer, keine offene <code>Folgen:</code>-Zeile</td></tr>
+          <tr><td class="who">D7</td><td><code>tmux kill-session</code>, nach dem letzten Commit, nie davor</td></tr>
+          <tr><td class="who">D8</td><td>Bericht, vier bis sechs Zeilen → L8</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Wiederaufnahme: L0 mit Plan</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Befund</th><th>Nächster Zustand</th></tr></thead>
+        <tbody>
+          <tr><td>Kopf passt nicht zu Audit-Quelle und Branch</td><td>Frage: fremder Lauf</td></tr>
+          <tr><td>Hash im Plan fehlt in <code>git log</code></td><td>Frage, bevor irgendetwas läuft</td></tr>
+          <tr><td><code>Lauf-Status: Schleife durch … Abschluss offen</code></td><td>L7, ohne Rückfrage</td></tr>
+          <tr><td>tmux-Session lebt, Journal ohne <code>ende</code></td><td>nichts starten, Pane beschreiben, Nutzer entscheidet</td></tr>
+          <tr><td>Journal endet mit <code>ende exit=N</code></td><td>Exit-Tabelle</td></tr>
+          <tr><td>keine Session, kein <code>ende</code></td><td>Marken und <code>git status</code> entscheiden allein</td></tr>
+          <tr><td>ein Paket auf <code>[~]</code></td><td>Paketdatei lesen · Verlauf endet nach Zug 0 und Baum sauber → <code>[ ]</code>, L6 · Baum schmutzig oder Widerspruch → Nutzer entscheidet</td></tr>
+          <tr><td>alle <code>[x]</code>, Queue nicht leer</td><td>L7 bei D0</td></tr>
+          <tr><td>ein <code>[r]</code></td><td>L6: das Skript holt es als Erstes</td></tr>
+          <tr><td>offene <code>[ ]</code></td><td>L6</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="schleife">
+    <p class="kicker">Ebene 2</p>
+    <h2>Die Schleife</h2>
+    <div class="prose">
+      <p><code>remediate.sh</code> läuft zweimal an. Der äußere Aufruf prüft die Vorbedingungen, legt die tmux-Session an, kopiert das Skript nach <code>$WORK/remediate.snapshot.sh</code> und endet sofort mit 0. Der innere — die Kopie, mit <code>REMEDIATE_INSIDE=1</code> — prüft noch einmal, nimmt die Sperre, setzt den einzigen EXIT-Trap und schreibt <code>Lauf-Status: läuft seit …</code>. Erst dann beginnt der Zyklus.</p>
+    </div>
+
+    <h3>Vorbedingungen (Exit 40)</h3>
+    <div class="prose">
+      <p>Werkzeuge <code>claude jq git sed grep awk</code> vorhanden; ein Git-Arbeitsbaum; Plan und Rückgabeschema existieren, das Schema ist gültiges JSON; der Plan-Kopf nennt einen Branch, und genau der ist ausgecheckt; das Arbeitsverzeichnis lässt sich anlegen; der Arbeitsbaum ist sauber, abgesehen vom ungetrackten Plan und <code>docs/remediation/</code>; der Plan enthält mindestens ein Paket. Nur außen: tmux vorhanden, keine gleichnamige Session. Nur innen: die Sperre ist frei, ein Terminal ist da.</p>
+    </div>
+
+    <h3>Ein Durchlauf</h3>
+    <pre><code><span class="c-kw">iter</span> ← iter + 1
+<span class="c-kw">wenn</span> iter &gt; MAX_ITER (200)                   → Exit 20
+<span class="c-kw">wenn</span> iter = 1 ∧ ∃ [~]                       → Exit 11   <span class="c-cmt"># Rest eines gestorbenen Laufs</span>
+<span class="c-kw">wenn</span> ∃ [r]  → Rolle N auf dem obersten [r]         <span class="c-cmt"># Vorrang: kein Weiterbauen auf ungeprüftem Commit</span>
+<span class="c-kw">sonst wenn</span> ∃ [~]  → Rolle B auf dem obersten [~]
+<span class="c-kw">sonst wenn</span> ∃ [ ]  → Rolle A auf dem obersten [ ]
+<span class="c-kw">sonst</span>  → Lauf-Status »Schleife durch · Abschluss offen«, Meldung, Exit 0
+<span class="c-kw">wenn</span> --once ∧ PACKAGES_DONE ≥ 1             → Lauf-Status »nach --once angehalten«, Exit 0</code></pre>
+
+    <div class="prose">
+      <p>»Oberstes« heißt: erste Überschrift dieser Marke im Dokument. Die Reihenfolge der Pakete ist also ihre Stellung in der Datei, nicht ihre Nummer. <code>[!]</code> und <code>[x]</code> wählt die Schleife nie aus. Ein blockiertes Paket, das niemand wieder öffnet, bleibt deshalb bei einem Neustart liegen, und der Lauf fährt die übrigen zu Ende — gewollt, und der Abschluss verweigert dann den zweiten Commit.</p>
+      <p><code>PACKAGES_DONE</code> zählt ein <code>[x]</code> aus Zug 0, ein <code>committed</code> oder <code>dropped</code> von B und ein <code>committed</code> von N. Ein Commit ohne Review-Beleg zählt nicht: das Paket steht auf <code>[r]</code> und ist noch nicht fertig.</p>
+    </div>
+  </section>
+
+  <section id="marken">
+    <p class="kicker">Ebene 3</p>
+    <h2>Das Paket</h2>
+    <div class="prose">
+      <p>Das Herz des Ganzen. Fünf Marken, ein Endzustand, eine Senke. Der Automat hat eine Eigenheit, die ihn von einem Lehrbuch-Automaten trennt: <b>den Übergang schreibt fast immer der Akteur selbst</b>, und die Schleife prüft ihn danach. Nur <code>[r]</code> setzt die Schleife eigenhändig.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="fig-scroll">
+        <svg viewBox="0 0 940 490" role="img" aria-label="Zustandsdiagramm der Paketmarken: offen, geplant, Review offen, erledigt und blockiert, mit den Übergängen durch A, B, N, die Schleife und den Orchestrator.">
+          <defs>
+            <marker id="sa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="mk" d="M0,0 L10,5 L0,10 z" />
+            </marker>
+            <marker id="sw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="mk-warn" d="M0,0 L10,5 L0,10 z" />
+            </marker>
+          </defs>
+
+          <!-- edges first, boxes on top -->
+          <path class="edge" d="M115,200 V22 H880 V196" marker-end="url(#sa)" />
+          <text class="t-edge" x="470" y="15" text-anchor="middle">A · alle Findings gegenstandslos: »entfallen«</text>
+
+          <path class="edge" d="M200,222 H326" marker-end="url(#sa)" />
+          <text class="t-edge" x="263" y="214" text-anchor="middle">A · Zug 0</text>
+
+          <path class="edge edge-dot" d="M330,244 H204" marker-end="url(#sa)" />
+          <text class="t-edge" x="265" y="276" text-anchor="middle">Resume, Baum sauber</text>
+
+          <path class="edge" d="M500,222 H736" marker-end="url(#sa)" />
+          <text class="t-edge" x="590" y="214" text-anchor="middle">B · committed</text>
+          <text class="t-edge" x="590" y="240" text-anchor="middle">B · dropped</text>
+
+          <path class="edge" d="M440,200 V62 H531" marker-end="url(#sa)" />
+          <text class="t-edge" x="448" y="128">B · committed,</text>
+          <text class="t-edge" x="448" y="142">Review fehlt</text>
+          <text class="t-edge" x="448" y="156">(setzt die Schleife)</text>
+
+          <path class="edge" d="M705,62 H825 V196" marker-end="url(#sa)" />
+          <text class="t-edge" x="712" y="54">N · Review nachgeholt</text>
+
+          <path class="edge" d="M415,258 V392 H531" marker-end="url(#sa)" />
+          <text class="t-edge" x="423" y="322">B · blocked, question</text>
+          <text class="t-edge" x="423" y="336">Stand im Stash</text>
+
+          <path class="edge" d="M110,258 V412 H531" marker-end="url(#sa)" />
+          <text class="t-edge" x="122" y="404">A · blockiert</text>
+
+          <path class="edge edge-dot" d="M600,428 V456 H60 V262" marker-end="url(#sa)" />
+          <text class="t-edge" x="330" y="474" text-anchor="middle">Orchestrator (nur blocked) oder Nutzer · mit Hash macht die Schleife [r] daraus</text>
+
+          <path class="edge" d="M680,98 V366" marker-end="url(#sa)" />
+          <text class="t-edge" x="688" y="300">N · blocked,</text>
+          <text class="t-edge" x="688" y="314">question</text>
+
+          <!-- states -->
+          <rect class="st-open" x="30" y="200" width="170" height="58" rx="4" />
+          <text class="t-big" x="46" y="225">[ ]  offen</text>
+          <text class="t-sub" x="46" y="243">Detailplan fehlt</text>
+
+          <rect class="st-run" x="330" y="200" width="170" height="58" rx="4" />
+          <text class="t-big" x="346" y="225">[~]  geplant</text>
+          <text class="t-sub" x="346" y="243">Detailplan steht</text>
+
+          <rect class="st-run" x="535" y="40" width="170" height="58" rx="4" />
+          <text class="t-big" x="551" y="65">[r]  Review offen</text>
+          <text class="t-sub" x="551" y="83">Commit ohne Beleg</text>
+
+          <rect class="st-done" x="740" y="200" width="170" height="58" rx="4" />
+          <text class="t-big" x="756" y="225">[x]  erledigt</text>
+          <text class="t-sub" x="756" y="243">Hash oder »entfallen«</text>
+
+          <rect class="st-sink" x="535" y="370" width="170" height="58" rx="4" />
+          <text class="t-big" x="551" y="395">[!]  blockiert</text>
+          <text class="t-sub" x="551" y="413">wartet auf Entscheidung</text>
+        </svg>
+      </div>
+      <figcaption><b>Abb. 1 · Die Paketmarken.</b> Durchgezogene Kanten schreibt ein Runner, gepunktete schreibt der Orchestrator zwischen zwei Läufen der Schleife. <code>[x]</code> ist Endzustand; <code>[!]</code> ist für die Schleife eine Senke, sie wählt es nie aus. <code>blocked</code> und <code>question</code> parken gleich: <code>[!]</code>, Stand im Stash. Nicht eingezeichnet, weil sie jeden Zustand treffen: eine gescheiterte Gegenprobe setzt das Paket von der Schleife aus auf <code>[!]</code>, und ein wieder geöffnetes Paket mit Hash geht von <code>[ ]</code> ohne Umweg auf <code>[r]</code>.</figcaption>
+      <div class="legend">
+        <span><i class="sw sw-shell"></i> Endzustand</span>
+        <span><i class="sw sw-agent"></i> in Arbeit</span>
+        <span><i class="sw sw-long"></i> Senke</span>
+      </div>
+    </figure>
+
+    <h3>Übergangstabelle</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Von</th><th>Nach</th><th>Wer</th><th>Wann</th><th>Wächter der Schleife</th><th>Danach</th></tr></thead>
+        <tbody>
+          <tr><td class="mk">[ ]</td><td class="mk">[~]</td><td>A</td><td>Detailplan und Paketdatei stehen</td><td>Marke <code>[~]</code>; »Entscheidungen« nur mit erreichbarem Nutzer gewachsen. Ob die Paketdatei existiert, prüft erst B</td><td>B im nächsten Durchlauf</td></tr>
+          <tr><td class="mk">[ ]</td><td class="mk">[x]</td><td>A</td><td>jedes Finding gegenstandslos, <code>Ergebnis: entfallen</code> mit Begründung</td><td>Marke</td><td>nächstes Paket</td></tr>
+          <tr><td class="mk">[ ]</td><td class="mk">[!]</td><td>A</td><td>bewusst blockiert</td><td>Marke</td><td>Exit 10</td></tr>
+          <tr><td class="mk">[ ]</td><td class="mk">[ ]</td><td>A</td><td>Zug 0 ist nicht durchgelaufen</td><td>Marke unverändert</td><td>Exit 10</td></tr>
+          <tr><td class="mk">[~]</td><td class="mk">[x]</td><td>B</td><td><code>committed</code>, Review-Report liegt vor</td><td><code>check_commit</code> vollständig (<a href="#waechter">unten</a>)</td><td>Meldung, nächstes Paket</td></tr>
+          <tr><td class="mk">[~]</td><td class="mk">[r]</td><td>Schleife</td><td>B meldet <code>committed</code>, kein <code>paket-N.review-*.json</code></td><td>alle übrigen Proben von <code>check_commit</code></td><td>Rolle N im nächsten Durchlauf, keine Meldung</td></tr>
+          <tr><td class="mk">[~]</td><td class="mk">[x]</td><td>B</td><td><code>dropped</code></td><td>Marke</td><td>Meldung, nächstes Paket</td></tr>
+          <tr><td class="mk">[~]</td><td class="mk">[!]</td><td>B</td><td><code>blocked</code> oder <code>question</code>, Stand im Stash <code>paket-N-abgebrochen</code></td><td>Marke <code>[!]</code>, Baum sauber</td><td>Exit 10</td></tr>
+          <tr><td class="mk">[~]</td><td class="mk">[ ]</td><td>Orchestrator</td><td>Exit 11, Verlauf endet nach Zug 0, Baum sauber</td><td>—</td><td>Neustart, Zug 0 von vorn</td></tr>
+          <tr><td class="mk">[r]</td><td class="mk">[x]</td><td>N</td><td><code>committed</code>, Review-Report liegt jetzt vor</td><td><code>check_nachgezogen</code></td><td>Meldung, nächstes Paket</td></tr>
+          <tr><td class="mk">[r]</td><td class="mk">[r]</td><td>Schleife</td><td>N meldet <code>committed</code>, Review-Report fehlt weiter</td><td>—</td><td>Exit 20, der Nutzer entscheidet</td></tr>
+          <tr><td class="mk">[r]</td><td class="mk">[!]</td><td>N</td><td><code>blocked</code> oder <code>question</code>, Stand im Stash</td><td>Marke <code>[!]</code>, Baum sauber</td><td>Exit 10</td></tr>
+          <tr><td class="mk">jede</td><td class="mk">[!]</td><td>Schleife</td><td>eine Gegenprobe nach B oder N fällt; Zeile <code>Gegenprobe gescheitert</code> unter dem Paket</td><td>—</td><td>Exit 20, der Nutzer entscheidet</td></tr>
+          <tr><td class="mk">[!]</td><td class="mk">[ ]</td><td>Orchestrator</td><td>nur bei <code>blocked</code>: alle fünf Bedingungen aus »Blockiert: wer entscheidet« erfüllt; Eintrag als seiner gekennzeichnet</td><td>—</td><td>Push mit der Entscheidung, Neustart</td></tr>
+          <tr><td class="mk">[!]</td><td class="mk">[ ]</td><td>Nutzer</td><td>Antwort datiert in »Entscheidungen«</td><td>—</td><td>Neustart</td></tr>
+          <tr><td class="mk">[ ]</td><td class="mk">[r]</td><td>Schleife</td><td>unter dem Paket steht ein Hash, den es im Repo gibt — ein wieder geöffnetes N</td><td>—</td><td>Rolle N im nächsten Durchlauf</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Wie Pakete entstehen</h3>
+    <div class="prose">
+      <p>Ein Paket wird in L5 als <code>[ ]</code> geboren, danach auf drei Wegen: A teilt sein eigenes Paket (<code>3</code> wird <code>3a</code> und <code>3b</code>); A schneidet für eine echte Folge ein neues Paket mit <code>Folge von:</code> und sortiert es nach den Phasen ein; der Drain in D0 hängt für <code>→ Scope</code> ein Paket ans Ende. Nummern werden nie neu vergeben. Ein Paket verschwindet nie: auch »entfallen« ist ein <code>[x]</code> mit Begründung.</p>
+      <p>Die dritte Generation einer Kette, ablesbar an <code>Folge von:</code>, darf A nicht mehr selbst schneiden — dann ist der Weg des ersten Pakets das Problem, und die Kette geht an den Nutzer.</p>
+    </div>
+  </section>
+
+  <section id="zug0">
+    <p class="kicker">Ebene 4</p>
+    <h2>Das Fenster von Zug 0</h2>
+    <div class="prose">
+      <p>Die Schleife beaufsichtigt A, ohne ihn zu verstehen. Sie kennt vier Signale: die Datei <code>paket-N.zug0.done</code>, die Existenz des Fensters, die Prüfsumme von Plan und Paketdatei, die Prüfsumme des Panes. Dazu die Frage, ob ein Mensch erreichbar ist. Alle fünf Sekunden (<code>ZUG0_POLL</code>) ein Blick, in dieser Reihenfolge; der erste Treffer gewinnt.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Bedingung</th><th>Übergang</th><th>Frist</th></tr></thead>
+        <tbody>
+          <tr><td>Feierabendzeichen existiert</td><td>Gnadenfrist, dann <code>/exit</code>, dann notfalls <code>kill-window</code> → Auswertung</td><td class="num">GRACE 20 s · CLOSE 20 s</td></tr>
+          <tr><td>Fenster ist weg (Nutzer hat es geschlossen, Prozess beendet)</td><td>→ Auswertung</td><td class="num">—</td></tr>
+          <tr><td>Pane zeigt den Vertrauensdialog der CLI</td><td>Uhr läuft; abgelaufen → Fenster zu, <b>Exit 40</b></td><td class="num">TRUST_GRACE 60 s</td></tr>
+          <tr><td>Marke fertig laut Plan (<code>[~]</code> mit Paketdatei, oder <code>[x]</code>, <code>[!]</code>) und Stille</td><td>erster Treffer → Stupser ins Fenster; nach weiterer Stille → Fenster zu → Auswertung</td><td class="num">SETTLE 120 s, zweimal</td></tr>
+          <tr><td>niemand erreichbar</td><td>Uhr zählt hoch; abgelaufen → Fenster zu, <b>Exit 10</b></td><td class="num">TIMEOUT 1800 s</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose">
+      <p><b>Stille</b> hat zwei Uhren. Die eine misst, wie lange Plan und Paketdatei unverändert sind, die andere, wie lange der Pane unverändert ist. Maß ist die kürzere — ein Planer, der noch schreibt oder noch redet, wird nicht angestupst. Ausnahme: stehen die Dateien schon dreimal <code>SETTLE</code> still, zählt der Pane nicht mehr mit, sonst hielte eine zuckende Statuszeile die Erkennung ewig auf. Jede Änderung an den Dateien setzt beide Uhren zurück und gibt einen neuen Stupser frei.</p>
+      <p><b>Erreichbar</b> ist der Nutzer, wenn ein tmux-Client an der Session hängt oder in Mitschrift oder Scrollback des Fensters <code>remote-control is active</code> steht; <code>ZUG0_ASSUME_USER=1</code> behauptet es von außen. Solange er erreichbar ist, steht die Timeout-Uhr auf null. Nie erreichbar gewesen zu sein wird festgehalten — für die Probe danach.</p>
+    </div>
+
+    <h3>Auswertung nach dem Fenster</h3>
+    <div class="formula">wenn nie erreichbar ∧ ¬ASSUME_USER ∧ »Entscheidungen« ≠ Stand bei Fensterstart → Exit 20<br>
+sonst Marke lesen: [~] → weiter · [x] → PACKAGES_DONE+1, weiter · [!] → Exit 10 · alles andere → Exit 10</div>
+    <div class="prose">
+      <p>Die Marke ist die Rückgabe von A. Ein Ergebnis-JSON gibt es nicht; A ist eine TUI, und was er am Ende ins Terminal schreibt, liest niemand. Das Feierabendzeichen sagt nur, <i>wann</i> er fertig ist, nie <i>was</i> herauskam.</p>
+    </div>
+  </section>
+
+  <section id="zuege">
+    <p class="kicker">Ebene 5</p>
+    <h2>Die Züge 1–5</h2>
+    <div class="prose">
+      <p>Gefahren von B, im Inneren eines einzigen <code>claude -p</code>. Die Schleife sieht davon nichts außer der Rückgabe und den Dateien; alles hier ist Prosa in <code>runner.md</code>, die ein Modell befolgt. Deshalb ist diese Ebene die einzige, deren Übergänge niemand erzwingt — nur ihre Spuren werden nachgezählt.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="fig-scroll">
+        <svg viewBox="0 0 940 460" role="img" aria-label="Ablauf der Züge 1 bis 5: Implementierer, Report und Verify, Review, Commit; rot oder Befunde führen in die Fehlerkette, die zurück zum Verify führt oder in blocked oder question endet.">
+          <defs>
+            <marker id="za" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="mk" d="M0,0 L10,5 L0,10 z" />
+            </marker>
+          </defs>
+
+          <path class="edge" d="M90,34 V76" marker-end="url(#za)" />
+          <text class="t-edge" x="98" y="48">B · Detailplan aus der Paketdatei</text>
+
+          <path class="edge" d="M470,34 V76" marker-end="url(#za)" />
+          <text class="t-edge" x="478" y="48">N · Diff aus git show &lt;hash&gt;</text>
+
+          <path class="edge" d="M250,80 C250,50 310,50 310,80" marker-end="url(#za)" />
+          <text class="t-edge" x="318" y="62">KONTEXT_FEHLT</text>
+
+          <path class="edge" d="M160,110 H206" marker-end="url(#za)" />
+          <text class="t-edge" x="185" y="102" text-anchor="middle">Report</text>
+          <path class="edge" d="M350,110 H396" marker-end="url(#za)" />
+          <text class="t-edge" x="375" y="102" text-anchor="middle">grün</text>
+          <path class="edge" d="M540,110 H586" marker-end="url(#za)" />
+          <text class="t-edge" x="565" y="102" text-anchor="middle">sauber</text>
+          <path class="edge" d="M730,110 H776" marker-end="url(#za)" />
+
+          <path class="edge" d="M250,140 V282 H286" marker-end="url(#za)" />
+          <text class="t-edge" x="242" y="214" text-anchor="end">rot</text>
+          <path class="edge" d="M510,140 V282 H494" marker-end="url(#za)" />
+          <text class="t-edge" x="518" y="214">Befunde</text>
+          <path class="edge" d="M330,250 V144" marker-end="url(#za)" />
+          <text class="t-edge" x="338" y="200">nächste Runde:</text>
+          <text class="t-edge" x="338" y="214">erst Verify</text>
+
+          <path class="edge" d="M390,314 V386" marker-end="url(#za)" />
+          <text class="t-edge" x="382" y="346" text-anchor="end">kein Fortschritt</text>
+          <text class="t-edge" x="382" y="360" text-anchor="end">oder Obergrenze</text>
+          <path class="edge" d="M470,314 V350 H675 V386" marker-end="url(#za)" />
+          <text class="t-edge" x="480" y="342">Befund widerspricht dem Plan</text>
+
+          <rect class="st-run" x="20" y="80" width="140" height="60" rx="4" />
+          <text class="t-strong" x="32" y="102">Zug 1</text>
+          <text x="32" y="118">Implementierer</text>
+          <text class="t-sub" x="32" y="132">Runde 0 · Prozess</text>
+
+          <rect class="st-run" x="210" y="80" width="140" height="60" rx="4" />
+          <text class="t-strong" x="222" y="102">Zug 2</text>
+          <text x="222" y="118">Report + Verify</text>
+          <text class="t-sub" x="222" y="132">Runner fährt selbst</text>
+
+          <rect class="st-run" x="400" y="80" width="140" height="60" rx="4" />
+          <text class="t-strong" x="412" y="102">Zug 3</text>
+          <text x="412" y="118">Review</text>
+          <text class="t-sub" x="412" y="132">eigener Prozess</text>
+
+          <rect class="st-run" x="590" y="80" width="140" height="60" rx="4" />
+          <text class="t-strong" x="602" y="102">Zug 5</text>
+          <text x="602" y="118">Commit</text>
+          <text class="t-sub" x="602" y="132">Verify jünger?</text>
+
+          <rect class="st-done" x="780" y="80" width="130" height="60" rx="4" />
+          <text class="t-strong" x="794" y="106">committed</text>
+          <text class="t-sub" x="794" y="124">[x], Hash</text>
+
+          <rect class="st-run" x="290" y="250" width="200" height="64" rx="4" />
+          <text class="t-strong" x="304" y="274">Zug 4 · Fehlerkette</text>
+          <text class="t-sub" x="304" y="292">R1 Resume · R2 +1 Stufe</text>
+          <text class="t-sub" x="304" y="306">ab R3 stärkste Stufe</text>
+
+          <rect class="st-sink" x="290" y="390" width="200" height="52" rx="4" />
+          <text class="t-strong" x="304" y="412">blocked</text>
+          <text class="t-sub" x="304" y="430">[!], Stash, Rückgabe</text>
+
+          <rect class="st-sink" x="590" y="390" width="170" height="52" rx="4" />
+          <text class="t-strong" x="604" y="412">question</text>
+          <text class="t-sub" x="604" y="430">[!], Stash, Exit 10</text>
+        </svg>
+      </div>
+      <figcaption><b>Abb. 2 · Innerhalb von B.</b> Seit dem 2026-09-20 steht das Verify vor dem Review: ein roter Stand geht ohne Reviewer in die Kette, jede Runde der Kette verifiziert erneut, bevor ein Reviewer sie sieht. N steigt bei Zug 3 ein, auf dem Diff eines vorhandenen Commits; Zug 5 legt dann einen zweiten Commit obendrauf, und fand der Reviewer nichts, entfällt er. Kleine Befunde lösen keine Runde aus, sie gehen in die Paketdatei.</figcaption>
+    </figure>
+
+    <h3>Der Wächter vor dem Commit</h3>
+    <div class="formula">commit erlaubt ⇔ Verify grün ∧ t(Verify) &gt; t(letzte Codeänderung) ∧ Review ohne offene kritische oder wichtige Befunde ∧ jedes Finding erfüllt</div>
+    <div class="prose">
+      <p>Lag zwischen dem letzten grünen Lauf und dem Commit keine Änderung, wird nicht erneut verifiziert; <code>verify_log</code> zeigt dann auf den Lauf aus Zug 2. Pre-Commit-Hooks laufen mit, ein abbrechender Hook ist ein Befund für die Kette. Der Commit trägt den Trailer <code>Remediation-Run: &lt;Plan-Datum&gt;</code>.</p>
+    </div>
+
+    <h3>Die Bremse der Fehlerkette</h3>
+    <div class="prose">
+      <p>Sei <i>O</i><sub>k</sub> die Menge der offenen Befunde nach Runde <i>k</i> und <i>E</i><sub>k</sub> die Menge der bis dahin erledigten. Runde <i>k</i> hat Fortschritt gemacht, wenn sie einen vorher offenen Befund erledigt und keinen erledigten zurückholt:</p>
+    </div>
+    <div class="formula">fortschritt(k) ⇔ (O<sub>k−1</sub> ∖ O<sub>k</sub>) ≠ ∅ ∧ (E<sub>k−1</sub> ∩ O<sub>k</sub>) = ∅<br>
+tausch(k) ⇔ fortschritt(k) ∧ |O<sub>k</sub>| ≥ |O<sub>k−1</sub>|<br>
+letzte Runde ⇔ ¬fortschritt(k) ∨ (tausch(k−1) ∧ tausch(k)) ∨ k = MAX_ROUNDS</div>
+    <div class="prose">
+      <p>Ein Befund, den erst die Runde selbst verursacht hat, ist ausdrücklich kein Rückschritt: er landet in <i>O</i><sub>k</sub>, ohne Fortschritt aufzuheben. Erst wenn zwei Runden hintereinander nur tauschen, erzeugt jeder Fix seinen Nachfolger — dann ist Schluss.</p>
+    </div>
+
+    <h3>Runden und ihre Profile</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Runde</th><th>Prozess</th><th>Modell, Effort</th><th>Brief</th></tr></thead>
+        <tbody>
+          <tr><td class="who">0</td><td>neu</td><td>aus der Paketdatei</td><td>voller Brief nach Zug 1</td></tr>
+          <tr><td class="who">1</td><td><code>--resume &lt;session_id&gt;</code> desselben Implementierers</td><td><b>exakt</b> wie Runde 0 — ein geändertes Flag wirft den Prompt-Cache weg</td><td>nur die Befunde im Wortlaut. Session nicht auffindbar → neuer Prozess, voller Brief</td></tr>
+          <tr><td class="who">2</td><td>neu, ohne Resume</td><td>eine Stufe höher</td><td>offene Befunde und was versucht wurde</td></tr>
+          <tr><td class="who">3</td><td>neu</td><td>stärkste Stufe</td><td>die ganze Kette</td></tr>
+          <tr><td class="who">4–5</td><td>neu</td><td>stärkste Stufe</td><td>ein anderer Zuschnitt des Auftrags</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Blockieren und wieder aufnehmen</h3>
+    <div class="prose">
+      <p>Endet die Kette ohne Erfolg, schreibt B in dieser Reihenfolge: Marke <code>[!]</code> mit den offenen Befunden in einer Zeile; <code>git stash push -u -m "paket-N-abgebrochen"</code> ohne Plan und Paketdateien; den Stash-Namen als letzte Verlaufszeile; <code>Stand:</code> auf das nächste Paket; Rückgabe <code>blocked</code> mit der Angabe, ob die offenen Befunde Folgen des eigenen Diffs sind und ob Verify im gesicherten Stand grün war. Der Baum ist danach sauber.</p>
+      <p>Öffnet jemand das Paket wieder (<code>[!]</code> → <code>[ ]</code>), liest A den Stash, ohne ihn anzuwenden, und plant gegen Code <i>und</i> Stash. B holt ihn vor Zug 1 mit <code>git stash apply</code> zurück — gesucht wird immer über den Namen, weil <code>stash@{n}</code> wandert —, die Kette beginnt neu bei Runde 1, und nach dem Commit fällt der Stash mit <code>drop</code>. Ein Konflikt beim Zurückholen ist selbst ein <code>blocked</code>.</p>
+    </div>
+  </section>
+
+  <section id="dispatch">
+    <p class="kicker">Ebene 6</p>
+    <h2>Ein Prozessstart</h2>
+    <div class="prose">
+      <p>Für B und N startet die Schleife <code>claude -p</code> mit <code>--json-schema</code>, <code>--permission-mode bypassPermissions</code>, Verbotsliste, <code>--max-budget-usd 50</code> und einer frischen <code>--session-id</code>. Vorher nimmt sie einen Fingerabdruck: <code>HEAD</code>, Prüfsumme des Arbeitsbaums, Prüfsumme des Plans.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Ergebnis</th><th>Übergang</th></tr></thead>
+        <tbody>
+          <tr><td>Exit 0 und <code>is_error = false</code></td><td>→ Nachprüfung</td></tr>
+          <tr><td>Stderr nennt <code>disableBypassPermissionsMode</code></td><td><b>Exit 40</b> mit dem Rückfallweg <code>PERM=acceptEdits</code></td></tr>
+          <tr><td>kein Überlastsignal (<code>api_error_status</code> ∉ {429, 500, 502, 503, 529}; ohne JSON: eng gefasstes Muster im Stderr)</td><td><b>Exit 30</b></td></tr>
+          <tr><td>Überlast, aber der Fingerabdruck hat sich bewegt</td><td><b>Exit 30</b> — ein Neuversuch setzte auf halber Arbeit auf</td></tr>
+          <tr><td>Überlast, Versuch = <code>ATTEMPTS</code> (3)</td><td><b>Exit 31</b></td></tr>
+          <tr><td>Überlast, sonst</td><td>Pause 60 / 300 / 900 s, Report nach <code>-versuch-n.json</code> verschieben, neuer Versuch</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Nachprüfung, in dieser Reihenfolge</h3>
+    <div class="prose">
+      <p><code>permission_denials</code> nicht leer → <b>Exit 21</b>. Rückgabe nicht als Schema-JSON lesbar, <code>package</code> oder <code>role</code> weicht vom Auftrag ab, ein Status, den es für diese Rolle nicht gibt → Paket auf <code>[!]</code>, <b>Exit 20</b>. Erst dann verzweigt die Schleife nach <code>status</code>. Belege zählt sie nur, wenn sie jünger sind als der Start dieses Runners (<code>paket-N.&lt;rolle&gt;.start</code>) und kein <code>-versuch-</code> im Namen tragen.</p>
+    </div>
+
+    <h3 id="waechter">Die Gegenproben nach <code>committed</code></h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Probe</th><th>B</th><th>N</th><th>Scheitert → Paket auf <code>[!]</code></th></tr></thead>
+        <tbody>
+          <tr><td>Marke steht auf <code>[x]</code></td><td>zuerst</td><td>zuletzt</td><td>Exit 20</td></tr>
+          <tr><td>Hash genannt und im Repo vorhanden</td><td>✓</td><td>✓</td><td>Exit 20</td></tr>
+          <tr><td><code>HEAD</code> hat sich seit dem Start bewegt</td><td>✓</td><td>— (ein Review ohne Befund ändert nichts)</td><td>Exit 20</td></tr>
+          <tr><td>Hash = <code>HEAD</code></td><td>✓</td><td>✓</td><td>Exit 20</td></tr>
+          <tr><td><code>verify_log</code> liegt in <code>$WORK</code>, existiert, enthält <code>exit=0</code></td><td>✓</td><td>✓</td><td>Exit 20</td></tr>
+          <tr><td>mindestens ein eigenes <code>paket-N.review-*.json</code></td><td>sonst <code>[r]</code> und weiter</td><td>sonst <code>[r]</code> und Exit 20</td><td>—</td></tr>
+          <tr><td>mindestens ein eigenes <code>paket-N.impl-*.json</code></td><td>sonst Ausnahme im Plan, weiter</td><td>—</td><td>—</td></tr>
+          <tr><td><code>rounds</code> ≤ <code>MAX_ROUNDS</code></td><td>✓</td><td>✓</td><td>Exit 20</td></tr>
+          <tr><td>eigene <code>impl-*.json</code> ≤ <code>rounds</code> + 1</td><td>✓</td><td>✓</td><td>Exit 20</td></tr>
+          <tr><td>Arbeitsbaum sauber</td><td>Warnung</td><td>Warnung</td><td>—</td></tr>
+          <tr><td>bei <code>blocked</code>, <code>question</code>: Marke <code>[!]</code>, Baum sauber</td><td>✓</td><td>✓</td><td>Exit 20</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="exits">
+    <p class="kicker">Ausgänge</p>
+    <h2>Exit-Codes und Rückweg</h2>
+    <div class="prose">
+      <p>Jeder Ausgang der inneren Schleife läuft durch denselben Trap: Journalzeile <code>ende exit=N</code>, Sperre weg, und bei N ≠ 0 Tokentabelle in den Plan, <code>Lauf-Status: angehalten mit Exit N bei Paket M</code> und eine Desktop-Nachricht. Nur <code>kill -9</code> und ein Stromausfall entkommen ihm; dann verschwindet die Sperre nicht, oder sie verschwindet ohne <code>ende</code>-Zeile, und genau daran erkennt der Wachposten den Tod.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Exit</th><th>Entsteht in</th><th>Zustand danach</th><th>Nächster Übergang</th></tr></thead>
+        <tbody>
+          <tr><td class="who">0</td><td>Ebene 2, keine Marke mehr wählbar; oder <code>--once</code></td><td>kein <code>[ ]</code>, <code>[~]</code>, <code>[r]</code></td><td>L7, sofort</td></tr>
+          <tr><td class="who">10</td><td>A: <code>[!]</code> oder unverändert · B/N: <code>question</code>, <code>blocked</code> · Fenster: niemand erreichbar</td><td><code>[!]</code>, Stand im Stash; nach Zug 0 auch unverändert <code>[ ]</code></td><td><code>blocked</code>: Orchestrator prüft fünf Bedingungen, sonst Nutzer · <code>question</code>: Nutzer · dann Eintrag, <code>[ ]</code>, Neustart</td></tr>
+          <tr><td class="who">11</td><td>Ebene 2, erster Durchlauf findet <code>[~]</code></td><td><code>[~]</code></td><td><code>resume.md</code>: sauber → <code>[ ]</code>; schmutzig → Nutzer</td></tr>
+          <tr><td class="who">20</td><td>eine Gegenprobe; Zug 0 notiert Entscheidungen ohne Nutzer; <code>MAX_ITER</code></td><td>nach einer Gegenprobe <code>[!]</code> mit Grund; sonst so, wie der Runner ihn hinterlassen hat</td><td>Nutzer sieht Plan und <code>git log</code> an</td></tr>
+          <tr><td class="who">21</td><td>Ebene 6, Rechteschranke</td><td>meist <code>[~]</code>, Runner mitten im Zug gestorben</td><td>Baum ansehen, dann <code>[ ]</code>; bei <code>[r]</code> stehen lassen</td></tr>
+          <tr><td class="who">30</td><td>Ebene 6, Prozess gescheitert</td><td>unbestimmt</td><td><code>paket-N.*.stderr</code></td></tr>
+          <tr><td class="who">31</td><td>Ebene 6, Überlast dreimal</td><td>unverändert, Fingerabdruck gleich</td><td>später dasselbe Kommando</td></tr>
+          <tr><td class="who">40</td><td>Vorbedingung, Vertrauensdialog, <code>bypassPermissions</code> gesperrt</td><td>unverändert</td><td>die Meldung sagt, was fehlt</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Der Wachposten</h3>
+    <div class="prose">
+      <p>Die Schleife hält den Orchestrator über das Journal wach, ein <code>Monitor</code> filtert die Zeilen. Er ist ein Automat mit zwei Zuständen und einer Eingabe: »warte auf Sperre« (höchstens 60 s, sonst: Schleife nie angelaufen) und »wache«, bis <code>ende exit=</code> kommt oder die Sperre ohne diese Zeile verschwindet.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Journalzeile</th><th>Orchestrator</th></tr></thead>
+        <tbody>
+          <tr><td><code>status=committed</code></td><td>Push: Paket, Kurzhash, Stand</td></tr>
+          <tr><td><code>status=dropped</code>, <code>marke=[x]</code></td><td>Push, knapp</td></tr>
+          <tr><td><code>status=review-offen</code></td><td>nichts — die nächste Zeile zu dem Paket kommt von N</td></tr>
+          <tr><td><code>status=question</code></td><td>Push mit der Frage</td></tr>
+          <tr><td><code>status=blocked</code>, <code>marke=[!]</code></td><td>fünf Bedingungen prüfen: entscheiden und pushen, oder fragen</td></tr>
+          <tr><td><code>ende exit=0</code></td><td>Push, sofort L7</td></tr>
+          <tr><td><code>ende exit=N</code></td><td>Push mit N, Exit-Tabelle</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="invarianten">
+    <p class="kicker">Zusicherungen</p>
+    <h2>Invarianten</h2>
+    <div class="prose">
+      <p>Was in jedem erreichbaren Zustand gilt. Die ersten fünf erzwingt Code, die übrigen nur Prosa — die Liste sagt bei jeder, welches von beiden.</p>
+    </div>
+    <dl class="inv">
+      <dt>Eine Schleife je Arbeitsbaum. <span class="tag tag-shell">Code</span></dt>
+      <dd><code>mkdir .remediate.lock</code> ist atomar; die Sperre existiert genau, solange eine innere Schleife läuft.</dd>
+      <dt>Ein Runner zur Zeit. <span class="tag tag-shell">Code</span></dt>
+      <dd>Die Schleife ist sequentiell und wartet jeden Runner ab; ein <code>[~]</code> beim Start hält sie an.</dd>
+      <dt>Kein Weiterbauen auf ungeprüftem Commit. <span class="tag tag-shell">Code</span></dt>
+      <dd><code>[r]</code> hat Vorrang vor jeder anderen Marke.</dd>
+      <dt>Keine Entscheidung ohne Entscheider. <span class="tag tag-shell">Code</span> in Zug 0</dt>
+      <dd>»Entscheidungen« wächst in Zug 0 nur, wenn der Nutzer erreichbar war. Dass der Orchestrator seine eigenen Einträge kennzeichnet, ist Prosa.</dd>
+      <dt>Der Plan bleibt draußen. <span class="tag tag-shell">Code</span> an der Vorbedingung</dt>
+      <dd>Plan und <code>docs/remediation/</code> sind während des Laufs ungetrackt. Die Vorbedingung blendet genau diese beiden aus, und nur, solange sie ungetrackt sind; dass <code>git add</code>, <code>diff</code> und <code>stash</code> der Runner sie ebenfalls ausnehmen, ist Prosa.</dd>
+      <dt>Wer committet, hat verifiziert. <span class="tag tag-agent">Prosa, nachgezählt</span></dt>
+      <dd>B fährt Verify selbst; die Schleife prüft <code>exit=0</code> im Log, nicht, ob das Log jünger ist als die letzte Änderung.</dd>
+      <dt>Kein Code aus der Hand des Runners. <span class="tag tag-agent">Prosa, nachgezählt</span></dt>
+      <dd>Die Anzahl der Implementierer-Reports belegt Delegation; fehlt sie, wird es vermerkt, nicht verhindert.</dd>
+      <dt>Nur ein Implementierer gleichzeitig. <span class="tag tag-agent">Prosa</span></dt>
+      <dd>Nichts prüft es.</dd>
+      <dt>Kein Push, kein Tag, kein Publish. <span class="tag tag-shell">Code</span> für B und N</dt>
+      <dd>Die Verbotsliste hängt am Prozess von B und N. Die Implementierer und Reviewer, die B startet, bekommen laut <code>runner.md</code> keine eigene mit; für sie, für Zug 0 und für die Session gilt es per Prosa.</dd>
+      <dt>Der Lauf endet nicht mit Schulden. <span class="tag tag-agent">Prosa</span></dt>
+      <dd>D0 läuft, bis »Offene Befunde« und alle <code>Folgen:</code> leer sind; der zweite Abschluss-Commit setzt es voraus.</dd>
+    </dl>
+  </section>
+
+  <section id="luecken">
+    <p class="kicker">Befund</p>
+    <h2>Was die Formalisierung aufgedeckt hat</h2>
+    <div class="prose">
+      <p>Beim ersten Aufschreiben passten die Tabellen an vier Stellen nicht zueinander. Alle vier sind am 2026-09-25 behoben, gegen einen Stub der Schleife über 25 Prüfpunkte gefahren; derselbe Stub gegen das alte Skript fällt an genau diesen Stellen.</p>
+
+      <h3>Eine Frage hatte keinen Parkplatz</h3>
+      <p><code>blocked</code> sicherte den Stand im Stash, <code>question</code> ließ ihn im Baum und die Marke auf <code>[~]</code>. Der Neustart nach der Antwort endete dann mit Exit 40 (Baum schmutzig) oder Exit 11 (<code>[~]</code> im ersten Durchlauf). <b>Jetzt</b> parkt <code>question</code> wie <code>blocked</code>: <code>[!]</code>, Stand im Stash, sauberer Baum; die Schleife prüft beides und endet sonst mit Exit 20. Wieder aufgenommen wird über denselben Weg wie ein blockiertes Paket — nur entscheidet bei einer Frage immer der Nutzer.</p>
+
+      <h3>Die Wächter kamen nach dem Übergang</h3>
+      <p>B setzte <code>[x]</code> selbst, und eine danach gescheiterte Probe ließ das <code>[x]</code> stehen; ein Neustart übersprang das Paket. <b>Jetzt</b> setzt die Schleife jedes Paket, an dem eine Probe fällt, selbst auf <code>[!]</code> und schreibt <code>Gegenprobe gescheitert</code> mit dem Grund darunter. Der Runner schreibt seinen Übergang weiterhin selbst, aber er kann keinen behalten, den die Probe nicht bestätigt — dieselbe Umkehr, die für den fehlenden Review mit <code>[r]</code> schon galt.</p>
+
+      <h3>Drei Zählweisen für eine Runde</h3>
+      <p>Schema, <code>runner.md</code> und <code>check_commit</code> zählten verschieden, und die Probe zählte <code>-versuch-</code>-Dateien, bei N auch die Reports von B und bei einem wieder geöffneten Paket die seines ersten Anlaufs. <b>Jetzt</b> gilt überall: Runde 0 ist der Implementierer aus Zug 1, <code>rounds</code> zählt die Runden der Kette danach, und es darf höchstens <code>rounds + 1</code> Implementierer-Reports geben. Gezählt werden nur Dateien, die jünger sind als der Start des Runners, ohne Versuchsdateien.</p>
+
+      <h3>Ein blockiertes N hatte keinen Rückweg</h3>
+      <p>Wieder geöffnet wurde jedes <code>[!]</code> auf <code>[ ]</code>, und ein committetes Paket fuhr damit noch einmal durch Zug 0 und B. <b>Jetzt</b> sieht die Schleife vor jedem Zug 0 nach, ob unter dem Paket ein Hash steht, den es im Repo gibt. Dann ist es kein offenes, sondern ein wieder geöffnetes Paket: sie setzt es auf <code>[r]</code>, vermerkt das, und N holt den Stand aus dem Stash und setzt fort. Wer wieder öffnet, muss den Unterschied nicht kennen.</p>
+
+      <h3>Was bleibt</h3>
+      <ul>
+        <li>Der Status <code>planned</code> steht im Schema und wird nie gesendet: A hat kein Schema. Jetzt ausdrücklich so beschrieben, aber weiterhin ein toter Zustand im Vertrag.</li>
+        <li>Der Wächter »Verify jünger als die letzte Änderung« ist Prosa. Die Schleife prüft nur <code>exit=0</code>; ein altes grünes Log unter einem neueren Diff bestünde die Probe.</li>
+        <li>Ein Neustart ohne Entscheidung fährt an einem <code>[!]</code> vorbei und endet mit »Schleife durch · Abschluss offen«. Gewollt — aber <code>Lauf-Status:</code> sagt dann nicht, dass ein Paket geparkt blieb.</li>
+        <li>Was ein echtes Modell aus dem geänderten <code>runner.md</code> macht — ob es eine Frage wirklich parkt, ob N einen Stash zurückholt —, prüft kein Stub.</li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="verdict">
+    <p class="kicker">Stand</p>
+    <h2>Die Marke ist die Wahrheit, und das trägt</h2>
+    <p>Der Entwurf hält, weil er seinen Zustand konsequent aus den Prozessen herausgenommen hat: fünf Marken in einer Markdown-Datei, ein Journal, eine Sperre, die Reportdateien. Jede Ebene lässt sich an ihrer Schnittstelle abschneiden und neu bauen, ohne die anderen anzufassen — das ist die Eigenschaft, die eine Portierung auf echten Code überhaupt erst möglich machen würde, ob als TypeScript über dem Agent SDK oder als LangGraph-Knoten.</p>
+    <p>Die vier Lücken hatten eine gemeinsame Wurzel: der Akteur schrieb seinen eigenen Übergang, und die Schleife prüfte hinterher, ob er ihn verdient hatte — ohne ihn zurücknehmen zu können. Seit dem 2026-09-25 kann sie es. Eine Portierung auf echten Code würde den Schritt zu Ende gehen und die Marke erst setzen, nachdem der Wächter bestanden ist.</p>
+  </div>
+
+</div>

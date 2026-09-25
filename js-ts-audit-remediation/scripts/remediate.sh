@@ -205,6 +205,9 @@ AKTUELL=""       # das Paket, an dem die Schleife gerade steht; für die Meldung
                  # beim unerwarteten Ausgang, wo sonst niemand mehr sagen kann,
                  # wo es passiert ist
 RES=""   # die geprüfte Rückgabe des zuletzt gelaufenen Runners
+STAMP="" # Zeitstempel-Datei, angelegt direkt vor dem Start des Runners. Belege
+         # zählen nur, wenn sie jünger sind — sonst zählte ein wieder geöffnetes
+         # Paket die Reports seines ersten Anlaufs mit, und N die von B.
 RAW=""   # der Pfad zu seinem vollständigen Ergebnis-JSON
 ERR=""   # der Pfad zu seiner Standardfehlerausgabe
 
@@ -674,6 +677,17 @@ first_with_marker() { # $1 = Markenzeichen -> die erste Paketnummer damit, oder 
 
 count_with_marker() { # $1 = Markenzeichen
   sed -En "s/^### \[$1\] ([0-9]+[a-z]?)\..*/\1/p" "$PLAN" | wc -l | tr -d ' '
+}
+
+committed_hash() { # $1 = Paketnummer -> ein Hash unter dem Paket, den es im Repo gibt, oder leer
+  local h
+  for h in $(sed -n "/^### \[.\] $1\./,/^### /p" "$PLAN" | sed -n 's/^- Hash: *//p' \
+               | grep -oE '[0-9a-f]{7,40}' || true); do
+    if git rev-parse --verify --quiet "$h^{commit}" >/dev/null; then
+      printf '%s' "$h"; return 0
+    fi
+  done
+  return 0
 }
 
 detail_file() { # $1 = Paketnummer -> Pfad der Paketdatei
@@ -1330,6 +1344,8 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
   attempt=1
   while :; do
     rc=0
+    STAMP="$WORK/paket-$pkg.$role.start"
+    touch "$STAMP"
     claude -p "$brief" \
       --model "$model" \
       --effort "$effort" \
@@ -1410,17 +1426,17 @@ dispatch() { # $1 = Rolle, $2 = Paketnummer; setzt RES und RAW
 
   # Die Form garantiert das Schema; leer heißt, dass sie es trotzdem nicht tut.
   RES=$(jq -c 'try (if (.result | type) == "string" then (.result | fromjson) else .result end) catch empty' "$RAW")
-  [ -n "$RES" ] || die $EX_CONTRACT "Rückgabe von Runner $role für Paket $pkg ist kein JSON nach dem Schema — siehe $RAW"
+  [ -n "$RES" ] || fail_probe "$pkg" "Rückgabe von Runner $role für Paket $pkg ist kein JSON nach dem Schema — siehe $RAW"
 
   local got
   got=$(jq -r '.package' <<<"$RES")
-  [ "$got" = "$pkg" ] || die $EX_CONTRACT "Runner $role sollte Paket $pkg bearbeiten, gibt aber Paket $got zurück"
+  [ "$got" = "$pkg" ] || fail_probe "$pkg" "Runner $role sollte Paket $pkg bearbeiten, gibt aber Paket $got zurück"
 
   # Die Rolle steuert im Skript nichts — es weiß ja, wen es gestartet hat. Sie
   # zu prüfen kostet nichts und fängt den Fall, in dem ein Runner seinen Auftrag
   # falsch gelesen hat: wer sich für A hält, hat womöglich Zug 0 gefahren.
   got=$(jq -r '(.role // "")' <<<"$RES")
-  [ "$got" = "$role" ] || die $EX_CONTRACT "Runner $role für Paket $pkg gibt sich in der Rückgabe als '$got' aus"
+  [ "$got" = "$role" ] || fail_probe "$pkg" "Runner $role für Paket $pkg gibt sich in der Rückgabe als '$got' aus"
 }
 
 field() { jq -r "(.$1 // \"\")" <<<"$RES"; }
@@ -1437,8 +1453,10 @@ hand_over() { # $1 = Rolle, $2 = Paketnummer, $3 = Status
   # den niemand ansieht, ist das Terminal am nächsten Morgen weg.
   journal "paket=$2 rolle=$1 status=$3 -> Nutzer: $frage"
   say ""
-  say "Die Schleife hält an. Antwort datiert in »Entscheidungen« im Plan eintragen,"
-  say "dann dieses Skript erneut starten."
+  say "Die Schleife hält an. Das Paket steht auf [!], ein angefangener Stand liegt im"
+  say "Stash. Antwort datiert in »Entscheidungen« eintragen, das Paket auf [ ] setzen,"
+  say "dann dieses Skript erneut starten. Ein Paket, das schon committet ist, führt die"
+  say "Schleife von selbst als [r] weiter."
   say "Wortlaut nachlesbar in $RAW und $WORK/remediate.log."
   verbrauch_report
   exit $EX_ASK
@@ -1446,34 +1464,63 @@ hand_over() { # $1 = Rolle, $2 = Paketnummer, $3 = Status
 
 # --- Die Gegenproben --------------------------------------------------------
 
+# Der Runner schreibt seine Marke selbst, bevor die Schleife prüft. Fällt danach
+# eine Probe, stünde im Plan ein [x], das niemand verdient hat — und ein
+# Neustart wählte das Paket nie wieder aus: die Probe hätte genau einmal
+# gewirkt. Deshalb setzt die Schleife jedes Paket, an dem eine Probe scheitert,
+# selbst auf [!] und schreibt den Grund darunter. [!] wählt sie nicht aus, der
+# Abschluss verweigert damit den Archiv-Commit, und über das Wiederöffnen
+# entscheidet der Nutzer, nicht der Orchestrator.
+fail_probe() { # $1 = Paketnummer, Rest = Meldung
+  local pkg=$1; shift
+  set_marker "$pkg" '!'
+  plan_note "$pkg" "Gegenprobe gescheitert ($(date '+%Y-%m-%d')): $* — der Nutzer entscheidet"
+  journal "paket=$pkg gegenprobe gescheitert marke=[!]"
+  die $EX_CONTRACT "$* — Paket $pkg steht jetzt auf [!]."
+}
+
+belege() { # $1 = Paketnummer, $2 = impl|review -> Reports aus dem laufenden Runner
+  # Nur, was jünger ist als der Start dieses Runners, und ohne die Dateien, die
+  # ein zweiter Anlauf derselben Runde beiseitegelegt hat (-versuch-n): die sind
+  # kein weiterer Implementierer, sondern ein wiederholter.
+  find "$WORK" -maxdepth 1 -name "paket-$1.$2-*.json" ! -name '*-versuch-*' \
+    -newer "$STAMP" 2>/dev/null | wc -l | tr -d ' '
+}
+
+check_clean() { # $1 = Paketnummer, $2 = Status; ein geparktes Paket hinterlässt einen sauberen Baum
+  local left
+  left=$(dirty_paths)
+  [ -z "$left" ] || fail_probe "$1" "$(printf 'Paket %s meldet %s, aber der Arbeitsbaum ist nicht sauber — der angefangene Stand gehört in den Stash paket-%s-abgebrochen:\n%s' "$1" "$2" "$1" "$left")"
+}
+
 check_marker() { # $1 = Paketnummer, $2 = erwartete Marke
   local m
   m=$(marker_of "$1")
-  [ "$m" = "$2" ] || die $EX_CONTRACT \
+  [ "$m" = "$2" ] || fail_probe "$1" \
     "Paket $1 müsste im Plan auf [$2] stehen, steht aber auf [${m:-nichts}]. Der Plan trägt den Stand, nicht die Rückgabe."
 }
 
 check_commit() { # $1 = Paketnummer, $2 = HEAD vor dem Runner
   local hash vlog head_now
   hash=$(field hash)
-  [ -n "$hash" ] || die $EX_CONTRACT "Paket $1 meldet 'committed' ohne Hash"
+  [ -n "$hash" ] || fail_probe "$1" "Paket $1 meldet 'committed' ohne Hash"
 
   git rev-parse --verify --quiet "$hash^{commit}" >/dev/null \
-    || die $EX_CONTRACT "Paket $1 nennt den Hash $hash, den es in diesem Repo nicht gibt"
+    || fail_probe "$1" "Paket $1 nennt den Hash $hash, den es in diesem Repo nicht gibt"
 
   head_now=$(git rev-parse HEAD)
-  [ "$head_now" != "$2" ] || die $EX_CONTRACT "Paket $1 meldet 'committed', aber HEAD steht unverändert auf $2"
+  [ "$head_now" != "$2" ] || fail_probe "$1" "Paket $1 meldet 'committed', aber HEAD steht unverändert auf $2"
   [ "$(git rev-parse "$hash")" = "$head_now" ] \
-    || die $EX_CONTRACT "Paket $1 nennt $hash, HEAD ist aber $(git rev-parse --short HEAD)"
+    || fail_probe "$1" "Paket $1 nennt $hash, HEAD ist aber $(git rev-parse --short HEAD)"
 
   vlog=$(field verify_log)
   case "$vlog" in
     "$WORK"/*) ;;
-    *) die $EX_CONTRACT "Paket $1 nennt ein Verify-Log außerhalb des Arbeitsverzeichnisses: ${vlog:-nichts}" ;;
+    *) fail_probe "$1" "Paket $1 nennt ein Verify-Log außerhalb des Arbeitsverzeichnisses: ${vlog:-nichts}" ;;
   esac
-  [ -f "$vlog" ] || die $EX_CONTRACT "Paket $1 nennt ein Verify-Log, das nicht existiert: $vlog"
+  [ -f "$vlog" ] || fail_probe "$1" "Paket $1 nennt ein Verify-Log, das nicht existiert: $vlog"
   grep -q '^exit=0$' "$vlog" \
-    || die $EX_CONTRACT "in $vlog steht keine Zeile 'exit=0'. Committet wird nur ein grüner Lauf, und belegt wird er dort."
+    || fail_probe "$1" "in $vlog steht keine Zeile 'exit=0'. Committet wird nur ein grüner Lauf, und belegt wird er dort."
 
   # Wer committet, hat delegiert, und der Beleg sind die Reports von
   # Implementierer und Reviewer auf der Platte. Beide laufen als eigene
@@ -1490,8 +1537,8 @@ check_commit() { # $1 = Paketnummer, $2 = HEAD vor dem Runner
   local impl rev
   # find statt ls: ein leerer Glob lässt ls scheitern und reißt unter
   # pipefail den ganzen Aufruf mit.
-  impl=$(find "$WORK" -maxdepth 1 -name "paket-$1.impl-*.json" 2>/dev/null | wc -l | tr -d ' ')
-  rev=$(find "$WORK" -maxdepth 1 -name "paket-$1.review-*.json" 2>/dev/null | wc -l | tr -d ' ')
+  impl=$(belege "$1" impl)
+  rev=$(belege "$1" review)
   #
   # Kein früher Ausstieg: was hier fehlt, ist ein Beleg, kein Grund, die
   # restlichen Proben zu überspringen. Gerade eine Rückgabe, die schon einmal
@@ -1509,12 +1556,18 @@ check_commit() { # $1 = Paketnummer, $2 = HEAD vor dem Runner
 
   # Die Obergrenze der Fehlerkette. Eine Kette, die länger läuft, hat ein
   # anderes Problem als das, das sie behebt.
+  #
+  # Gezählt wird überall gleich: Runde 0 ist der erste Implementierer aus Zug 1,
+  # »rounds« zählt die Runden der Kette danach — 0, wenn der erste Anlauf saß.
+  # Jede Runde hinterlässt genau einen Report, also höchstens rounds + 1.
+  # Einmal zählten Schema, runner.md und diese Probe drei verschiedene Dinge,
+  # und eine Kette, die ihre Obergrenze ausschöpfte, scheiterte hier.
   local runden
   runden=$(jq -r '(.rounds // 0)' <<<"$RES")
-  [ "$runden" -le "$MAX_ROUNDS" ] || die $EX_CONTRACT \
-    "Paket $1 meldet $runden Runden, erlaubt sind $MAX_ROUNDS"
-  [ "$impl" -le "$MAX_ROUNDS" ] || die $EX_CONTRACT \
-    "Paket $1 hat $impl Implementierer-Reports bei $MAX_ROUNDS erlaubten Runden"
+  [ "$runden" -le "$MAX_ROUNDS" ] || fail_probe "$1" \
+    "Paket $1 meldet $runden Runden der Fehlerkette, erlaubt sind $MAX_ROUNDS"
+  [ "$impl" -le $((runden + 1)) ] || fail_probe "$1" \
+    "Paket $1 hat $impl Implementierer-Reports, meldet aber $runden Runde(n) der Fehlerkette — höchstens $((runden + 1)) wären möglich"
 
   local left
   left=$(dirty_paths)
@@ -1524,25 +1577,25 @@ check_commit() { # $1 = Paketnummer, $2 = HEAD vor dem Runner
 check_nachgezogen() { # $1 = Paketnummer; die Gegenprobe nach Rolle N
   local hash vlog rev
   hash=$(field hash)
-  [ -n "$hash" ] || die $EX_CONTRACT "Paket $1 gibt nach dem nachgezogenen Review keinen Hash zurück"
+  [ -n "$hash" ] || fail_probe "$1" "Paket $1 gibt nach dem nachgezogenen Review keinen Hash zurück"
   git rev-parse --verify --quiet "$hash^{commit}" >/dev/null \
-    || die $EX_CONTRACT "Paket $1 nennt den Hash $hash, den es in diesem Repo nicht gibt"
+    || fail_probe "$1" "Paket $1 nennt den Hash $hash, den es in diesem Repo nicht gibt"
   # Anders als bei B darf HEAD hier stehengeblieben sein: ein Review ohne
   # Befund ändert keine Zeile. Genannt werden muss trotzdem der Commit, auf dem
   # das Paket am Ende steht — der ursprüngliche oder die Nachbesserung darüber.
   [ "$(git rev-parse "$hash")" = "$(git rev-parse HEAD)" ] \
-    || die $EX_CONTRACT "Paket $1 nennt $hash, HEAD ist aber $(git rev-parse --short HEAD)"
+    || fail_probe "$1" "Paket $1 nennt $hash, HEAD ist aber $(git rev-parse --short HEAD)"
 
   vlog=$(field verify_log)
   case "$vlog" in
     "$WORK"/*) ;;
-    *) die $EX_CONTRACT "Paket $1 nennt ein Verify-Log außerhalb des Arbeitsverzeichnisses: ${vlog:-nichts}" ;;
+    *) fail_probe "$1" "Paket $1 nennt ein Verify-Log außerhalb des Arbeitsverzeichnisses: ${vlog:-nichts}" ;;
   esac
-  [ -f "$vlog" ] || die $EX_CONTRACT "Paket $1 nennt ein Verify-Log, das nicht existiert: $vlog"
+  [ -f "$vlog" ] || fail_probe "$1" "Paket $1 nennt ein Verify-Log, das nicht existiert: $vlog"
   grep -q '^exit=0$' "$vlog" \
-    || die $EX_CONTRACT "in $vlog steht keine Zeile 'exit=0'. Auch ein nachgezogener Review endet auf einem grünen Lauf."
+    || fail_probe "$1" "in $vlog steht keine Zeile 'exit=0'. Auch ein nachgezogener Review endet auf einem grünen Lauf."
 
-  rev=$(find "$WORK" -maxdepth 1 -name "paket-$1.review-*.json" 2>/dev/null | wc -l | tr -d ' ')
+  rev=$(belege "$1" review)
   if [ "$rev" -lt 1 ]; then
     # Die Marke bleibt auf [r], auch wenn der Runner sie auf [x] gesetzt hat:
     # der Review fehlt weiterhin, und ein [x] behauptete das Gegenteil.
@@ -1554,13 +1607,15 @@ check_nachgezogen() { # $1 = Paketnummer; die Gegenprobe nach Rolle N
   # Dieselbe Obergrenze wie bei B: Rolle N fährt dieselbe Fehlerkette, und ihr
   # Brief nennt dieselbe Zahl. Eine Reparatur, die weniger geprüft wird als der
   # reguläre Weg, wäre der bequemere Weg an der Prüfung vorbei.
+  # Gezählt werden nur die Reports dieses Prozesses. Die von B liegen daneben
+  # und gehören zu einer anderen Kette.
   local runden impl
   runden=$(jq -r '(.rounds // 0)' <<<"$RES")
-  [ "$runden" -le "$MAX_ROUNDS" ] || die $EX_CONTRACT \
+  [ "$runden" -le "$MAX_ROUNDS" ] || fail_probe "$1" \
     "Paket $1 meldet $runden Runden im nachgezogenen Review, erlaubt sind $MAX_ROUNDS"
-  impl=$(find "$WORK" -maxdepth 1 -name "paket-$1.impl-*.json" 2>/dev/null | wc -l | tr -d ' ')
-  [ "$impl" -le "$MAX_ROUNDS" ] || die $EX_CONTRACT \
-    "Paket $1 hat $impl Implementierer-Reports bei $MAX_ROUNDS erlaubten Runden"
+  impl=$(belege "$1" impl)
+  [ "$impl" -le $((runden + 1)) ] || fail_probe "$1" \
+    "Paket $1 hat im nachgezogenen Review $impl Implementierer-Reports bei $runden gemeldeten Runde(n)"
 
   check_marker "$1" 'x'
 
@@ -1622,11 +1677,11 @@ run_b() { # $1 = Paketnummer
         journal "paket=$1 rolle=B status=review-offen hash=$(field hash) runden=$(field rounds)"
       else
         PACKAGES_DONE=$((PACKAGES_DONE + 1))
-        say "  $(git rev-parse --short HEAD) · $(field findings) · $(field rounds) Runde(n)"
+        say "  $(git rev-parse --short HEAD) · $(field findings) · $(field rounds) Nachrunde(n)"
         [ "$(field queue)" = "-" ] || say "  Queue: $(field queue)"
         journal "paket=$1 rolle=B status=committed hash=$(field hash) runden=$(field rounds)"
         notify "Paket $1 committet" \
-          "$(git rev-parse --short HEAD) · $(field rounds) Runde(n) · $(stand)"
+          "$(git rev-parse --short HEAD) · $(field rounds) Nachrunde(n) · $(stand)"
       fi
       ;;
     dropped)
@@ -1637,15 +1692,18 @@ run_b() { # $1 = Paketnummer
       notify "Paket $1 entfallen" "ohne Commit · $(stand)"
       ;;
     question|blocked)
-      # Bei blocked steht das Paket auf [!] und die Schleife könnte weiterlaufen.
-      # Sie tut es nicht: wie es weitergeht, entscheidet der Orchestrator nach
-      # »Blockiert: wer entscheidet« in shell-runner.md, und nur wo die Antwort
-      # nicht schon feststeht, der Nutzer.
-      if [ "$status" = "blocked" ]; then check_marker "$1" '!'; fi
+      # Beide parken gleich: Marke [!], angefangener Stand im Stash, Baum
+      # sauber. Eine Frage, die ihren Stand im Baum liegen ließ, war einmal
+      # eine Sackgasse — der Neustart nach der Antwort scheiterte an der
+      # Vorbedingung (Exit 40) oder am [~] (Exit 11). Die Schleife läuft
+      # trotzdem nicht weiter: bei blocked entscheidet der Orchestrator nach
+      # »Blockiert: wer entscheidet«, bei question immer der Nutzer.
+      check_marker "$1" '!'
+      check_clean "$1" "$status"
       hand_over B "$1" "$status"
       ;;
     *)
-      die $EX_CONTRACT "Runner B für Paket $1 gibt Status '$status' zurück, den es für B nicht gibt"
+      fail_probe "$1" "Runner B für Paket $1 gibt Status '$status' zurück, den es für B nicht gibt"
       ;;
   esac
 }
@@ -1665,18 +1723,21 @@ run_n() { # $1 = Paketnummer; der nachgezogene Review auf einem Paket, das schon
       plan_unnote "$1" "Review offen:"
       plan_note "$1" "Review nachgezogen ($(date '+%Y-%m-%d')): der Commit stand ohne Beleg da"
       PACKAGES_DONE=$((PACKAGES_DONE + 1))
-      say "  $(git rev-parse --short HEAD) · Review nachgezogen · $(field findings) · $(field rounds) Runde(n)"
+      say "  $(git rev-parse --short HEAD) · Review nachgezogen · $(field findings) · $(field rounds) Nachrunde(n)"
       [ "$(field queue)" = "-" ] || say "  Queue: $(field queue)"
       journal "paket=$1 rolle=N status=committed hash=$(field hash) runden=$(field rounds)"
       notify "Paket $1 committet" \
         "$(git rev-parse --short HEAD) · Review nachgezogen · $(stand)"
       ;;
     blocked|question)
-      if [ "$status" = "blocked" ]; then check_marker "$1" '!'; fi
+      # Wie bei B. Wieder geöffnet wird ein N-Paket auf [ ]; weil unter ihm ein
+      # Hash steht, macht die Schleife daraus selbst wieder ein [r].
+      check_marker "$1" '!'
+      check_clean "$1" "$status"
       hand_over N "$1" "$status"
       ;;
     *)
-      die $EX_CONTRACT "Runner N für Paket $1 gibt Status '$status' zurück, den es für N nicht gibt"
+      fail_probe "$1" "Runner N für Paket $1 gibt Status '$status' zurück, den es für N nicht gibt"
       ;;
   esac
 }
@@ -1723,7 +1784,7 @@ main() {
   # gearbeitet wird, sieht die Lage von gestern.
   plan_status "läuft seit $(date '+%Y-%m-%d %H:%M') in tmux-Session »$SESSION« · $(stand)"
 
-  local iter=0 planned review open
+  local iter=0 planned review open committet
   while :; do
     iter=$((iter + 1))
     [ "$iter" -le "$MAX_ITER" ] || die $EX_CONTRACT "$MAX_ITER Durchläufe ohne Ende. Die Schleife kommt nicht voran, und das ist kein Fall für einen weiteren Versuch."
@@ -1751,6 +1812,18 @@ main() {
       run_b "$planned"
     elif [ -n "$open" ]; then
       AKTUELL=$open
+      # Ein Paket, unter dem ein Commit steht, ist nicht offen, sondern
+      # wieder geöffnet — meist ein N, das blockiert war. Zug 0 plante es sonst
+      # neu, und B setzte es ein zweites Mal um. Es fehlt ihm der Review, also
+      # geht es als [r] weiter; den angefangenen Stand holt N aus dem Stash.
+      committet=$(committed_hash "$open")
+      if [ -n "$committet" ]; then
+        set_marker "$open" 'r'
+        plan_note "$open" "wieder geöffnet als [r] statt [ ]: Commit $committet steht, nachgeholt wird der Review ($(date '+%Y-%m-%d'))"
+        say "Paket $open ist schon committet ($committet) — es geht als [r] weiter, nicht als neues Paket."
+        journal "paket=$open wieder-geoeffnet marke=[r] hash=$committet"
+        continue
+      fi
       run_a "$open"
     else
       break

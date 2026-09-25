@@ -264,9 +264,10 @@ Schleife vor dem Commit zählt.
   über Bash, für den Reviewer entsprechend `-review-<runde>`. Modell nach der
   Tabelle am Ende, Effort nach der Zeile in der Paketdatei.
 - Ausgabe **als Datei**: `$ARBEITSDIR/paket-N.impl-<runde>.json` bzw.
-  `paket-N.review-<runde>.json`. Nie überschreiben: ein zweiter Anlauf in
-  derselben Runde bekommt `-versuch-2`. Was überschrieben wird, hat es nie
-  gegeben.
+  `paket-N.review-<runde>.json`. Gezählt wird ab 0: der Implementierer aus
+  Zug 1 ist Runde 0, die Fehlerkette beginnt bei Runde 1. Nie überschreiben:
+  ein zweiter Anlauf in derselben Runde bekommt `-versuch-2`. Was
+  überschrieben wird, hat es nie gegeben.
 - **Abkoppeln und begrenzt warten.** Die Frist deines Bash-Werkzeugs liegt bei
   zehn Minuten, ist nicht erhöhbar und erschlägt beim Ablauf die
   Prozessgruppe — ein Implementierer stirbt dann mit Exit 143 mitten im Umbau.
@@ -275,7 +276,7 @@ Schleife vor dem Commit zählt.
   Blöcken unter der Frist warten und den Block wiederholen, bis die Datei da
   ist:
 
-      timeout 540 bash -c 'until [ -f "$ARBEITSDIR/paket-N.impl-1.exit" ]; do sleep 5; done'
+      timeout 540 bash -c 'until [ -f "$ARBEITSDIR/paket-N.impl-0.exit" ]; do sleep 5; done'
 
 - **Deinen Zug lässt du nicht enden, solange einer läuft.** In `-p` ist ein
   Zug ohne laufenden Werkzeugaufruf ein fertiger Zug, und die CLI erzwingt
@@ -390,7 +391,12 @@ mittlere, subtile Nebenläufigkeit oder Sicherheit die stärkste.
 ## Zug 4 — Fehlerkette
 
 Kleine Befunde gehen in die Paketdatei und lösen keine Runde aus. Nicht
-erfüllte Findings sowie kritische und wichtige Befunde lösen eine aus:
+erfüllte Findings sowie kritische und wichtige Befunde lösen eine aus.
+
+Gezählt wird an jeder Stelle gleich: Runde 0 ist der Implementierer aus
+Zug 1, die Kette zählt ab Runde 1, und `rounds` in deiner Rückgabe ist die
+Zahl ihrer Runden — 0, wenn der erste Anlauf saß. Jede Runde hinterlässt genau
+einen Implementierer-Report; die Schleife hält deren Zahl gegen `rounds`.
 
 1. **Runde 1** — derselbe Implementierer bekommt die Befunde im Wortlaut, und
    zwar buchstäblich derselbe: seine `session_id` steht in seiner Reportdatei,
@@ -443,9 +449,13 @@ Lauf geht zurück in die Kette und kostet keinen Reviewer. Widerspricht ein Befu
 verlangt, entscheidest weder du noch der Reviewer: beide Seiten in die
 Rückgabe, Status `question`.
 
-Bleibt etwas offen:
+Bleibt etwas offen, **parkst** du das Paket. Dasselbe gilt für jedes
+`question`, gleich in welchem Zug es entsteht: auch eine Frage lässt keinen
+angefangenen Stand im Baum liegen, sonst kommt der Lauf nach der Antwort nicht
+wieder in Gang — die Vorbedingung verweigert den Neustart an einem schmutzigen
+Baum.
 
-- Paket im Plan auf `[!]`, offene Befunde in einer Zeile.
+- Paket im Plan auf `[!]`, offene Befunde bzw. die Frage in einer Zeile.
 - Arbeitsbaum sichern, Plan und Paketdateien draußen halten — `-u` nähme sie
   sonst mit, und beide verschwänden genau dann, wenn jemand sie braucht:
 
@@ -454,18 +464,25 @@ Bleibt etwas offen:
   ```
 
 - Stash-Name als letzte Verlaufszeile in die Paketdatei; der Verlauf bleibt
-  stehen, er ist die einzige Spur dessen, was versucht wurde.
+  stehen, er ist die einzige Spur dessen, was versucht wurde. War der Baum
+  schon sauber, kein Stash, und die Verlaufszeile sagt das.
+- Die Schleife prüft danach Marke `[!]` und sauberen Baum; fällt eins davon,
+  endet der Lauf mit Exit 20.
 - `Stand:` auf das nächste Paket, Arbeitsbaum als sauber vermerkt.
-- Rückgabe `blocked` mit den offenen Befunden; bauen spätere Pakete darauf
+- Rückgabe `blocked` mit den offenen Befunden, oder `question` mit der Frage
+  und deinem Vorschlag in `for_you`; bauen spätere Pakete darauf
   auf, sagst du das dazu. Schreib dazu, ob die offenen Befunde Folgen deines
   eigenen Diffs sind und ob Verify im gesicherten Stand grün war — daran
   entscheidet der Orchestrator, ob er selbst weitermachen darf.
 
-### Ein blockiertes Paket fortsetzen
+### Ein geparktes Paket fortsetzen
 
-Steht dein Paket wieder auf `[ ]`, obwohl seine Paketdatei mit einem
-Stash-Namen endet, gilt der datierte Eintrag unter »Entscheidungen«, der das
-Paket wieder geöffnet hat. Sagt er, dass der gesicherte Stand weitergeführt
+Wieder geöffnet wird ein geparktes Paket immer auf `[ ]`. Steht unter ihm im
+Plan schon ein Hash, war es ein N — dann macht die Schleife daraus selbst
+wieder ein `[r]`, und N setzt fort; sonst beginnt es bei Zug 0.
+
+Endet die Paketdatei mit einem Stash-Namen, gilt der datierte Eintrag unter
+»Entscheidungen«, der das Paket wieder geöffnet hat. Sagt er, dass der gesicherte Stand weitergeführt
 wird:
 
 ```bash
@@ -487,6 +504,9 @@ genau diesem Grund.
   Blockade zählen nicht mehr, der Rahmen hat sich geändert. Nach dem Commit in
   Zug 5 `git stash drop "$ref"` (neu gesucht), und die Verlaufszeile nennt
   den Namen.
+- **N** holt den Stand vor Zug 3 zurück, ebenfalls mit `git stash apply`,
+  verifiziert und lässt den Reviewer auf `git diff <hash>~1` sehen — Commit
+  und zurückgeholter Stand zusammen. Die Kette beginnt neu bei Runde 1.
 
 ## Zug 5 — Commit, Plan fortschreiben
 
@@ -570,7 +590,9 @@ Reviewers. Der Auftrag ist eng:
    Urteil und der Vermerk, dass der Review nachgezogen wurde und warum.
 6. Rückgabe `committed` mit dem Hash, auf dem das Paket am Ende steht.
    `blocked` und `question` nur für das, was sie überall bedeuten; dass der
-   Review fehlte, ist keines davon.
+   Review fehlte, ist keines davon. Beide parken wie in Zug 4 — `[!]`, Stand
+   im Stash —, und wieder geöffnet geht das Paket als `[r]` weiter, weil sein
+   Hash schon im Plan steht.
 
 Nicht: das Paket von vorn umsetzen, den Detailplan neu schreiben, Findings
 nachtragen.
@@ -589,10 +611,10 @@ die Schleife Kontext.
 | `committed` | `[x]`, Hash eingetragen | B, N |
 | `dropped` | `[x]`, `Ergebnis: entfallen` mit Begründung — ein spurlos verschwundenes Paket sieht im Folgeaudit aus wie ein vergessenes | B |
 | `blocked` | `[!]`, Arbeitsbaum im Stash | B, N |
-| `question` | unverändert, der Nutzer entscheidet; `for_you` nennt die Frage samt Vorschlag | B, N |
+| `question` | `[!]`, Arbeitsbaum im Stash wie bei `blocked`; `for_you` nennt die Frage samt Vorschlag, entscheiden kann nur der Nutzer | B, N |
 
 Pflicht bei `committed`: `hash`, `verify_log` (absolut, im Arbeitsverzeichnis),
-`verify_exit`, `rounds`.
+`verify_exit`, `rounds` (Runden der Fehlerkette, 0 wenn der erste Anlauf saß).
 
 Bevor du zurückgibst, die Prüffrage: **was weiß ich über dieses Paket, das
 weder im Plan noch in der Paketdatei steht?** Alles, was ein späteres Paket
@@ -613,15 +635,19 @@ Fall, dass«.
 
 ## Was die Schleife nachprüft
 
-Eine Behauptung und ein Beleg sind zwei Dinge. Fällt eine Probe, endet der
-Lauf mit Exit 20:
+Eine Behauptung und ein Beleg sind zwei Dinge. Fällt eine Probe, setzt die
+Schleife dein Paket selbst auf `[!]`, schreibt den Grund darunter und endet
+mit Exit 20 — ein `[x]`, das du gesetzt hast, bleibt dann nicht stehen, und
+wieder geöffnet wird es nur vom Nutzer:
 
 - Die Marke im Plan entspricht deinem Status; die Paketnummer und `role` sind
   die aus dem Brief.
 - Bei `committed`: der Hash ist `HEAD` und hat sich seit deinem Start bewegt;
   `verify_log` liegt im Arbeitsverzeichnis und enthält `exit=0`; `rounds`
-  liegt nicht über der Obergrenze, und es gibt nicht mehr
-  Implementierer-Reports als Runden.
+  liegt nicht über der Obergrenze, und es gibt höchstens `rounds + 1`
+  Implementierer-Reports. Gezählt werden nur Reports, die dein Prozess
+  angelegt hat, ohne `-versuch-`-Dateien.
+- Bei `blocked` und `question`: Marke `[!]`, Arbeitsbaum sauber.
 - Bei `committed`: ein Reviewer-Report liegt vor — sonst geht das Paket auf
   `[r]` und N zieht den Review nach; fehlt er auch danach, Exit 20. Liegt nur
   der Implementierer-Report nicht vor, hast du den Code selbst geschrieben:

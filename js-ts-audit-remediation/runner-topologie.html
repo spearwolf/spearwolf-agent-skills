@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Runner-Topologie</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -337,8 +338,9 @@
     <h1>Runner-Topologie</h1>
     <p class="standfirst">Wer startet wen, wer lebt wie lange, und wie der Skill <code>js-ts-audit-remediation</code> seine Paketschleife fährt — als Agent oder als Prozess.</p>
     <div class="meta">
-      <span><b>Stand</b> 2026-09-08</span>
-      <span><b>Beschreibt</b> <code>scripts/remediate.sh</code> · <code>references/shell-runner.md</code></span>
+      <span><b>Stand</b> 2026-09-25</span>
+      <span><b>Beschreibt</b> <code>scripts/remediate.sh</code> · <code>references/shell-runner.md</code> · <code>references/runner.md</code></span>
+      <span><b>Formal</b> <a href="./state-machine.html">state-machine.html</a> — dieselbe Maschine als Zustände und Übergänge</span>
       <span><b>Gemessen</b> gegen CLI 2.1.241–2.1.246</span>
       <span><b>Umgesetzt</b> 2026-08-24 · Branch <code>claude/audit-remediation-orchestration-660ebh</code></span>
       <span><b>Gefahren</b> Szenario-Test 2026-08-25 · zwei echte Läufe 2026-08-26</span>
@@ -503,7 +505,7 @@
     </blockquote>
 
     <div class="prose">
-      <p>Drei Symptome, ein Muster: Prozesssteuerung, die als Prosa formuliert werden musste und deshalb nur galt, solange ein Modell sie befolgte. Die Ausreden-Tabelle in <code>runner.md</code> zählt inzwischen 29 Zeilen, mehrere davon halten einen Agenten davon ab, auf einen anderen zu pollen.</p>
+      <p>Drei Symptome, ein Muster: Prozesssteuerung, die als Prosa formuliert werden musste und deshalb nur galt, solange ein Modell sie befolgte. Die Ausreden-Tabelle in <code>runner.md</code> zählt heute 26 Zeilen, mehrere davon halten einen Agenten davon ab, auf einen anderen zu pollen.</p>
       <p>Dazu kam eine Grenze, die keine Prosa beheben konnte: in einem Subagenten ist ein MCP-Server in der Regel nicht exponiert. Ein Implementierer, der den Browser des Projekts nicht erreicht, ist für die Hälfte aller Pakete nutzlos.</p>
       <p>Beides fällt weg, sobald jede Rolle ein eigener Prozess ist. Ein Prozess ist beendet oder nicht — es gibt keinen zweiten Kanal, in dem man nachfragen könnte — und er erbt die Konfiguration der Maschine wie jede Session.</p>
     </div>
@@ -710,9 +712,6 @@ DENY=<span class="c-str">'AskUserQuestion,SendMessage,ScheduleWakeup,CronCreate,
         --disallowedTools <span class="c-str">"$DENY"</span> \
         --max-budget-usd 50) || <span class="c-kw">exit</span> 30
 
-  <span class="c-cmt"># der Runner hat nicht behauptet zu delegieren, es liegen zwei Reports da</span>
-  [ <span class="c-str">"$(find "$WORK" -name "paket-$pkg.impl-*.json"   | wc -l)"</span> -ge 1 ] || <span class="c-kw">exit</span> 20
-  [ <span class="c-str">"$(find "$WORK" -name "paket-$pkg.review-*.json" | wc -l)"</span> -ge 1 ] || <span class="c-kw">exit</span> 20
   jq -e <span class="c-str">'.permission_denials == []'</span> &lt;&lt;&lt;<span class="c-str">"$out"</span> &gt;/dev/null || <span class="c-kw">exit</span> 21
 
   r=$(jq -r .result &lt;&lt;&lt;<span class="c-str">"$out"</span>)   <span class="c-cmt"># Form garantiert das Schema, nicht die Prosa</span>
@@ -720,11 +719,13 @@ DENY=<span class="c-str">'AskUserQuestion,SendMessage,ScheduleWakeup,CronCreate,
   hash=$(jq -r .hash &lt;&lt;&lt;<span class="c-str">"$r"</span>)
 
   <span class="c-kw">case</span> <span class="c-str">"$status"</span> <span class="c-kw">in</span>
-    committet)
-      git log --format=%h -n 20 | grep -qx <span class="c-str">"$hash"</span> || <span class="c-kw">exit</span> 20
+    committed)
+      [ <span class="c-str">"$(git rev-parse "$hash")"</span> = <span class="c-str">"$(git rev-parse HEAD)"</span> ] || <span class="c-kw">exit</span> 20
       grep -q <span class="c-str">'^exit=0$'</span> <span class="c-str">"$WORK/paket-$pkg.verify.log"</span> || <span class="c-kw">exit</span> 20
+      <span class="c-cmt"># fehlt der Review-Beleg, wird er nachgezogen statt den Lauf anzuhalten</span>
+      [ <span class="c-str">"$(find "$WORK" -name "paket-$pkg.review-*.json" | wc -l)"</span> -ge 1 ] || set_marker <span class="c-str">"$pkg"</span> r
       printf <span class="c-str">'Paket %s · %s · %s\n'</span> <span class="c-str">"$pkg"</span> <span class="c-str">"$hash"</span> <span class="c-str">"$(jq -r .findings &lt;&lt;&lt;"$r")"</span> ;;
-    entfallen)
+    dropped)
       printf <span class="c-str">'Paket %s entfallen\n'</span> <span class="c-str">"$pkg"</span> ;;
     *)
       jq -r .fuer_dich &lt;&lt;&lt;<span class="c-str">"$r"</span>; <span class="c-kw">exit</span> 10 ;;
@@ -732,7 +733,7 @@ DENY=<span class="c-str">'AskUserQuestion,SendMessage,ScheduleWakeup,CronCreate,
 <span class="c-kw">done</span></code></pre>
 
     <div class="prose">
-      <p>Vierzig Zeilen ersetzen die Aufgabe, für die vorher ein Modell auf der stärksten Stufe über zwölf Pakete wach bleiben musste. Die Flags sind gegen die CLI geprüft. Vier davon verändern den Entwurf gegenüber dem naiven Skript:</p>
+      <p>Das ist die Skizze, nicht das Skript — das echte hat 1800 Zeilen, und fast alle davon sind Wächter, Meldungen und Begründungen. Die Zustandsübergänge selbst stehen vollständig in <a href="./state-machine.html">state-machine.html</a>. Vierzig Zeilen ersetzen die Aufgabe, für die vorher ein Modell auf der stärksten Stufe über zwölf Pakete wach bleiben musste. Die Flags sind gegen die CLI geprüft. Vier davon verändern den Entwurf gegenüber dem naiven Skript:</p>
       <ul>
         <li><code>--json-schema</code> validiert die Rückgabe auf der Werkzeugebene. Der ganze Zweig »Rückgabeblock unlesbar« fällt weg, und mit ihm die Möglichkeit, dass ein Runner neun Zeilen frei formuliert.</li>
         <li><b>Die Reportdateien sind der Delegationsbeleg.</b> Der Entwurf zählte hier einmal <code>subagent_stats.spawned</code> — das ging verloren, als Implementierer und Reviewer eigene Prozesse wurden, denn ein eigener Prozess taucht in dieser Zahl nicht auf. Der Ersatz ist besser als das Original: zwei Reports auf der Platte sind ein Beleg, der den Runner überlebt, ein hochgezählter Zähler nicht. Was ein fehlender Beleg auslöst, hat sich seither getrennt: fehlt der Review, zieht die Schleife ihn nach (Rolle N, unten); fehlt nur der Implementierer-Report, kommt eine Ausnahme in den Plan und der Lauf geht weiter. Ein Abbruch bleibt nur, wo auch der nachgezogene Review keinen Report hinterlässt.</li>
@@ -773,16 +774,19 @@ done</code></pre>
 $ ORCHESTRATOR_SESSION=e41fbeee-7e8b-… remediate.sh
 Läuft in tmux-Session »remediate-mein-projekt«.
 
-  tmux attach -t remediate-mein-projekt   ansehen und antworten
-  Ctrl-b d                                wieder ablösen, der Lauf läuft weiter
+  tmux attach -t remediate-mein-projekt           ansehen und antworten
+  Ctrl-b d                                        wieder ablösen, der Lauf läuft weiter
+  tmux capture-pane -p -t remediate-mein-projekt  hineinsehen, ohne anzuhängen
+  tmux kill-session -t remediate-mein-projekt     abbrechen
 
-Mitschrift: .git/remediation/remediate.pane.log
-Journal:    .git/remediation/remediate.log
-Sperre:     .git/remediation/.remediate.lock  (existiert, solange die Schleife läuft)
-Gefahren:   .git/remediation/remediate.sh     (Kopie des Skripts, Stand dieses Laufs)
+Mitschrift: /tmp/remediation-mein-projekt/remediate.pane.log
+Journal:    /tmp/remediation-mein-projekt/remediate.log
+Sperre:     /tmp/remediation-mein-projekt/.remediate.lock (existiert, solange die Schleife läuft)
+Gefahren:   /tmp/remediation-mein-projekt/remediate.snapshot.sh (Kopie des Skripts, Stand dieses Laufs)
+<span class="c-cmt">… dazu zwei Absätze: wer Zug 0 schließt, und wer den Abschluss auslöst</span>
 
 <span class="c-cmt"># drinnen, wenn du dich anhängst</span>
-Pakete:    12 offen · 0 erledigt · 0 blockiert
+Pakete:    12 offen · 0 erledigt · 0 Review offen · 0 blockiert
 
 → Runner A · Paket 2 · opus/xhigh · tmux-Fenster »p2-plan«
   <span class="c-cmt">… dort deine Session: deine MCP-Server, deine Skills, sie fragt dich …</span>
@@ -795,6 +799,7 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
     <div class="prose">
       <p>Du wirst am Anfang jedes Pakets gebraucht, meist ein paar Minuten — und nur dann, wenn du dich anhängst. Die lange Strecke danach läuft ohne dich. Kommt keine Frage auf, läuft ein Paket auch ohne dich durch.</p>
       <p>Zug 0 bekommt dafür ein eigenes Fenster, und er sagt selbst, wann er fertig ist: seine letzte Handlung ist ein <code>touch</code> auf <code>paket-N.zug0.done</code> im Arbeitsverzeichnis. Die Schleife sieht im Sekundentakt danach, lässt eine Frist verstreichen, schickt <code>/exit</code> ins Fenster und beendet es, falls das nicht zieht. Das ist die Antwort auf einen gemessenen Fehlschlag: solange das Ende des Vordergrundprozesses das Signal war, musste ein Mensch es auslösen — und ein fertiger Planer stand einmal eine Stunde im Pane, ohne dass irgendwo ein Fehler zu sehen war. Ein Zeichen auf der Platte schreibt der, der als Einziger weiß, wann er fertig ist.</p>
+      <p>Seit dem 2026-09-20 hängt darunter ein Netz, weil auch das Zeichen vergessen wurde: Paketdatei fertig, Marke gesetzt, Fenster still — und weil ein Client daran hing, stand auch die Uhr gegen unbeaufsichtigte Läufe still. Die Schleife liest deshalb zusätzlich die Marke, nach der sie hinterher ohnehin entscheidet. Stehen Marke und Paketdatei und rührt sich <code>ZUG0_SETTLE</code> (120 s) lang weder an ihnen noch im Pane etwas, schickt sie einen Anstoß ins Fenster, der das Kommando wörtlich nennt; bleibt es danach noch einmal so lange still, schließt sie das Fenster selbst. Ein Planer, der weiterschreibt, wird nicht unterbrochen — jede Änderung an der Paketdatei setzt beide Uhren zurück. Das Netz ersetzt das Zeichen nicht, es kostet pro Paket zwei Fristen.</p>
       <p>Der Grund für tmux ist nicht Bequemlichkeit. Eine abgelöste tmux-Session hat ein echtes Pseudo-Terminal — gemessen <code>stdin=ja stdout=ja tty=/dev/pts/0</code> —, ein gewöhnlicher Hintergrundprozess hat keines, und ohne Terminal kann Zug 0 nicht fragen. tmux ist damit das Einzige, was »abgelöst« und »fragt nach« zugleich erlaubt. Fehlt tmux, bricht das Skript ab und der Lauf beginnt nicht — das ist die einzige Voraussetzung, die es selbst stellt.</p>
       <p>Hineinsehen geht ohne anzuhängen: <code>tmux capture-pane -p -t &lt;session&gt;:0</code> zeigt das Pane der Schleife, <code>remediate.log</code> das Journal, <code>remediate.pane.log</code> die ganze Ausgabe. Das Journal endet mit <code>ende exit=N</code>, sobald der Lauf durch ist — fehlt die Zeile, läuft er noch oder wartet auf eine Antwort.</p>
 
@@ -834,6 +839,10 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
       <p>Die zweite Hälfte desselben Fehlers ist die feinere: <b>abkoppeln heißt nicht weggehen.</b> In <code>-p</code> gibt es keinen Prompt, an dem ein Agent stehenbleiben könnte — ein Zug ohne laufenden Werkzeugaufruf ist ein fertiger Zug, und die CLI erzwingt dann die Rückgabe. Im selben Lauf kam der zweite Anlauf sauber durch, der Runner war aber längst zur Rückgabe gezwungen: Review, Fehlerkette, Verify und Commit fanden nie statt, das Paket stand auf <code>[~]</code>, die Arbeit lag uncommittet im Baum. Der Warteblock ist genau das Mittel dagegen — solange er läuft, läuft der Zug.</p>
       <p>Für den Reviewer gilt dieselbe Regel, und dass es ihn seltener trifft, macht sie nicht kleiner. Vier Reviewer aus demselben Lauf über kleine bis mittlere Diffs: 39 s, 1:42, 1:47, 3:24. Der längste hat ein Drittel der Frist verbraucht, und alle Größen, die ihn treiben, wachsen nach oben — ein Diff über 147 kB statt 40, eine Fehlerkette, die ihn in Runde 2 und 3 eine Modellstufe höher noch einmal fahren lässt.</p>
 
+      <h3>Erst grün, dann Review</h3>
+      <p>Das Verify lief lange in Zug 5, hinter Review und Fehlerkette. Ein Implementierer, der rot ablieferte, kostete damit einen vollständigen Reviewer-Prozess, der fand, was der Testlauf schon wusste. Seit dem 2026-09-20 verifiziert B in Zug 2, direkt nach dem Report; ein roter Stand geht ohne Zug 3 in die Fehlerkette, und jede Runde der Kette durchläuft dasselbe Gate, bevor ein Reviewer sie sieht. Der Commit in Zug 5 braucht einen grünen Lauf, der jünger ist als die letzte Codeänderung — lag keine dazwischen, wird nicht ein zweites Mal verifiziert. Die Zugnummern sind geblieben, weil vier Dateien sie zitieren.</p>
+      <p>Runde 1 der Kette startet seither keinen neuen Implementierer, sondern setzt den alten per <code>claude -p --resume &lt;session_id&gt;</code> fort: er hat Diff, Begründungen und gelesene Dateien noch im Kopf, der Brief schrumpft auf die Befunde. Das rechnet sich nur, wenn Modell, Effort und Werkzeugrechte exakt gleich bleiben; ein geändertes Flag wirft den Prompt-Cache weg, und die Fortsetzung wird teurer als ein Neustart (gemessen an einem kleinen Fixture: 347 gegen 33.582 neu zwischengespeicherte Token). Ab Runde 2 ist der leere Kopf wieder der Zweck.</p>
+
       <h3>Wo ein Lauf anhält</h3>
     </div>
 
@@ -842,7 +851,7 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
         <thead><tr><th>Exit</th><th>Heißt</th><th>Was folgt</th></tr></thead>
         <tbody>
           <tr><td class="who">0</td><td>kein Paket mehr offen</td><td>Schritt 7</td></tr>
-          <tr><td class="who">10</td><td>ein Runner legt etwas vor</td><td>Antwort in »Entscheidungen«, neu starten</td></tr>
+          <tr><td class="who">10</td><td>ein Runner legt etwas vor</td><td>bei <code>blocked</code> entscheidet zuerst der Orchestrator, sonst der Nutzer; Antwort in »Entscheidungen«, neu starten</td></tr>
           <tr><td class="who">11</td><td>ein Paket steht auf <code>[~]</code></td><td><code>resume.md</code>, nicht das Skript</td></tr>
           <tr><td class="who">20</td><td>die Rückgabe passt nicht zum Repo</td><td>Plan und <code>git log</code> ansehen</td></tr>
           <tr><td class="who">21</td><td>Rechteschranke</td><td>unter <code>bypassPermissions</code> selten und nie eine zu enge Liste: eine <code>ask</code>-Regel dieser Maschine, ein Connector auf »ask«, ein MCP-Tool mit <code>requiresUserInteraction</code>. Die Meldung nennt das Abgelehnte</td></tr>
@@ -937,6 +946,10 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
       <p>Ein Lauf hält an zwei ganz verschiedenen Orten an, und sie werden regelmäßig verwechselt. Der <b>Orchestrator</b> ist der Agent im Gespräch: er klärt vor dem Plan, holt die Freigabe, legt die Befund-Queue vor, bewertet am Schluss die Version. Er fragt im Chat und blockiert nichts — was er fragt, fragt er, bevor das Skript überhaupt läuft, oder nachdem es zurückgekommen ist. <b>Zug 0</b> ist der Paket-Planer im tmux-Fenster. Er fragt mitten im laufenden Skript, und seine Frage hält die Schleife an, bis sie beantwortet ist.</p>
       <p>Die beiden haben seit dem 2026-08-25 sehr verschiedene Schwellen. Für Zug 0 steht sie einmal, in <code>runner.md</code> unter »Wo du anhältst«, und sie ist abschließend: gefragt wird allein, was die Richtung umwirft; was sich begründen lässt, entscheidet er, und der Grund steht im Detailplan. Für den Orchestrator gibt es keine solche Grenze. Gemessen am Szenariolauf desselben Tages: fünf Züge 0 über drei Sandboxen, keine einzige Frage — und im selben Lauf vier Halte des Orchestrators (Scope, API-Entscheidung, Befund-Queue, Versionsanhebung).</p>
 
+      <h3>Blockiert heißt: zuerst der Orchestrator</h3>
+      <p>Seit dem 2026-09-21 fragt ein <code>blocked</code> nicht mehr ungeprüft den Nutzer. Der Orchestrator liest Paketdatei und Rückgabe und prüft fünf Bedingungen: jeder offene Befund ist eine Folge des eigenen Diffs; was zu tun ist, schreibt der Skill schon vor; nichts widerspricht Plan oder »Entscheidungen«; Verify war im gesicherten Stand grün; dasselbe Paket ist nicht schon einmal so weitergeführt worden. Trifft alles zu, entscheidet er selbst, trägt die Entscheidung datiert und als seine gekennzeichnet ein, setzt das Paket auf <code>[ ]</code> und startet neu — der Nutzer bekommt eine Push-Zeile statt einer Frage. Sonst fragt er, mit Vorschlag. Ein <code>question</code> geht immer an den Nutzer.</p>
+      <p>Das gibt dem Orchestrator eine dritte Rolle neben Planen und Abschließen, und die Probe gegen erfundene Entscheidungen aus Zug 0 stört sie nicht: die Schleife merkt sich »Entscheidungen« erst beim Start eines Zuges, ein Eintrag davor gehört zur Ausgangslage.</p>
+
       <h3>Woran die Schleife merkt, dass jemand da ist</h3>
       <p>Sie prüft nicht die Absicht, sondern die Anwesenheit — dieselbe Trennung von Behauptung und Beleg wie beim Commit, der einen eigenen Verify-Lauf braucht. Der Grund ist gemessen: ein Planer notierte »User answered Claude's questions« samt ausgefüllter Antworten, während in sein Fenster keine Taste gesendet worden war. Gegen einen Irrtum über die eigene Wahrnehmung hilft keine Instruktion, gegen ihn hilft ein Beleg.</p>
     </div>
@@ -992,8 +1005,9 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
           <tr><td class="who">Implementierer, exakter Plan</td><td>mittleres</td><td class="who">low</td><td>Zug 0 hat Signaturen und Werte hingeschrieben. Näher an Transkription als an Entwurf.</td></tr>
           <tr><td class="who">Implementierer, Bugfix</td><td>mittleres</td><td class="who">medium</td><td>Regressionstest zuerst, rot sehen, beheben. Standardfall.</td></tr>
           <tr><td class="who">Implementierer, Nebenläufigkeit oder API</td><td>stärkstes</td><td class="who">high</td><td>Blast Radius unklar.</td></tr>
+          <tr><td class="who">Implementierer, Runde 1</td><td>wie Runde 0</td><td class="who">wie Runde 0</td><td>Derselbe Prozess, per <code>--resume</code> fortgesetzt. Jedes geänderte Flag wirft den Prompt-Cache weg; wer die Stufe anheben will, springt gleich zu Runde 2.</td></tr>
           <tr><td class="who">Implementierer, Runde 2</td><td>+1 Stufe</td><td class="who">+1 Stufe</td><td>Ein frischer Implementierer, nicht derselbe noch einmal. Ein Halbschritt verschenkt eine Runde.</td></tr>
-          <tr><td class="who">Implementierer, Runde 3</td><td>stärkstes</td><td class="who">high</td><td>Diesmal mit der ganzen Kette vor sich: was in Runde 1 und 2 versucht wurde und woran es lag. Danach wird nicht weiter eskaliert — fünf Runden sind die Obergrenze, und eine Runde, die die Zahl der offenen Befunde nicht senkt, ist die letzte.</td></tr>
+          <tr><td class="who">Implementierer, Runde 3</td><td>stärkstes</td><td class="who">high</td><td>Diesmal mit der ganzen Kette vor sich: was in Runde 1 und 2 versucht wurde und woran es lag. Danach wird nicht weiter eskaliert — fünf Runden sind die Obergrenze. Die eigentliche Bremse zählt Befunde, nicht ihre Zahl: Schluss ist, wenn keine Runde einen offenen Befund erledigt, ein erledigter zurückkommt oder zwei Runden hintereinander nur tauschen.</td></tr>
           <tr><td class="who">Reviewer, mechanischer Diff</td><td>mittleres</td><td class="who">low</td><td>Zeilen gegen den Detailplan halten.</td></tr>
           <tr><td class="who">Reviewer, Nebenläufigkeit oder Sicherheit</td><td>stärkstes</td><td class="who">max</td><td>Review ist Deliberation. Der eine Ort, an dem Effort vor Modell kommt.</td></tr>
           <tr><td class="who">Gegenprobe</td><td>—</td><td class="who">—</td><td><code>grep</code>.</td></tr>
@@ -1058,7 +1072,7 @@ Pakete:    12 offen · 0 erledigt · 0 blockiert
 
           <rect class="box-agent" x="475" y="236" width="425" height="66" rx="3" />
           <text x="489" y="260">claude -p · B — Zug 1–5</text>
-          <text class="t-sub" x="489" y="280">Dispatch, Review, Fehlerkette, Verify, Commit · --effort low</text>
+          <text class="t-sub" x="489" y="280">Dispatch, Verify, Review, Fehlerkette, Commit · --effort low</text>
 
           <text class="t-sub" x="475" y="326">Marke: [ ] → A → [~] → B → [x] · stirbt B, steht der Detailplan bereits</text>
         </svg>
@@ -1139,6 +1153,10 @@ first=1
         <li><b>Gescheiterte Versuche bleiben stehen.</b> Ein Wiederholungsversuch schrieb einmal in dieselbe Datei und löschte damit die Spur dessen, was der Versuch davor verbraucht hatte. Er legt sie jetzt als <code>paket-N.&lt;rolle&gt;-versuch-&lt;n&gt;.json</code> beiseite, und die Tabelle zählt sie als eigenen Prozess. Was überschrieben wird, hat es nie gegeben.</li>
       </ul>
 
+      <h3>Der Preis hängt am Paket, nicht am Inhalt</h3>
+      <p>Was die Tabelle am Ende zeigt, lässt sich vorher abschätzen, und seit dem 2026-09-20 steht die Schätzung vor der Freigabe. Der Kostentreiber ist nicht die Menge an Code, sondern die Zahl der Kaltstarts: jede Rolle beginnt bei null und liest sich das Modul neu an. Ein Paket kostet mindestens drei — Zug 0, Implementierer, Reviewer —, jede Runde der Fehlerkette zwei mehr. Gemessen an einem TypeScript-Monorepo mittlerer Größe: grob vierzig Minuten Wandzeit und einige Millionen Eingabe-Token je Paket, fast gleich für drei Findings wie für acht.</p>
+      <p>Schritt 5 schreibt deshalb eine Zeile <code>Kaltstarts:</code> in den Plan-Kopf und rechnet <b>Findings je Paket</b> aus, Zielkorridor fünf bis acht. Ein Paket unter drei Findings braucht einen benannten Blocker als Begründung — Severity-Sprung, Reviewbarkeit, echte Abhängigkeit —, sonst gehört es an ein Nachbarpaket. Der Nutzer sieht die Rechnung, bevor er bezahlt.</p>
+
       <h3>Die Session, die niemand mitzählte</h3>
       <p>Der größte einzelne Posten stand lange in keiner Zahl. Plan, Start und Abschluss laufen in der Session daneben, und die kennt sich selbst — das Skript kennt sie nicht. Gemessen an einem echten Lauf: 9,3M hinein, 48,4k hinaus, für einen Prozess, den die Tabelle gar nicht sah. Sie nennt sich deshalb beim Aufruf über <code>ORCHESTRATOR_SESSION</code>, der Start schreibt die Kennung nach <code>orchestrator.session</code>, und die Tabelle holt sich die Mitschrift. Mehrere Kennungen sind der Normalfall und kein Fehler: ein Lauf über Tage wird von mehreren Sessions gestartet.</p>
       <p>Fehlt einer der beiden Mitschrift-Posten, sagt die Tabelle das in ihrer letzten Zeile, statt die Lücke in der Summe verschwinden zu lassen. Geschätzt wird nichts. Eine Zahl, die eine Lücke stillschweigend schließt, ist schlimmer als eine, die fehlt — die fehlende sucht jemand, die geschätzte glaubt jemand.</p>
@@ -1170,6 +1188,8 @@ first=1
       <p>Am 2026-08-26 kamen zwei echte Läufe über <code>shadow-objects</code> dazu, und sie haben mehr gefunden als der ganze Szenario-Test davor. Alles, was seither in diesem Dokument steht — die Zehn-Minuten-Frist, die Verbotsliste statt der Erlaubnisliste, der dreifache Rückweg, die Kopie des Skripts, die Tokentabelle samt der Session, die niemand mitzählte —, ist die Antwort auf einen Fehlschlag aus diesen beiden Läufen. Keiner davon lag in der Topologie. Sie lagen alle an den Rändern: an der Frist eines Werkzeugs, an der Bauart einer Rechteschranke, an einem Pane, das eine Sekunde zu früh starb.</p>
       <p>Offen bleibt der Fall, für den es keine Probe mehr gibt: ein Zug 0, der wirklich auf eine Antwort wartet. Seit die Schwelle steht, stellt er keine Frage, die eine erzwingen würde — der Arm des Szenario-Tests, der genau diesen Fall prüft, misst seither nichts. Ebenso ungeprüft: ob der Scrollback eines sehr langen Zuges 0 über sein <code>history-limit</code> hinausläuft und der Erreichbarkeitsbeleg damit aus dem Fenster fällt, und ob eine echte CLI die Kanal-Meldung in jeder Fensterbreite ungebrochen schreibt.</p>
       <p>Vom 2026-09-08 an ist ein Stück ungeprüft, das vorher geprüft war. Der Stub über 36 Fälle deckt die alte Belegprüfung ab — »fehlt ein Report, Exit 20« —, und genau die ist ersetzt: die Marke <code>[r]</code>, der Vorrang, den sie in der Schleife hat, Rolle N und ihre eigene Gegenprobe sind bislang nur gelesen, nicht gefahren. Dasselbe gilt für die Aufteilung in Plan und Paketdatei: dass <code>-uall</code> den ungetrackten Ordner richtig ausblendet, ist gemessen, dass ein Zug 0 seine Paketdatei anlegt und ein Zug 1 sie findet, ist es nicht.</p>
+      <p>Seit dem 2026-09-20 kommt eine zweite Welle dazu, ebenfalls nur gelesen oder an Mikro-Fixtures gemessen: das Netz unter dem Feierabendzeichen (die Arithmetik gegen simulierte Zeitverläufe geprüft, ob ein echter Planer den Anstoß richtig liest, nicht), das Verify vor dem Review, der Resume in Runde 1 (ob ein fortgesetzter Implementierer Befunde ebenso gut abarbeitet wie ein frischer, ist offen), die Kaltstart-Rechnung im Grobplan und die Triage blockierter Pakete durch den Orchestrator. <code>scenario-tests/STATUS.md</code> führt jede davon einzeln.</p>
+      <p>Beim Aufschreiben der Zustandsmaschine fielen vier Stellen auf, an denen die Übergänge nicht zueinander passten, und alle vier sind am 2026-09-25 behoben: eine Rückfrage parkt jetzt wie ein Block im Stash; eine gescheiterte Gegenprobe setzt das Paket selbst auf <code>[!]</code>, statt ein unverdientes <code>[x]</code> stehen zu lassen; die Runden der Fehlerkette zählen überall ab Runde 0, und die Probe zählt nur die Reports des eigenen Prozesses; ein wieder geöffnetes Paket mit Commit geht als <code>[r]</code> weiter. Die Schleife ist dafür gegen einen Stub über 25 Prüfpunkte gefahren, ein echter Runner hat den neuen Vertrag noch nicht gelesen. Einzelheiten in <a href="./state-machine.html#luecken">state-machine.html</a>.</p>
       <p>Und zwei Lücken im Test selbst. Geprüft wird die Rückfrage-Disziplin von Zug 0 (»höchstens eine weitere Frage«), für den Orchestrator zählt sie niemand — vier Halte in einem Lauf haben keinen einzigen Prüfpunkt ausgelöst. Der Rückweg wird gar nicht geprüft: kein Arm sieht nach, ob der Wachposten steht, ob eine Meldung ankommt und ob der Abschluss ohne Zutun des Nutzers beginnt. Das ist ausgerechnet die Stelle, die einen fertigen Lauf schon einmal einen halben Tag gekostet hat.</p>
     </div>
   </section>
@@ -1182,6 +1202,7 @@ first=1
     <p>Am 2026-08-25 ist der Weg zum ersten Mal in voller Länge gefahren worden: Grobplan, Freigabe, Skriptstart, drei Pakete mit Implementierer, Reviewer und eigenem Verify-Lauf, Drain-Runde, Versionsanhebung, nachgeführter Report, Plan archiviert und aus dem Arbeitsbaum geräumt. Fünf Commits, sauberer Arbeitsbaum, Tests grün, kein Eingriff von Hand. Was dabei fiel, fiel an der Rückfrage-Schwelle und nicht an der Topologie.</p>
     <p>Am Tag darauf haben zwei echte Läufe die Ränder abgetragen, die ein Szenario-Test nie berührt: eine Werkzeugfrist, die einen Implementierer mitten im Umbau erschlägt; eine Erlaubnisliste, die nur so lange trägt, wie niemand ein neues Werkzeug braucht; ein Pane, das die Schlusszeile in derselben Sekunde mitnimmt, in der sie geschrieben wird. Die Topologie hat in beiden Läufen gehalten. Gekostet haben die Stellen, an denen sie an etwas anderes grenzt.</p>
     <p>Die deterministischen Zusicherungen sind gegen einen <code>claude</code>-Stub über 36 Fälle geprüft: Marken, Hash gegen HEAD, <code>exit=0</code> im Verify-Log, Reports von Implementierer und Reviewer, Rechteschranke, unlesbare Rückgabe, falsches Paket, abgestürzter Prozess, Überlast in fünf Spielarten, der Start über tmux mit und ohne Session, der Abbruch ohne tmux, und acht Vorbedingungen. Was ein Modell entscheidet, prüft kein Stub — das steht unter »Grenzen«.</p>
+    <p>Seit dem 2026-09-20 ist das Innere eines Pakets billiger geworden, ohne dass sich die Topologie bewegt hätte: Verify vor dem Review, Resume statt Neustart in der ersten Nachrunde, ein Netz unter dem vergessenen Feierabendzeichen, und ein Orchestrator, der einen Block selbst entscheidet, wenn der Skill die Antwort schon vorschreibt. Alles davon sind Übergänge innerhalb derselben sechs Prozesse. Wie sie zusammenhängen, steht Zustand für Zustand in <a href="./state-machine.html">state-machine.html</a>.</p>
   </div>
 
 </div>

@@ -23,8 +23,10 @@ chaotisch, gelegentlich gefährlich, und der Bibliothekar sagt zu allem nur
     abgelösten tmux-Session: die Planung jedes
     Pakets läuft im Terminal und kann nachfragen, die Umsetzung läuft ohne
     Aufsicht. Wie das aussieht, zeigt
-    [`runner-topologie.html`](./js-ts-audit-remediation/runner-topologie.html)
-    — im Browser öffnen, es ist eigenständig.
+    [`runner-topologie.html`](./js-ts-audit-remediation/runner-topologie.html),
+    welche Zustände der Lauf dabei durchläuft,
+    [`state-machine.html`](./js-ts-audit-remediation/state-machine.html)
+    — beide im Browser öffnen, sie sind eigenständig.
   - [`audit-github-sync`](./audit-github-sync/) — gleicht das Backlog aus
     so einem Audit mit den Issues eines GitHub-Repos ab, in beide Richtungen:
     Findings werden zu englischen, für sich stehenden Issues mit Labels, und
