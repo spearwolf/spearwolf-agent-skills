@@ -6,7 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { check, derive, render, migrate, extract } from '../scripts/build-report.mjs';
+import { check, derive, render, migrate, extract, match, merge } from '../scripts/build-report.mjs';
+import { matcher, assign, bundle } from '../scripts/bundle.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPT = path.join(HERE, '..', 'scripts', 'build-report.mjs');
@@ -192,4 +193,155 @@ test('Migration einer v1-Insel', () => {
   assert.deepEqual(m.summary.stack, ['Node', 'TS']);
   derive(m, {});
   assert.equal(m.summary.scoreModel, 1, 'ohne gemessenen Umfang bleibt Modell 1');
+});
+
+// --- Folgelauf: match und merge
+
+function followupPair() {
+  const prev = load('followup-de.json');
+  const data = structuredClone(prev);
+  delete data.summary.previousDate; delete data.summary.resolvedCount;
+  const base = { domain: 'code', description: 'd', recommendation: 'r' };
+  data.findings = [
+    { ...base, id: 'ASYNC-001', category: 'async', severity: 'medium', title: 'Race im Loader', location: 'src/loader/AssetLoader.ts:210' },
+    { ...base, id: 'BUG-001', category: 'correctness', severity: 'high', title: 'Division durch null', location: 'src/render/Renderer.ts:80' },
+    { ...base, id: 'SEC-001', category: 'security', severity: 'high', title: 'Ungeprüfte Eingabe', location: 'src/api/Server.ts:12' },
+    { ...base, id: 'CONS-001', category: 'consistency', severity: 'low', title: 'Logging uneinheitlich', location: 'src/core/EventBus.ts:41' },
+    { ...base, id: 'ARCH-001', category: 'architecture', severity: 'medium', title: 'Globaler Event-Bus', location: 'src/core/EventBus.ts:5' },
+  ];
+  data.acknowledged = [];
+  return { prev, data };
+}
+
+const allVerdicts = (m) => Object.fromEntries([...m.recheck.findings, ...m.recheck.acknowledged].map((k) => [k, { verdict: 'besteht' }]));
+
+test('match: sichere Paare, mehrdeutige Gruppen, Anhang-Treffer, Stapel nach Datei', () => {
+  const { prev, data } = followupPair();
+  const m = match(data, prev);
+  assert.deepEqual(m.pairs.map((p) => [p.new, p.old]).sort(), [['BUG-001', 'BUG-001'], ['CONS-001', 'CONS-001']]);
+  assert.equal(m.ambiguous.length, 1);
+  assert.deepEqual(m.ambiguous[0].old.map((f) => f.id).sort(), ['ASYNC-001', 'ASYNC-002']);
+  assert.ok(m.ackHits.some((h) => h.ack === 'ARCH-004' && h.finding === 'ARCH-001' && h.side === 'new'));
+  // Gepaarte alte Findings brauchen keinen Re-Check, mehrdeutige schon
+  assert.ok(!m.recheck.findings.includes('BUG-001'));
+  assert.ok(m.recheck.findings.includes('ASYNC-002'));
+  assert.deepEqual(m.recheck.acknowledged, ['ARCH-004']);
+  const items = m.batches.flat();
+  assert.equal(items.length, m.recheck.findings.length + 1);
+  assert.ok(m.batches.every((b) => b.length <= 15));
+  // Einträge zur selben Datei liegen im selben Stapel
+  const loader = m.batches.filter((b) => b.some((x) => x.location.startsWith('src/loader/AssetLoader.ts')));
+  assert.equal(loader.length, 1);
+});
+
+test('match: Titelähnlichkeit löst eine Gruppe nur bei klarem gegenseitigem Favoriten', () => {
+  const { prev, data } = followupPair();
+  data.findings[0].title = 'Doppelte Loads derselben URL zusammenführen, statt zweimal zu laden';
+  const m = match(data, prev);
+  assert.ok(m.pairs.some((p) => p.new === 'ASYNC-001' && p.old === 'ASYNC-002' && p.how === 'title'));
+  assert.equal(m.ambiguous.length, 0);
+  assert.ok(m.recheck.findings.includes('ASYNC-001'), 'das ungepaarte alte Finding geht in den Re-Check');
+  // Zwei gleich ähnliche Kandidaten: kein Paar, die Gruppe bleibt beim Orchestrator
+  data.findings.push({ ...data.findings[0], id: 'ASYNC-009', location: 'src/loader/AssetLoader.ts:95' });
+  const m2 = match(data, prev);
+  assert.ok(!m2.pairs.some((p) => p.how === 'title'));
+  assert.equal(m2.ambiguous.length, 1);
+});
+
+test('merge: Status, ID-Kontinuität, Übernahmen, Anhang abräumen', () => {
+  const { prev, data } = followupPair();
+  const m = match(data, prev);
+  const verdicts = allVerdicts(m);
+  verdicts['MEM-001'] = { verdict: 'verschoben', location: 'src/tiles/TileCache.ts:60' };
+  verdicts['PERF-001'] = { verdict: 'weg', evidence: 'BloomPass.ts:23 cached jetzt die Textur' };
+  verdicts['ARCH-004'] = { verdict: 'ueberholt', evidence: 'docs/adr/007-event-bus.md gestrichen, Bus entfernt' };
+  const decisions = { pairs: [['ASYNC-001', 'ASYNC-002']], suppress: ['ARCH-001'] };
+  const r = merge(data, prev, { m, decisions, verdicts });
+  assert.deepEqual(r.errors, []);
+  const by = Object.fromEntries(data.findings.map((f) => [f.id, f]));
+  assert.equal(new Set(data.findings.map((f) => f.id)).size, data.findings.length, 'IDs eindeutig');
+  assert.equal(by['BUG-001'].status, 'improved');
+  assert.equal(by['BUG-001'].previousSeverity, 'critical');
+  assert.equal(by['ASYNC-002'].status, 'unchanged', 'aufgelöstes Paar trägt die alte ID');
+  assert.equal(by['ASYNC-001'].status, 'carried-over', 'das andere alte Finding bleibt nach Urteil');
+  assert.equal(by['SEC-002'].status, 'new', 'kollidierende neue ID wird neu nummeriert');
+  assert.equal(by['SEC-001'].status, 'carried-over');
+  assert.equal(by['MEM-001'].location, 'src/tiles/TileCache.ts:60');
+  assert.ok(by['MEM-001'].github, 'github wandert mit');
+  assert.ok(!by['PERF-001'] && !by['ARCH-001']);
+  assert.equal(data.summary.resolvedCount, 1);
+  assert.equal(data.summary.previousDate, prev.summary.date);
+  assert.deepEqual(data.acknowledged, []);
+  assert.deepEqual(r.report.renames, ['SEC-001→SEC-002']);
+  assert.deepEqual(check(data), []);
+});
+
+test('merge verweigert fehlende, unklare und unbelegte Urteile', () => {
+  const { prev, data } = followupPair();
+  const m = match(data, prev);
+  const verdicts = allVerdicts(m);
+  delete verdicts['DX-001'];
+  verdicts['TEST-001'] = { verdict: 'unklar' };
+  verdicts['DEP-001'] = { verdict: 'weg' };
+  verdicts['ARCH-004'] = { verdict: 'begruendung-veraltet', evidence: 'ADR 007 ist superseded' };
+  const r = merge(structuredClone(data), prev, { m, verdicts });
+  assert.ok(r.errors.some((e) => e.includes('DX-001') && e.includes('kein Urteil')));
+  assert.ok(r.errors.some((e) => e.includes('TEST-001') && e.includes('unklar')));
+  assert.ok(r.errors.some((e) => e.includes('DEP-001') && e.includes('evidence')));
+  // Ohne diese drei geht es durch, der Anhangpunkt bleibt und wird gemeldet
+  verdicts['DX-001'] = verdicts['TEST-001'] = { verdict: 'besteht' };
+  verdicts['DEP-001'] = { verdict: 'weg', evidence: 'Dependency entfernt' };
+  const ok = merge(data, prev, { m, verdicts });
+  assert.deepEqual(ok.errors, []);
+  assert.equal(data.acknowledged.length, 1);
+  assert.equal(ok.report.ackStale[0].key, 'ARCH-004');
+});
+
+test('match und merge über die Kommandozeile', () => {
+  const { prev, data } = followupPair();
+  const dir = tmp();
+  fs.writeFileSync(path.join(dir, 'data.json'), JSON.stringify(data));
+  fs.writeFileSync(path.join(dir, 'prev.json'), JSON.stringify(prev));
+  const work = path.join(dir, 'followup');
+  const out = execFileSync('node', [SCRIPT, 'match', path.join(dir, 'data.json'), path.join(dir, 'prev.json'), '--out', work], { encoding: 'utf8' });
+  assert.match(out, /2 Paare sicher \(davon 0 über den Titel\) · 1 mehrdeutige Gruppen/);
+  const m = JSON.parse(fs.readFileSync(path.join(work, 'match.json'), 'utf8'));
+  const batches = fs.readdirSync(work).filter((f) => f.startsWith('recheck-'));
+  assert.ok(batches.length >= 1);
+  const fail = spawnSync('node', [SCRIPT, 'merge', path.join(dir, 'data.json'), path.join(dir, 'prev.json'), '--dir', work], { encoding: 'utf8' });
+  assert.equal(fail.status, 1, 'ohne Urteile kein Merge');
+  fs.writeFileSync(path.join(work, 'verdicts-1.json'), JSON.stringify({ verdicts: allVerdicts(m) }));
+  const r = spawnSync('node', [SCRIPT, 'merge', path.join(dir, 'data.json'), path.join(dir, 'prev.json'), '--dir', work], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(fs.existsSync(path.join(work, 'merge-report.json')));
+});
+
+test('extract --fields gibt nur die genannten Pfade aus', () => {
+  const dir = tmp();
+  const html = path.join(dir, 'audit.html');
+  execFileSync('node', [SCRIPT, 'build', path.join(FIXTURES, 'followup-de.json'), '--out', html], { stdio: 'ignore' });
+  const out = JSON.parse(execFileSync('node', [SCRIPT, 'extract', html, '--fields', 'portrait.components,summary.theme,meta.templateVersion'], { encoding: 'utf8' }));
+  assert.deepEqual(Object.keys(out), ['portrait.components', 'summary.theme', 'meta.templateVersion']);
+  assert.ok(Array.isArray(out['portrait.components']));
+});
+
+// --- Bündel
+
+test('bundle: Globs, Rest-Slice, Zeilennummern der Quelldatei, Zeichenlimit', () => {
+  assert.equal(matcher('src/texture/**')('src/texture/a/b.ts'), true);
+  assert.equal(matcher('src/texture/**')('src/textures/a.ts'), false);
+  assert.equal(matcher('src/*.ts')('src/x/a.ts'), false);
+  assert.equal(matcher('src/render')('src/render/a.ts'), true);
+  const s = assign(['src/a/x.ts', 'src/b/y.ts', 'lib/z.ts'], [{ id: 'a', paths: ['src/a/**'] }, { id: 'cfg', files: ['package.json'], source: false }]);
+  assert.deepEqual(s.map((x) => [x.id, x.files]), [['a', ['src/a/x.ts']], ['cfg', ['package.json']], ['rest', ['src/b/y.ts', 'lib/z.ts']]]);
+  const dir = tmp();
+  fs.writeFileSync(path.join(dir, 'big.ts'), Array.from({ length: 400 }, (_, i) => `const v${i} = setTimeout(() => {}, ${i});`).join('\n') + '\n');
+  fs.writeFileSync(path.join(dir, 'small.ts'), 'export const x = 1;\n');
+  const b = bundle({ id: 't', files: ['small.ts', 'big.ts'] }, dir, 4000);
+  assert.equal(b.loc, 401);
+  assert.ok(b.chunks.length > 2);
+  assert.ok(b.chunks.every((c) => c.length <= 4000));
+  assert.match(b.chunks[0], /===== small\.ts · 1 Zeilen =====\n1│ export const x = 1;/);
+  assert.ok(b.chunks.some((c) => /Teil 2\//.test(c) && /\n *\d+│ const v\d+/.test(c)));
+  assert.ok(b.markersPerKloc > 900);
 });

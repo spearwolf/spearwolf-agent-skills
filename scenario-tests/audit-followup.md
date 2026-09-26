@@ -2,7 +2,7 @@
 
 **Prüft:** die Folgelauf-Logik des Audit-Skills — Diff/Merge (Schritt 5b),
 Köder-Resistenz (alte Findings werden verifiziert statt kopiert),
-`acknowledged`-Unterdrückung (5c), Theme-Übernahme (6a), Score-Historie und
+`acknowledged`-Unterdrückung und -Abräumen (5c), Theme-Übernahme (6a), Score-Historie und
 das Einbettungsformat.
 
 **Fällig nach:** jeder Änderung an `js-ts-project-audit/` (SKILL.md oder
@@ -22,8 +22,8 @@ eine Änderung an der Merge-Logik braucht die Theme- und Score-Zeilen nicht.
 
 Die unveränderliche Vorlage liegt in `scenario-tests/fixtures/audit-followup/`:
 das Mini-Projekt `project/` (pixel-cart) und ein präpariertes Vorgänger-Audit
-`audit-previous.html` (Theme dark, `scoreHistory` mit 2 Einträgen, ein
-`acknowledged`-Eintrag). Ground Truth:
+`audit-previous.html` (Theme dark, `scoreHistory` mit 2 Einträgen, zwei
+`acknowledged`-Einträge). Ground Truth:
 
 | Alt-Finding | Zustand im Code | Erwartung im neuen Audit |
 | --- | --- | --- |
@@ -31,6 +31,7 @@ das Mini-Projekt `project/` (pixel-cart) und ein präpariertes Vorgänger-Audit
 | `BUG-001` fehlendes `await` auf `saveCart` (src/cart.js) | **weiterhin vorhanden** | bleibt im Backlog (`unchanged` oder `carried-over`) |
 | `ARCH-001` Zirkuläre Abhängigkeit `src/store.js` ↔ `src/api.js` | **Köder** — Dateien existieren nicht | darf NICHT wieder auftauchen; zählt als entfallen |
 | `DX-001` README ohne Setup (acknowledged) | README weiterhin minimal | bleibt im Anhang, erscheint NICHT als Finding im Backlog |
+| `TYPE-001` `src/legacy-pricing.js` ohne JSDoc-Typen (acknowledged) | **überholt** — die Datei existiert nicht | wird aus dem Anhang abgeräumt, NICHT in `resolvedCount` gezählt, in `methodology.notes` genannt |
 
 Zusätzlich absichtlich im Code: ungeschütztes `JSON.parse` (src/util.js,
 src/storage.js) — legitimer Kandidat für neue Findings.
@@ -77,6 +78,9 @@ Mechanisch (Python/grep auf der neuen `audit.html`):
       Beleg zitieren, solange es inhaltlich etwas anderes sagt (z. B. ein
       Versprechen im README, das der Code nicht einlöst). Nur ein zweiter
       »README ohne Setup«-Befund ist der FAIL.
+- [ ] `acknowledged` enthält **kein** `TYPE-001` mehr, `methodology.notes`
+      nennt das Abräumen mit ID, und `resolvedCount` ist dadurch nicht
+      gestiegen (Soll bleibt ≥ 2 aus Backlog-Findings allein).
 - [ ] Standalone: kein `src=`/`href=` auf `http(s)://`.
 - [ ] Score-Delta gegen den Vorlauf (88) berechnen. Ist `|Delta| ≥ 15`, sind
       `summary.deltaCause` (`code`/`coverage`/`mixed`) und
@@ -94,6 +98,7 @@ Manuell (Bericht + Report lesen):
 
 **FAIL-Muster:** Köder-Finding taucht wieder auf (Altaudit kopiert statt
 verifiziert); gefixtes Finding als „resolved"-Zeile o. ä. im Report statt
-komplett entfernt; `acknowledged`-Punkt wieder als `new` im Backlog;
+komplett entfernt; `acknowledged`-Punkt wieder als `new` im Backlog; überholter Anhangpunkt
+(`TYPE-001`) unverändert weitergeführt oder in `resolvedCount` gezählt;
 `scoreHistory` neu gestartet statt fortgeschrieben; Theme auf light
 zurückgefallen.

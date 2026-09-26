@@ -1,110 +1,136 @@
 # Folgelauf — Abgleich mit einem vorherigen Audit
 
 Gilt nur, wenn in Schritt 1 ein vorhandenes `./audit.html` registriert wurde.
-Diese Datei erst lesen, wenn der frische Audit (Schritte 2–5) abgeschlossen
-ist. Die Reihenfolge ist der Punkt: erst unvoreingenommen am Code arbeiten,
-dann vergleichen. Umgekehrt kopiert der Lauf alte Findings, statt sie zu
-prüfen.
+Zwei Einstiege: **Abschnitt A** in Schritt 1, **Abschnitt B** erst nach dem
+frischen Audit, wenn der Datensatz steht. Die Findings des Vorlaufs siehst du
+vorher nicht: erst unvoreingenommen am Code arbeiten, dann vergleichen.
+Umgekehrt kopiert der Lauf alte Findings, statt sie zu prüfen.
 
-## 5b. Merge
+`<skill-dir>` und `$TMP` wie in der `SKILL.md`. Alle Dateien dieses Abschnitts
+liegen unter `$TMP/followup/`.
 
-### Altdatei lesen
+## A. Vor dem frischen Audit (Schritt 1)
 
 ```bash
-node <skill-dir>/scripts/build-report.mjs extract ./audit.html > "$TMP/previous.json"
+B=<skill-dir>/scripts/build-report.mjs
+node "$B" extract ./audit.html > "$TMP/previous.json"
+node "$B" extract ./audit.html --fields portrait.components,summary.scope.exclusions,summary.theme,meta.templateVersion
 ```
 
-Das Skript liest die JSON-Insel und gibt sie als Schema 2 aus. Ältere Reports
-migriert es dabei: Kategorien werden zu Schlüsseln, fehlende Domains aus der
-Kategorie abgeleitet, Offene Fragen und Methodik vereinheitlicht, Features aus
-dem alten Portrait oder aus `component`-Angaben der Findings übernommen. Was es
-dabei ergänzen musste, steht in `methodology.notes` der Ausgabe — diese
-Hinweise wandern nicht in den neuen Datensatz, sie erklären nur den alten.
+`previous.json` liest du **nicht**; mit ihr arbeiten nur die Skripte. Das
+Skript migriert dabei auch Reports älterer Bauart ins aktuelle Schema. Findet es
+keine JSON-Insel, gibt es keinen Merge: reiner Neu-Audit, ein Satz dazu in
+`methodology.notes`, Abschnitt B entfällt.
 
-Daraus übernimmst du: `findings`, `summary.date` (wird `previousDate`),
-`scoreHistory`, `fixHistory`, `theme`, `acknowledged`, `portrait.components`
-und `summary.scope.exclusions`.
+Aus der zweiten Ausgabe übernimmst du:
 
-Findet das Skript keine Insel, gibt es keinen Merge: reiner Neu-Audit, ein
-Satz dazu in `methodology.notes`. Findings aus dem Markup zu rekonstruieren
-lohnt nicht mehr — jeder Report, den dieser Skill je geschrieben hat, trägt
-eine Insel.
-
-### Umfang und Features stabil halten
-
+- **Gleiche Feature-IDs.** Der Lauf übernimmt die `id`s aus
+  `portrait.components`. Label, Satz und Pfade darfst du schärfen. Eine neue
+  `id` gibt es nur für eine neue fachliche Einheit; eine umbenannte wird in
+  `portrait.componentRenames` als `{from, to}` festgehalten, damit
+  Filter-Links und GitHub-Labels nachziehen können. Ein Feature, das es nicht
+  mehr gibt, fällt einfach weg.
 - **Gleiche Ausschlüsse beim Messen.** Den Prüfumfang misst du mit den
-  `exclusions` des Vorlaufs, nicht mit neu ausgedachten. Ändern sie sich,
-  weil das Projekt sich geändert hat (ein neues Demo-Verzeichnis, ein
-  entfernter Codegenerator), steht das mit Grund in `methodology.notes`.
-  Sonst vergleicht der Score zwei verschieden gezählte Nenner.
-- **Gleiche Feature-IDs.** Der neue Lauf übernimmt die `id`s aus
-  `portrait.components` des Vorlaufs. Label, Satz und Pfade darfst du
-  schärfen. Eine neue `id` gibt es nur für eine neue fachliche Einheit; eine
-  umbenannte wird in `portrait.componentRenames` als `{from, to}`
-  festgehalten, damit Filter-Links und GitHub-Labels nachziehen können. Ein
-  Feature, das es nicht mehr gibt, fällt einfach weg.
+  `exclusions` des Vorlaufs. Ändern sie sich, weil das Projekt sich geändert
+  hat (ein neues Demo-Verzeichnis, ein entfernter Codegenerator), steht das mit
+  Grund in `methodology.notes`. Sonst vergleicht der Score zwei verschieden
+  gezählte Nenner.
+- `summary.theme` und `meta.templateVersion` für Schritt 6a.
 
-### Matching
+## B. Abgleich (Schritt 5b)
 
-Primär `category` + überlappende `location`, sekundär semantische
-Titelähnlichkeit. Bei Mehrdeutigkeit konservativ matchen — zwei Findings
-stehen zu lassen ist billiger als ein falsches „ist dasselbe".
+Der frische Datensatz liegt in `$TMP/audit-data.json`, mit IDs, ohne `status`.
 
-### Regeln pro altem Finding
+### 1. Paaren
+
+```bash
+node "$B" match "$TMP/audit-data.json" "$TMP/previous.json" --out "$TMP/followup"
+```
+
+Das Skript paart neue und alte Findings über Kategorie und gemeinsame Datei.
+Sicher ist ein Paar, wenn beide Seiten genau einen Kandidaten haben, oder wenn
+unter mehreren die Titel sich gegenseitig klar am ähnlichsten sind. Auf stdout
+steht nur, was du entscheiden musst:
+
+- **`? Gruppe`** — mehrdeutige Kandidaten mit Titel und Stelle. Paare, die du
+  anhand der Beschreibung für denselben Befund hältst, trägst du in
+  `decisions.pairs` ein. Bei Zweifel nicht paaren: zwei Findings stehen zu
+  lassen ist billiger als ein falsches »ist dasselbe«. Ein nicht gepaartes altes
+  Finding geht ohnehin in den Re-Check.
+- **`~ Anhang`** — ein Finding trifft einen akzeptierten Punkt. Meint es
+  denselben Befund, kommt seine ID in `decisions.suppress`: es erscheint nicht
+  im Backlog, der Punkt bleibt allein im Anhang. Das gilt für neue (`neu`)
+  wie für alte (`alt`) Findings.
+- **`→ recheck-<n>.json`** — die Stapel für Schritt 2.
+
+Hält das Skript ein Paar für sicher, das keins ist, nimmst du es mit
+`decisions.unpair` heraus. `decisions.json` liegt in `$TMP/followup/`:
+
+```json
+{ "pairs": [["ASYNC-004", "ASYNC-002"]], "unpair": [], "suppress": ["ARCH-009"], "verdicts": {} }
+```
+
+### 2. Re-Check (nicht optional)
+
+Ein altes Finding, das der frische Audit nicht wiedergefunden hat, ist kein
+»übersehenes« Finding, und ein akzeptierter Punkt ist kein Archivstück. Jeder
+Punkt in den Stapeln — nicht gepaarte alte Findings und **alle**
+`acknowledged`-Einträge — bekommt ein Urteil nach `recheck.md`.
+
+- Je Stapel ein Prüfer-Subagent, alle in einer Nachricht gestartet, mit dem
+  kleinsten Modell (in Claude Code `haiku`). Es ist Verifikation an einer
+  bekannten Stelle, keine Suche. Auftrag in drei Zeilen: Projektverzeichnis,
+  Pfad der Stapeldatei, »Lies zuerst `<skill-dir>/references/recheck.md`«.
+- Ohne Subagenten arbeitest du die Stapel selbst nach `recheck.md` ab.
+- Urteile `unklar` prüfst du selbst an der Stelle und trägst dein Urteil in
+  `decisions.verdicts` ein; es überschreibt das des Prüfers. Dasselbe, wenn dir
+  ein `weg` samt Beleg unplausibel vorkommt.
+
+### 3. Zusammenführen
+
+```bash
+node "$B" merge "$TMP/audit-data.json" "$TMP/previous.json" --dir "$TMP/followup"
+```
+
+Das Skript weigert sich, solange ein alter Punkt ohne Urteil ist, ein Urteil
+`unklar` lautet oder ein `weg`/`ueberholt` keinen Beleg hat — dann die
+gemeldeten Punkte nachtragen und neu aufrufen. Was es anwendet:
 
 | Lage | Ergebnis |
 | --- | --- |
-| Im Code nicht mehr belegbar | entfällt vollständig, zählt in `summary.resolvedCount` |
-| Neu aufgetaucht, gleiche Severity | neues Finding, `status: "unchanged"` |
-| Neu aufgetaucht, niedrigere Severity | neues Finding, `status: "improved"` + `previousSeverity` |
-| Neu aufgetaucht, höhere Severity | neues Finding, `status: "unchanged"` — die Severity spricht für sich |
-| Nicht aufgetaucht, aber im Code noch belegbar | Kandidat für `status: "carried-over"`, erst nach dem Re-Check unten |
-| Kein Match im alten Audit | `status: "new"` |
+| Paar, gleiche oder höhere Severity | `status: "unchanged"`, ID des Vorlaufs |
+| Paar, niedrigere Severity | `status: "improved"`, `previousSeverity`, ID des Vorlaufs |
+| neues Finding ohne Paar | `status: "new"`; war seine ID im Vorlauf vergeben, bekommt es die nächste freie Nummer |
+| altes Finding `besteht` | `status: "carried-over"`, unverändert |
+| altes Finding `verschoben` | `carried-over` mit neuer Stelle |
+| altes Finding `weg` / `ueberholt` | entfällt, zählt in `summary.resolvedCount` |
+| Anhang `besteht` / `begruendung-veraltet` | bleibt |
+| Anhang `verschoben` | bleibt, Stelle nachgezogen |
+| Anhang `weg` / `ueberholt` | entfällt, zählt **nicht** in `resolvedCount` |
 
-### Mitgeführte Fremdfelder
+Dazu übernimmt es `previousDate`, `scoreHistory` und `fixHistory` des Vorlaufs.
+Mitgeführte Fremdfelder wie das Unterobjekt `github` (gesetzt von
+`audit-github-sync`) wandern bei jedem Paar und jeder Übernahme unverändert
+mit; wer sie fallen lässt, kappt die Verbindung zum Issue-Tracker, und der
+nächste Abgleich legt ein zweites Issue an.
 
-Ein Finding kann Felder tragen, die nicht aus einem Audit-Lauf stammen. Das
-Unterobjekt `github` etwa wird vom Skill `audit-github-sync` gesetzt und hält
-die Zuordnung zu einem GitHub-Issue. Bei jedem Match — `unchanged`,
-`improved` wie `carried-over` — wandert es unverändert an das neue Finding.
-Sein Inhalt wird nicht gelesen, nicht bewertet und nicht ergänzt.
+Die Zusammenfassung auf stdout und `merge-report.json` sind die Grundlage für
+drei Einträge, die du selbst schreibst:
 
-Wer es fallen lässt, kappt die Verbindung zwischen Report und Issue-Tracker,
-und der nächste Abgleich legt ein zweites Issue für denselben Befund an.
-Entfällt ein Finding (`resolvedCount`), entfällt das Feld mit ihm.
-
-### Re-Check vor jedem carry-over (nicht optional)
-
-Ein Finding, das der neue Lauf weggelassen hat, ist kein „übersehenes"
-Finding. Bevor es wieder ins Backlog darf, zwei Prüfungen:
-
-1. **Code-Beleg** — Location öffnen, Befund verifizieren. Nicht auffindbar →
-   entfernen und in `resolvedCount` zählen.
-2. **Kontext-Beleg** — hat sich der Rahmen geändert (Architektur, README,
-   Specs, ADRs, Roadmap), so dass der Punkt gegenstandslos ist? Bewusste
-   Entscheidung dokumentiert, Feature gestrichen, Pattern offiziell
-   sanktioniert? Dann entfernen, auch wenn die Code-Stelle technisch noch
-   existiert — ebenfalls in `resolvedCount`. Die maßgebliche Quelle
-   (Doc/Spec/Proposal/Commit) kurz benennen, statt nach Bauchgefühl zu
-   streichen.
-
-Nur was beide Prüfungen übersteht, wird `carried-over`. Ohne diesen Filter
-läuft das Backlog mit veralteten Halluzinationen voll.
-
-### Score-Historie
-
-`scoreHistory` und `fixHistory` aus dem Vorlauf unverändert in den neuen
-Datensatz übernehmen. Den Eintrag dieses Laufs hängt `--record audit` beim
-Bauen an; Delta und Tendenz zeigt das Template. Einträge des alten
-Score-Modells bleiben, wie sie sind — das Diagramm bricht die Linie am
-Modellwechsel, statt zwei Skalen zu verbinden.
+- **Anhang abgeräumt** → ein Satz in `methodology.notes`: wie viele, welche
+  IDs, je ein paar Worte zum Grund; bei einem `github`-Eintrag die
+  Issue-Nummer dazu. Das Issue bleibt, wie es ist.
+- **Begründung trägt nicht mehr** → unter „Offene Fragen" vorlegen: zurück ins
+  Backlog oder neue Begründung? Nicht selbst reaktivieren — Aufnahme und
+  Widerruf sind Entscheidungen des Nutzers.
+- **Umbenannte IDs** brauchen nichts; sie stehen nur zur Kontrolle da.
 
 ### Große Sprünge einordnen — Pflicht ab ±15 Punkten
 
 Beim Bauen bekommt das Skript den Vorlauf mit:
 
 ```bash
-node <skill-dir>/scripts/build-report.mjs build "$TMP/audit-data.json" --out ./audit.html \
+node "$B" build "$TMP/audit-data.json" --out ./audit.html \
   --record audit --previous "$TMP/previous.json"
 ```
 
@@ -118,7 +144,9 @@ schreibt das Ergebnis nach `summary.deltaBreakdown`:
 - `unknown` — der Vorlauf hat seinen Umfang nicht gemessen.
 
 Beträgt der Unterschied zum letzten Score **desselben Modells** mindestens 15
-Punkte, setzt du zwei Felder im `summary` — sonst bleiben beide weg:
+Punkte, setzt du zwei Felder im `summary` — sonst bleiben beide weg. Delta und
+Aufteilung zeigt `check` vor dem Bauen:
+`node "$B" check "$TMP/audit-data.json" --previous "$TMP/previous.json"`.
 
 | Feld | Wert |
 | --- | --- |
@@ -176,7 +204,10 @@ die als `inducedOpen` zählen, bekommen `origin: {kind: "induced", run:
 
 Manche Befunde sind bewusst akzeptiert — nicht gelöst, sollen aber nicht bei
 jedem Lauf erneut im Backlog stehen. Diese Punkte leben in der Liste
-`acknowledged` und erscheinen nur noch im Anhang.
+`acknowledged` und erscheinen nur noch im Anhang. Der Anhang zeigt, was
+*heute* bewusst hingenommen wird; er ist kein Archiv. Deshalb gehen alle
+Einträge durch den Re-Check aus B.2, und `merge` räumt ab, was nicht mehr
+zutrifft.
 
 ### Erledigt ≠ akzeptiert
 
@@ -201,21 +232,18 @@ der Akzeptanz. Ein Eintrag kann zusätzlich ein `github`-Unterobjekt tragen —
 dann gilt für ihn dieselbe Regel wie für Findings: unverändert mitführen,
 Inhalt nicht anfassen.
 
-### Aufnahme, Unterdrückung, Widerruf
+### Aufnahme und Widerruf
 
 - **Aufnahme nur auf ausdrückliche Nutzeranweisung** („ignoriere ARCH-003
   künftig", „das ist akzeptabel so"). Niemals von sich aus akzeptieren. Fehlt
   eine Begründung, eine erfragen — ohne `reason` wird der Punkt nicht
-  verschoben, sonst ist später unklar, warum er versteckt ist.
-- **Unterdrückung:** beim Merge jeden neuen *und* jeden carry-over-Befund
-  gegen `acknowledged` matchen (gleiche Heuristik wie oben). Treffer → nicht
-  ins Backlog, der Punkt bleibt allein im Anhang.
-- **Persistenz:** die Liste wird bei jedem Folgelauf unverändert
-  weitergeführt. Akzeptierte Punkte werden nicht gegen den Code geprüft und
-  nicht automatisch entfernt — anders als carry-over-Findings, die jeder Lauf
-  neu verifiziert.
-- **Widerruf** („zeig ARCH-003 wieder"): aus `acknowledged` entfernen, der
-  Punkt durchläuft wieder die normale Finding-Logik.
+  verschoben, sonst ist später unklar, warum er versteckt ist. Einen Punkt, den
+  der Nutzer in diesem Lauf zurückstellt, trägst du in
+  `$TMP/audit-data.json` unter `acknowledged` ein; `merge` hängt ihn an die
+  übernommenen an.
+- **Widerruf** („zeig ARCH-003 wieder"): in `decisions.verdicts` den Punkt
+  als `weg` mit dem Beleg »Widerruf durch den Nutzer« markieren; der Befund
+  selbst durchläuft wieder die normale Finding-Logik.
 
 ## Was im Report davon sichtbar wird
 

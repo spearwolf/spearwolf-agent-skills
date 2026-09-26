@@ -5,25 +5,33 @@ description: Use when the user asks for a code review, audit, quality assessment
 
 # JS/TS Project Audit
 
-Strukturierte, ganzheitliche Analyse eines JavaScript- oder TypeScript-Projekts entlang der 15 Dimensionen aus Schritt 3. Einziger fester Vertrag ist der Output: eine `./audit.html` mit priorisierten Findings.
+Strukturierte, ganzheitliche Analyse eines JavaScript- oder TypeScript-Projekts entlang von 15 Dimensionen. Einziger fester Vertrag ist der Output: eine `./audit.html` mit priorisierten Findings.
 
-Die Seite schreibst du nicht selbst. Du lieferst einen Datensatz nach `assets/audit-data.schema.json`; `scripts/build-report.mjs` prüft ihn, rechnet alle Zahlen und setzt ihn in `assets/report-template.html` ein. Layout, Theme-Umschalter, Filter, Diagramme und Responsive-Verhalten stecken fertig im Template. `<skill-dir>` meint unten das Verzeichnis dieser Datei.
+Die Seite schreibst du nicht selbst. Du lieferst einen Datensatz nach `assets/audit-data.schema.json`; `scripts/build-report.mjs` prüft ihn, rechnet alle Zahlen und setzt ihn in `assets/report-template.html` ein. Layout, Theme-Umschalter, Filter, Diagramme und Responsive-Verhalten stecken fertig im Template. `<skill-dir>` meint unten das Verzeichnis dieser Datei, `$TMP` ein Arbeitsverzeichnis außerhalb des Projekts, etwa das Scratchpad der Session.
+
+**Du bist Orchestrator.** Den Quelltext lesen Slice-Agenten, jeder einen fachlichen Ausschnitt in eigenem Kontext; alte Punkte prüfen kleine Prüfer-Agenten. Du liest Manifeste, Configs, README, Entry Points und öffentliche API, dazu die Ergebnisdateien der Agenten — und gezielt einzelne Stellen, wenn ein Befund zwischen Slices zu klären ist. So wächst kein Kontext auf die Größe des Projekts, und nichts geht verloren, wenn einer davon kompaktiert wird: jeder Zwischenstand liegt als Datei in `$TMP`.
 
 ## Ablauf-Übersicht
 
-1. Projekt erfassen (1) + Projektportrait (1b) — ein vorhandenes `./audit.html` nur registrieren, **nicht** lesen.
-2. Code-Sampling und Prüfumfang messen (2), Analyse entlang der 15 Dimensionen (3).
-3. Datensatz aufbauen (4). Den Score rechnet das Skript (5).
-4. Nur bei vorhandenem Vorgänger-Audit: Merge und Abgleich akzeptierter Punkte (5b/5c).
-5. Theme bestimmen (6a), Report bauen (6), Ergebnis ausliefern (7).
+1. Projekt erfassen (1), Portrait und Features (1b). Ein vorhandenes `./audit.html` nur registrieren und seinen Rahmen holen, die Findings **nicht** lesen.
+2. Prüfumfang messen (2), in Slices schneiden und bündeln (2b).
+3. Review: Slice-Agenten parallel, danach dein Querschnitt (3).
+4. Konsolidieren zum Datensatz (4). Den Score rechnet das Skript (5).
+5. Nur bei vorhandenem Vorgänger-Audit: Abgleich (5b/5c).
+6. Theme bestimmen (6a), Report bauen (6), Ergebnis ausliefern (7).
 
 Die Referenzdateien werden erst gelesen, wenn ihr Schritt dran ist — nicht vorab:
 
-| Datei | Wann lesen |
-| --- | --- |
-| `references/followup-audit.md` | Schritt 5b — nur wenn ein vorheriges `./audit.html` existiert |
-| `references/report-content.md` | Schritt 4 — bevor du Texte, Portrait und Diagramm schreibst |
-| `assets/audit-data.schema.json` | Schritt 4 — die Feldbeschreibungen sind der Vertrag |
+| Datei | Wer | Wann |
+| --- | --- | --- |
+| `references/followup-audit.md` | du | Abschnitt A in Schritt 1, Abschnitt B ab 5b — nur wenn ein vorheriges `./audit.html` existiert |
+| `references/dimensions.md` | Slice-Agenten; du | du in Schritt 3, für den Querschnitt |
+| `references/slice-review.md` | Slice-Agenten | du nur im Rückfallweg |
+| `references/recheck.md` | Prüfer-Agenten | du nur im Rückfallweg |
+| `references/report-content.md` | du | Schritt 4 — bevor du Texte, Portrait und Diagramm schreibst |
+| `assets/audit-data.schema.json` | du | Schritt 4 — die Feldbeschreibungen sind der Vertrag |
+
+**Rückfallweg.** Kann dein Host keine Subagenten starten, oder läufst du selbst als Subagent, übernimmst du die Rolle der Agenten selbst: Slice für Slice nach `slice-review.md`, mit denselben Bündeln und derselben Notizdatei, und zwischen zwei Slices trägst du nichts im Kopf mit, was nicht in der Notizdatei steht. Dasselbe für den Re-Check. Unter etwa 3 kLOC Quelltext gilt der Rückfallweg immer — ein Agent kostet dann mehr, als er spart.
 
 ## Workflow
 
@@ -33,31 +41,21 @@ Die Referenzdateien werden erst gelesen, wenn ihr Schritt dran ist — nicht vor
 - Schlüsseldateien lesen, sofern vorhanden: `package.json`, `tsconfig*.json`, Workspace-Manifeste (`pnpm-workspace.yaml`, `lerna.json`, `nx.json`, `turbo.json`), Lint-/Format-Config, Test-Runner-Config, Bundler-Config, `.github/workflows/*`, `README*`, `CHANGELOG*`, Node-Version-Pins, `Dockerfile` / `docker-compose*`.
 - Verzeichnisstruktur kartieren (max. 3 Ebenen), Monorepo erkennen.
 - Stack klassifizieren: Runtime, Framework, Build-Tool, Test-Runner, Sprachversion, TS-Strictness.
-- **Vorheriges `./audit.html`**: Pfad merken, aber vollständig aus der inhaltlichen Analyse ausschließen — nicht als Quelltext lesen, nicht als Finding-Quelle nutzen, nicht als Code zählen. Es wird erst in Schritt 5b geöffnet, damit der neue Audit unvoreingenommen am Code entsteht.
+- **Vorheriges `./audit.html`**: nicht als Quelltext lesen, nicht als Finding-Quelle nutzen, nicht als Code zählen. Jetzt Abschnitt A von `references/followup-audit.md` lesen — er holt Feature-IDs, Ausschlüsse und Theme des Vorlaufs, ohne dass du seine Findings siehst.
 
 ### 1b. Projektportrait & Features
 
-Parallel zur technischen Bestandsaufnahme ein inhaltliches Verständnis aufbauen — wovon handelt das Projekt überhaupt? Quellen in dieser Reihenfolge: `README*`, `package.json` (`description`, `keywords`, `name`), `CHANGELOG*`, Top-Level-Verzeichnisse unter `src/` bzw. `packages/`, Exports aus `index.*` / `package.json#exports`.
+Parallel zur technischen Bestandsaufnahme ein inhaltliches Verständnis aufbauen — wovon handelt das Projekt überhaupt? Quellen in dieser Reihenfolge: `README*`, `package.json` (`description`, `keywords`, `name`), `CHANGELOG*`, Top-Level-Verzeichnisse unter `src/` bzw. `packages/`, Exports aus `index.*` / `package.json#exports`. Die Entry Points und die öffentliche API (`index.*`, Re-Exporte, alles aus `main` / `module` / `exports` / `bin`) liest du selbst vollständig; sie sind dein Überblick für den Querschnitt in Schritt 3.
 
 Daraus synthetisieren:
 
 - **Kurzbeschreibung**: 2–4 Sätze. Was tut das Projekt, für wen, in welchem Kontext. Kein Marketing-Sprech, keine Wiederholung des README-Wortlauts. Bleibt der Zweck unklar, das so schreiben und unter Offene Fragen aufnehmen — nicht raten.
-- **Features** (`portrait.components`, 3–7): die fachlichen Hauptbereiche, je mit stabiler `id` (Slug), Name, einem Satz und repräsentativen Pfaden. Fachlich, nicht jede Schicht ist ein Feature — »Auth«, »Billing«, »Renderer«, »Storage-Adapter« ja, »utils« oder »types« nein. Sie sind der Feature-Filter im Report und das Label `component:<id>` auf GitHub; im Folgelauf gilt die Stabilitätsregel aus `references/followup-audit.md`.
+- **Features** (`portrait.components`, 3–7): die fachlichen Hauptbereiche, je mit stabiler `id` (Slug), Name, einem Satz und repräsentativen Pfaden. Fachlich, nicht jede Schicht ist ein Feature — »Auth«, »Billing«, »Renderer«, »Storage-Adapter« ja, »utils« oder »types« nein. Sie sind der Feature-Filter im Report, das Label `component:<id>` auf GitHub und der Schnitt der Slices in Schritt 2b.
 - **Architektur-Diagramm** nur, wenn es Überblick schafft: klare Schichtung, Monorepo ab drei Packages, erkennbarer Datenfluss zwischen Modulen. Bei einer kleinen Lib oder einem CLI-Tool reichen die Features. Immer als Daten nach `references/report-content.md`, **nie ASCII**. Ab etwa zehn Knoten ist es kein Überblick mehr.
 
-### 2. Sampling und Prüfumfang
+### 2. Prüfumfang messen
 
-Großprojekte nicht zeilenweise lesen. Priorisieren:
-
-- **Entry Points** vollständig: `src/index.*`, `src/main.*`, `app/page.*`, alles aus `main` / `module` / `exports` / `bin`.
-- **Öffentliche API**: `index.*`-Dateien und Re-Exporte unter `src/`.
-- **Heiße Module**: die größten Dateien (per Shell ermitteln), zentrale Core-/Utility-Verzeichnisse, alles mit „manager", „service", „store", „controller", „engine" im Namen.
-- **Risiko-Hotspots**: `useEffect`, `setInterval`, `setTimeout`, `addEventListener`, `subscribe`, `EventEmitter`, manuelle Promise-Konstruktion, `any`, `@ts-ignore`, `eslint-disable`, `TODO`, `FIXME`, `HACK`.
-- **Tests** mindestens als Stichprobe pro Bereich, dazu CI- und Build-Skripte.
-
-Bei jedem gelesenen File Notizen pro Dimension sammeln.
-
-**Prüfumfang messen, nicht schätzen.** Der Code-Score bewertet Befunde je gelesener Zeile; eine geschätzte Zeilenzahl macht ihn beliebig. Quelltext ist Produktcode — ohne Tests, Specs, Typdeklarationen, Build-Output, Vendor und Generiertes:
+Der Code-Score bewertet Befunde je gelesener Zeile; eine geschätzte Zeilenzahl macht ihn beliebig. Quelltext ist Produktcode — ohne Tests, Specs, Typdeklarationen, Build-Output, Vendor und Generiertes:
 
 ```bash
 git ls-files -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' '*.cjs' '*.vue' '*.svelte' '*.astro' \
@@ -66,51 +64,64 @@ wc -l < "$TMP/source.txt"                      # sourceFiles
 xargs -d '\n' cat < "$TMP/source.txt" | wc -l  # sourceLoc
 ```
 
-Die Ausschlüsse passt du ans Projekt an (Test-Verzeichnisse, generierter Code, Demo-Apps) und hältst sie wörtlich in `scope.exclusions` fest. `reviewedFiles` sind die Quelldateien, die du **vollständig** gelesen hast, `reviewedLoc` deren `wc -l`-Summe. Überflogene, gegrepte oder nur an einer Fundstelle geöffnete Dateien zählen nicht mit. `$TMP` ist ein Verzeichnis außerhalb des Projekts, etwa das Scratchpad der Session.
+Die Ausschlüsse passt du ans Projekt an (Test-Verzeichnisse, generierter Code, Demo-Apps) und hältst sie wörtlich in `scope.exclusions` fest.
 
-### 3. Analysedimensionen
+**Mehr als etwa 60 kLOC** passen nicht in zehn Slices. Dann wählst du aus, bevor du schneidest, und schreibst die Auswahl als `source.txt` neu: Entry Points und öffentliche API vollständig; die größten Dateien und zentrale Core-Verzeichnisse, alles mit »manager«, »service«, »store«, »controller«, »engine« im Namen; Dateien mit vielen Treffern auf `useEffect`, `setInterval`, `addEventListener`, `subscribe`, `new Promise`, `any`, `@ts-ignore`, `TODO`/`FIXME` (per `rg -c`). Die Auswahl steht in `methodology.notes`, und `reviewedLoc` sagt ehrlich, wie viel davon gelesen wurde.
 
-Für jede Dimension Findings sammeln: Schweregrad, Datei-/Zeilenreferenz wo möglich, konkreter Verbesserungsvorschlag. Der Schlüssel in Klammern ist der Wert für `finding.category`.
+### 2b. Slices schneiden und bündeln
 
-1. **Architektur & Struktur** (`architecture`, *code*) — Layering, Abhängigkeitsrichtung, Modulgrenzen, Zyklen, Trennung Fachlogik/Infrastruktur, Konsistenz der Ordnerlogik.
-2. **Projektaufbau & Build** (`build`, *harness*) — Tooling-Wahl, TS-Konfiguration (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), Pfad-Aliase, Tree-Shaking, Bundle-Größe, Sourcemaps.
-3. **Developer Experience** (`dx`, *harness*) — README-Qualität, Setup-Schritte, npm-Scripts, Linting, Formatter, Pre-Commit-Hooks, Editor-Konfiguration, Onboarding-Hürden, Fehlerverständlichkeit, Hot-Reload.
-4. **Öffentliche API** (`api`, *code*) — Klarheit und Naming der Exports, Stabilität und Breaking-Change-Strategie, JSDoc/TSDoc, Typ-Exporte, Default- vs. Named-Exports, Treeshakeability.
-5. **Implementierungsstand** (`completeness`, *code*) — Vollständigkeit gegenüber README/Docs, offene TODOs/FIXMEs, tote Pfade, ungenutzte Exporte, auskommentierter Code.
-6. **Testabdeckung & Teststrategie** (`testing`, *harness*) — Balance Unit/Integration/E2E, Coverage-Konfiguration, Test-Doubles, Flakiness-Indikatoren, Snapshot-Hygiene, fehlende kritische Pfade.
-7. **Lesbarkeit & Clean Code** (`readability`, *code*) — Funktionsgrößen, Verschachtelungstiefe, Naming, Single Responsibility, Magic Numbers, Kommentar-Qualität, Stilkonsistenz.
-8. **Bugs & Korrektheitsrisiken** (`correctness`, *code*) — fehlende `await`, unbehandelte Rejections, falsche Equality, Off-by-One, Mutation geteilter States, fehlende Null-Checks, unsichere Casts, ungeschütztes `JSON.parse`.
-9. **Memory Leaks & Ressourcen** (`resources`, *code*) — nicht entfernte Listener, nicht gecleartes Timer/Interval, unbeendete Subscriptions, fehlender `AbortController`, Closure-Captures großer Objekte, Caches ohne Eviction, fehlende Stream-/FileHandle-Cleanups.
-10. **Async & Concurrency** (`async`, *code*) — Race Conditions, fehlende Cancellation, `Promise.all` vs. sequenziell, unklare Reentrancy, blockierender Code im Eventloop.
-11. **Konsistenz** (`consistency`, *code*) — Stilbrüche zwischen Modulen, gemischte Patterns (Class vs. funktional, Callback vs. Promise vs. async), uneinheitliche Fehlerbehandlung, uneinheitliches Logging.
-12. **Typsicherheit (TS)** (`types`, *harness*) — `any`-Vorkommen, unsichere Casts, fehlende Generics, schwache Rückgabetypen, breite Unions ohne Discriminator.
-13. **Sicherheit** (`security`, *code*) — `eval`, Template-Injection, ungeprüfte Inputs, Secrets im Repo, unsichere Defaults, veraltete Crypto, CORS/CSRF/XSS, `dangerouslySetInnerHTML`.
-14. **Dependencies** (`dependencies`, *harness*) — veraltet, deprecated, doppelt, ungenutzt, Lizenzrisiken, unnötig schwer. `npm outdated` / `pnpm outdated` ausführen, sofern Netzwerk und Lockfile es zulassen.
-15. **Performance** (`performance`, *code*) — N+1, unnötige Re-Renders, fehlende Memoization, große synchrone Loops, fehlende Pagination, fehlende Caching-Layer.
+Ein Slice ist ein fachlicher Ausschnitt, den ein Agent in einem Kontext liest. Du schreibst `$TMP/slices.json`:
 
-Erst alle Befunde sammeln, dann Schritt 4.
+```json
+{ "sources": "<$TMP>/source.txt",
+  "slices": [
+    { "id": "renderer", "paths": ["src/render/**"] },
+    { "id": "harness", "source": false,
+      "files": ["package.json", "tsconfig.json", ".github/workflows/ci.yml", "vitest.config.ts", "test/render.test.ts"] } ] }
+```
 
-#### Die beiden Domains
+- **Schnitt entlang der Features**: je Feature ein Slice mit dessen `paths`, höchstens zehn Slices. Größe 1–6 kLOC: ein größeres Feature teilst du nach Unterverzeichnissen, zwei kleine legst du zusammen. Was keinem Slice zufällt, sammelt das Skript in einem Slice `rest` — nichts fällt still heraus. Bei Monorepos schneidest du innerhalb der Packages.
+- **Harness-Slice** mit `"source": false`: Configs, CI-Workflows, Paketmanifeste und eine Test-Stichprobe je Bereich. Er zählt nicht zum Prüfumfang.
 
-Jede Dimension gehört zu genau einer von zwei Domains; die kursive Angabe oben ist die verbindliche Zuordnung. Sie trennt zwei Fragen, die im Report nicht vermischt werden dürfen, weil sie verschiedene Leser und verschiedene Konsequenzen haben:
+```bash
+cd <projekt> && node <skill-dir>/scripts/bundle.mjs "$TMP/slices.json" --out "$TMP/bundles"
+```
 
-- **`code` — Code & Laufzeit**: das, was das Produkt tut und wie es das tut. Bugs, Leaks, Nebenläufigkeit, Architektur, API, Performance, Sicherheit im Quelltext. Findings hier bedeuten: die Software ist falsch, riskant oder schwer zu ändern.
-- **`harness` — Projekt-Harness**: das Gerüst um den Code herum. Build- und Bundler-Setup, TypeScript- und Typisierungslage, Tests und Coverage, Tooling, Skripte, Onboarding, Dependencies. Findings hier bedeuten: das Projekt lässt sich schlechter bauen, prüfen oder weiterreichen — auch wenn der Code selbst korrekt ist.
+Das Skript schreibt je Slice Bündeldateien von höchstens 60 000 Zeichen — der Quelltext mit Dateiköpfen und den Zeilennummern der Originale —, dazu `index.json` mit Dateien und Zeilen je Slice. Auf stdout steht eine Tabelle mit Zeilen und Markerdichte (`mk/kloc`: Timer, Listener, Promises, `await`, `dispose` je kLOC). Die Bündel liest du nicht; das tun die Agenten.
 
-Die Domain wird pro Finding gesetzt, nicht pro Kategorie berechnet, und folgt im Regelfall der Zuordnung oben. **Abweichen nur, wenn der Befund selbst eindeutig in der anderen Domain liegt** — ein Secret in einem CI-Workflow ist Kategorie `security`, aber `harness`; ein Lizenzrisiko in einer Dependency, die im ausgelieferten Bundle landet, bleibt trotzdem `harness`. Im Zweifel gewinnt die Zuordnung oben: eine stabile Zuordnung über Läufe hinweg ist mehr wert als ein perfekt einsortiertes Einzelfinding.
+### 3. Review
 
-Nicht zu verwechseln mit den **Features** aus Schritt 1b: die sind fachlich und projektspezifisch (»Auth«, »Renderer«), diese zwei sind fix und gelten für jedes Projekt.
+**Slice-Agenten, alle in einer Nachricht gestartet**, je Slice einer. Der Auftrag ist kurz, alles Weitere steht in den Referenzen:
+
+```
+Du prüfst Slice »<id>« im Audit von <projekt>: <ein Satz zum Projekt>. Feature: <label> — <ein Satz>.
+Lies zuerst <skill-dir>/references/slice-review.md und <skill-dir>/references/dimensions.md.
+Bündel: <pfade aus index.json>. Notizdatei: <$TMP>/notes/<id>.jsonl. Sprache der Texte: <de|en>.
+```
+
+Das Modell wählst du je Rolle, soweit der Host es zulässt (in Claude Code: `model` im Agent-Aufruf):
+
+| Rolle | Modell | Warum |
+| --- | --- | --- |
+| Slices im oberen Drittel der Markerdichte, mindestens einer | stärkstes (`opus`) | Race Conditions, Leaks und Lebenszyklusfehler brauchen Tiefe |
+| übrige Code-Slices, Harness-Slice | mittleres (`sonnet`) | Lesbarkeit, API, Vollständigkeit, Configs |
+| Re-Check-Prüfer (5b) | kleinstes (`haiku`) | Verifikation an bekannter Stelle |
+
+Jeder Agent gibt ein JSON-Objekt zurück: Pfad seiner Notizdatei, Zahl der Findings, `unread`, `patterns` und `questions`. Befunde stehen in der Notizdatei, nicht in der Antwort. Fehlt eine Rückgabe oder ist ein Agent abgebrochen, zählt, was in seiner Notizdatei steht; die Dateien seines Slices ohne Rückgabe gelten als nicht gelesen.
+
+**Dein Querschnitt**, danach: `references/dimensions.md` lesen, dann aus den `patterns` aller Slices, den Entry Points und der öffentlichen API beurteilen, was kein Slice allein sieht — Abhängigkeitsrichtung und Zyklen zwischen Features (`architecture`), Stilbrüche zwischen Modulen (`consistency`), Klarheit und Stabilität der Exporte (`api`). Einen Verdacht belegst du mit einem gezielten Blick auf die Stelle. Deine Befunde gehen im selben Format nach `$TMP/notes/_cross.jsonl`. Die `questions` der Agenten, die du nicht selbst beantworten kannst, werden Offene Fragen.
 
 ### 4. Datensatz
 
 Jetzt `references/report-content.md` lesen. Den Datensatz schreibst du als JSON nach `$TMP/audit-data.json`, nie ins Projekt. Maßgeblich ist das Schema: jedes Feld dort hat eine Beschreibung, Pflichtfelder sind markiert, unbekannte Felder lehnt das Skript ab.
 
-Regeln, die das Schema nicht ausdrücken kann:
+Aus den Notizdateien wird der Datensatz so:
 
-- **Ein Muster, ein Finding.** Derselbe Fehler an zwölf Stellen ist ein Finding mit `location` plus `locations`, nicht zwölf Findings. Die Severity richtet sich nach der Wirkung, nicht nach der Anzahl der Stellen. Tiefer zu prüfen darf den Score nicht durch Wiederholung drücken.
-- **`id`**: Kategorie-Kürzel plus laufende Nummer, z. B. `ARCH-001`, eindeutig im Datensatz.
+- **Zusammenführen**: Zeilen mit wortgleichem `title` innerhalb eines Slices sind ein Finding; dasselbe Muster aus mehreren Slices ebenfalls — `location` plus `locations`, nach der Regel »ein Muster, ein Finding« aus `dimensions.md`.
+- **Kalibrieren**: die Severity über alle Slices hinweg an der Skala aus `dimensions.md` angleichen. Parallele Reviewer weichen voneinander ab; die Skala ist der Maßstab, nicht der einzelne Reviewer.
+- **`id`**: Kategorie-Kürzel plus laufende Nummer, z. B. `ARCH-001`, eindeutig im Datensatz. Im Folgelauf sorgt `merge` für Kontinuität mit dem Vorlauf.
 - **`component`**: die `id` des Features, unter dessen Pfade die Fundstelle fällt. Liegen die Fundstellen in mehreren Features oder in keinem, bleibt das Feld weg — das Finding erscheint als »projektweit«.
-- **`kind: "improvement"`** für Optimierungspotenzial ohne Defekt. Es steht in einer eigenen Sektion und wiegt nichts im Score.
+- **Umfang**: `reviewedFiles` sind die Dateien der Code-Slices aus `$TMP/bundles/index.json` ohne die gemeldeten `unread`, `reviewedLoc` deren Zeilensumme aus derselben Datei. Überflogene oder nur an einer Fundstelle geöffnete Dateien zählen nicht.
 - **Felder, die das Skript schreibt** (im Schema mit »Vom Skript« markiert: Scores, Zählungen, `scoreModel`, `deltaBreakdown`, der aktuelle Eintrag in `scoreHistory`), lässt du weg oder übernimmst sie unverändert — das Skript überschreibt sie ohnehin.
 - `acknowledged` sind vom Nutzer zurückgestellte Punkte: keine Backlog-Findings, kein Gewicht im Score (Details in `references/followup-audit.md`).
 
@@ -127,7 +138,7 @@ Der Score wird nicht von Hand gerechnet. `build-report.mjs` rechnet ihn beim Bau
 
 ### 5b/5c. Folgelauf
 
-Existierte in Schritt 1 ein `./audit.html`, jetzt — nach abgeschlossenem Frisch-Audit — `references/followup-audit.md` lesen und danach arbeiten. Dort stehen Extraktion, Merge-Regeln, der Pflicht-Re-Check vor jedem carry-over, die Einordnung großer Sprünge, die Fix-Bilanz und der Umgang mit akzeptierten Punkten.
+Existierte in Schritt 1 ein `./audit.html`, jetzt Abschnitt B von `references/followup-audit.md` lesen und danach arbeiten: Paaren per Skript, Re-Check alter Findings und akzeptierter Punkte durch Prüfer-Agenten, Zusammenführen per Skript, Einordnung großer Sprünge, Fix-Bilanz.
 
 Gab es kein Vorgänger-Audit, entfällt der Schritt ersatzlos.
 
@@ -136,7 +147,7 @@ Gab es kein Vorgänger-Audit, entfällt der Schritt ersatzlos.
 Auflösungsreihenfolge für `summary.theme`, `"auto"`, `"light"` oder `"dark"`:
 
 1. Explizite Nutzeranweisung in der laufenden Konversation, auch in verneinter Form („nicht so dunkel" → light, „wie mein System" → auto).
-2. Sonst `summary.theme` des vorherigen Audits — so bleibt eine einmal getroffene Wahl über Folgeläufe stabil. Ausnahme: `"light"` aus einem Report mit `meta.templateVersion` `2.0.0` war der damalige Default, keine Wahl, und wird zu `"auto"`.
+2. Sonst `summary.theme` des vorherigen Audits aus Schritt 1 — so bleibt eine einmal getroffene Wahl über Folgeläufe stabil. Ausnahme: `"light"` aus einem Report mit `meta.templateVersion` `2.0.0` war der damalige Default, keine Wahl, und wird zu `"auto"`.
 3. Sonst `"auto"`.
 
 `"auto"` lässt den Report `prefers-color-scheme` von System und Browser folgen, auch wenn es sich bei offener Seite ändert; `"light"`/`"dark"` legen das Start-Theme fest. Der Leser kann in jedem Fall umschalten; seine Wahl merkt sich sein Browser, nicht die Datei, und wer zurück auf die Vorgabe schaltet, folgt wieder ihr.
@@ -159,17 +170,16 @@ Im Folgelauf zusätzlich `--previous "$TMP/previous.json"` (siehe `references/fo
 
 - Datei übergeben über den Mechanismus, den der Host zum Präsentieren von Dateien anbietet; gibt es keinen, den Pfad `./audit.html` klar benennen.
 - Begleittext von maximal 5–8 Zeilen: Health-Score mit beiden Teilscores (»Gesamt 74 — Code & Laufzeit 81, Projekt-Harness 62«), geprüfter Umfang (»9,3 von 12,8 kLOC gelesen«), Top-3 aus critical/high, Hinweis auf die Methodik-Sektion. Den Report nicht im Chat wiederholen.
-- Im Folgelauf eine Zeile „X behoben / Y verbessert / Z neu seit `<Datum>`" — behobene Punkte nicht einzeln aufzählen. Hat der Nutzer in diesem Lauf Punkte zurückgestellt, das in einer Zeile bestätigen und auf den Anhang verweisen.
+- Im Folgelauf eine Zeile „X behoben / Y verbessert / Z neu seit `<Datum>`" — behobene Punkte nicht einzeln aufzählen. Hat der Nutzer in diesem Lauf Punkte zurückgestellt, das in einer Zeile bestätigen und auf den Anhang verweisen. Hat der Lauf überholte Anhangpunkte abgeräumt, deren Zahl in derselben Zeile.
 - Enthält das Backlog Findings ab `medium`, zum Schluss eine Zeile: ob die Punkte abgearbeitet werden sollen, dann übernimmt `js-ts-audit-remediation` mit Umsetzungsplan und Subagenten. Ein Angebot, keine Ankündigung — ohne Zusage endet der Lauf hier.
 
 ## Prinzipien
 
-- **Belegt statt vermutet**: jedes Finding mit Datei-/Zeilenreferenz, sonst weglassen. Unsicherheit gehört unter „Offene Fragen", nicht ins Backlog.
-- **Schlank statt historisch**: der Report zeigt den aktuellen Zustand. Was erledigt ist — verifiziert oder vom Nutzer so markiert — verschwindet vollständig und lebt nur noch als Zähler weiter. Ausnahmen: Score-Verlauf, Fix-Bilanz und der Anhang akzeptierter Punkte.
+- **Belegt statt vermutet** — die Regeln dafür, was ein Finding ist, stehen in `references/dimensions.md` und gelten für dich wie für jeden Agenten. Unsicherheit gehört unter „Offene Fragen", nicht ins Backlog.
+- **Schlank statt historisch**: der Report zeigt den aktuellen Zustand. Was erledigt ist — verifiziert oder vom Nutzer so markiert — verschwindet vollständig und lebt nur noch als Zähler weiter. Ausnahmen: Score-Verlauf, Fix-Bilanz und der Anhang akzeptierter Punkte — und der hält nur, was heute noch zutrifft; jeder Folgelauf räumt ihn ab.
 - **Daten statt Markup**: du lieferst Daten, das Template stellt sie dar. Ein Wunsch nach anderer Darstellung ist eine Änderung am Template in diesem Skill, nicht an einer einzelnen `audit.html`.
 - **Kein Auto-Fix**: dieser Skill schreibt keinen Code im Projekt um, auch nicht wenn eine Behebung trivial wäre. Empfehlungen bleiben Empfehlungen; die Umsetzung ist ein eigener Lauf.
-- **Keine Stiltyrannei**: Geschmacksfragen ohne Wirkung sind keine Findings. Läuft ein Formatter konsistent, ist Tabs vs. Spaces kein Thema.
-- **Teilanalysen**: auch bei „nur Tests" oder „nur Architektur" derselbe Workflow; nicht geprüfte Bereiche bleiben leer, und der gemessene Umfang sagt ehrlich, wie wenig gelesen wurde.
-- **Sprache des Reports**: dieselbe wie die Nutzeranfrage, gesetzt in `meta.lang` (`de` oder `en`); alle Freitexte in dieser Sprache.
-- **Größenlimits**: ab etwa 500 Dateien die Sampling-Strategie strikt anwenden und die Auswahl in der Methodik offenlegen; ab 2000 gelesenen Dateien `scope.reviewedDirs` statt `reviewedFiles`.
+- **Teilanalysen**: auch bei „nur Tests" oder „nur Architektur" derselbe Workflow, mit weniger Slices; nicht geprüfte Bereiche bleiben leer, und der gemessene Umfang sagt ehrlich, wie wenig gelesen wurde.
+- **Sprache des Reports**: dieselbe wie die Nutzeranfrage, gesetzt in `meta.lang` (`de` oder `en`); alle Freitexte in dieser Sprache, auch die der Agenten.
+- **Große Projekte**: ab 2000 gelesenen Dateien `scope.reviewedDirs` statt `reviewedFiles`.
 - **Monorepos**: `summary.packages` mit je `reviewedLoc`, jedes Finding mit `package`; das Skript rechnet je Package eine Score-Zeile.

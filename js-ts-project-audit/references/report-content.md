@@ -13,10 +13,10 @@ Template in diesem Skill, nicht eine einzelne `audit.html`.
 | Header | `summary.project`, `stack`, `date`, Scores, `scope`, Vergleich mit dem Vorlauf | offen |
 | Projektportrait | `portrait.description`, `portrait.components`, `portrait.diagram` | offen |
 | Zusammenfassung | je Domain `executiveSummary`, Severity-Balken, Kategorien; Packages; Matrix Feature × Severity | offen |
-| Verlauf | `scoreHistory` (ab 3 Einträgen), `fixHistory` (ab 2) | offen |
+| Verlauf | `scoreHistory` (ab 3 Einträgen), `fixHistory` (ab 2 Tagen; Läufe eines Tages summiert) | offen |
 | Backlog | `findings` mit `kind` ≠ `improvement` | offen |
-| Offene Fragen | `openQuestions`, entfällt wenn leer | offen |
 | Optimierungspotenzial | `findings` mit `kind: "improvement"`, entfällt wenn leer | offen |
+| Offene Fragen | `openQuestions`, entfällt wenn leer | offen |
 | Methodik | `methodology`, `scope`, `summary.scoring`, `deltaBreakdown`, `deltaExplanation` | zugeklappt |
 | Anhang | `acknowledged`, entfällt wenn leer | zugeklappt |
 

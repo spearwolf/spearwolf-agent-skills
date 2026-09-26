@@ -4,8 +4,15 @@
 //
 //   node build-report.mjs build   <data.json> [--out ./audit.html] [--record audit|remediation|github-sync]
 //                                              [--previous <prev.json>] [--date YYYY-MM-DD]
-//   node build-report.mjs extract [./audit.html]      JSON-Insel nach stdout, v1 wird migriert
-//   node build-report.mjs check   <data.json>         nur validieren, Scores auf stderr
+//   node build-report.mjs extract [./audit.html] [--fields a.b,c]  JSON-Insel nach stdout, v1 wird migriert;
+//                                                   --fields gibt nur diese Pfade aus
+//   node build-report.mjs check   <data.json> [--previous <prev.json>]
+//                                                   nur validieren, Scores auf stderr; mit --previous
+//                                                   auch Delta und Herkunft der neuen Findings
+//   node build-report.mjs match   <data.json> <previous.json> --out <dir>
+//                                                   Folgelauf: Paare, Re-Check-Stapel, Treffer im Anhang
+//   node build-report.mjs merge   <data.json> <previous.json> --dir <dir> [--out <data.json>]
+//                                                   Folgelauf: Status, IDs, Übernahmen und Anhang anwenden
 //
 // Exit-Codes: 0 ok, 1 Validierungsfehler, 2 Aufruffehler.
 
@@ -511,9 +518,247 @@ function render(data) {
   return parts[0] + json + parts[1];
 }
 
+
+// ---------------------------------------------------------------------------
+// Folgelauf: match paart den frischen Datensatz mit dem Vorlauf, ohne dass der
+// Orchestrator den Vorlauf lesen muss; merge wendet die Paare und die Urteile
+// der Re-Check-Prüfer an. Was mehrdeutig ist, entscheidet der Orchestrator.
+
+const filesOf = (f) => new Set([f.location, ...(f.locations ?? [])].filter(Boolean).map(fileOf));
+const overlaps = (a, b) => { for (const x of a) if (b.has(x)) return true; return false; };
+const kindOf = (f) => f.kind ?? 'defect';
+const ackKey = (a, i) => a.id ?? `ack-${i + 1}`;
+const BATCH_MAX = 15;
+const words = (t) => new Set(String(t).toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu, ' ').split(' ').filter((w) => w.length > 2));
+const jaccard = (a, b) => { let n = 0; for (const x of a) if (b.has(x)) n++; return n ? n / (a.size + b.size - n) : 0; };
+// Innerhalb einer mehrdeutigen Gruppe gilt ein Paar nur, wenn beide Titel sich
+// gegenseitig am ähnlichsten sind, deutlich vor dem Zweitbesten.
+const TITLE_MIN = 0.6, TITLE_MARGIN = 0.15;
+
+export function match(data, prev) {
+  const cur = data.findings ?? [], old = prev.findings ?? [];
+  const cf = new Map(cur.map((f) => [f.id, filesOf(f)]));
+  const of = new Map(old.map((f) => [f.id, filesOf(f)]));
+  const same = (a, af, b, bf) => a.category === b.category && kindOf(a) === kindOf(b) && overlaps(af, bf);
+  const newCands = new Map(cur.map((n) => [n.id, old.filter((o) => same(n, cf.get(n.id), o, of.get(o.id))).map((o) => o.id)]));
+  const oldCands = new Map(old.map((o) => [o.id, cur.filter((n) => same(n, cf.get(n.id), o, of.get(o.id))).map((n) => n.id)]));
+
+  // Sicher ist ein Paar nur, wenn beide Seiten genau einen Kandidaten haben.
+  const pairs = [];
+  const paired = new Set();
+  for (const n of cur) {
+    const c = newCands.get(n.id);
+    if (c.length === 1 && oldCands.get(c[0]).length === 1) {
+      const o = old.find((x) => x.id === c[0]);
+      pairs.push({ new: n.id, old: o.id, severity: `${o.severity}→${n.severity}` });
+      paired.add(n.id).add('old:' + o.id);
+    }
+  }
+  // Der Rest der Kandidaten zerfällt in Gruppen, die der Orchestrator auflöst.
+  const ambiguous = [];
+  const seen = new Set();
+  for (const n of cur) {
+    if (paired.has(n.id) || seen.has(n.id) || !newCands.get(n.id).length) continue;
+    const g = { new: new Set(), old: new Set() };
+    const stack = [['new', n.id]];
+    while (stack.length) {
+      const [side, id] = stack.pop();
+      if (g[side].has(id)) continue;
+      g[side].add(id);
+      if (side === 'new') { seen.add(id); newCands.get(id).forEach((o) => stack.push(['old', o])); }
+      else oldCands.get(id).forEach((x) => stack.push(['new', x]));
+    }
+    const score = new Map();
+    for (const a of g.new) for (const b of g.old) {
+      if (newCands.get(a).includes(b)) score.set(a + '|' + b, jaccard(words(cur.find((x) => x.id === a).title), words(old.find((x) => x.id === b).title)));
+    }
+    const best = (id, side) => {
+      const list = [...score].filter(([k]) => k.split('|')[side] === id).sort((x, y) => y[1] - x[1]);
+      if (!list.length || list[0][1] < TITLE_MIN || (list[1] && list[0][1] - list[1][1] < TITLE_MARGIN)) return null;
+      return list[0][0].split('|')[1 - side];
+    };
+    for (const a of [...g.new]) {
+      const b = best(a, 0);
+      if (b && best(b, 1) === a) {
+        const o = old.find((x) => x.id === b), n = cur.find((x) => x.id === a);
+        pairs.push({ new: a, old: b, severity: `${o.severity}→${n.severity}`, how: 'title' });
+        paired.add(a).add('old:' + b);
+        g.new.delete(a); g.old.delete(b);
+      }
+    }
+    if (!g.new.size || !g.old.size) continue;
+    const brief = (list, ids) => [...ids].map((id) => { const f = list.find((x) => x.id === id); return { id, severity: f.severity, title: f.title, location: f.location }; });
+    ambiguous.push({ new: brief(cur, g.new), old: brief(old, g.old) });
+  }
+
+  const oldOnly = old.filter((o) => !paired.has('old:' + o.id));
+  const acks = (prev.acknowledged ?? []).map((a, i) => ({ key: ackKey(a, i), a }));
+  const ackHits = [];
+  for (const { key, a } of acks) {
+    const af = filesOf(a);
+    const hit = (f, files, side) => {
+      if (f.category === a.category && overlaps(af, files)) ackHits.push({ ack: key, ackTitle: a.title, finding: f.id, title: f.title, side });
+    };
+    cur.forEach((f) => hit(f, cf.get(f.id), 'new'));
+    oldOnly.forEach((f) => hit(f, of.get(f.id), 'old'));
+  }
+
+  // Re-Check-Stapel: nach Hauptdatei gruppiert, damit ein Prüfer jede Datei nur
+  // einmal öffnet. Eine Gruppe wird nicht geteilt, solange sie in einen Stapel passt.
+  const items = [
+    ...oldOnly.map((o) => ({ key: o.id, type: 'finding', category: o.category, severity: o.severity, title: o.title,
+      location: o.location, locations: o.locations, description: o.description, evidence: o.evidence })),
+    ...acks.map(({ key, a }) => ({ key, type: 'acknowledged', category: a.category, title: a.title, location: a.location,
+      reason: a.reason, acknowledgedDate: a.acknowledgedDate })),
+  ];
+  const groups = new Map();
+  for (const it of items) {
+    const k = fileOf(it.location);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(it);
+  }
+  const batches = [];
+  let batch = [];
+  for (const g of [...groups.values()].sort((a, b) => b.length - a.length)) {
+    if (batch.length && batch.length + g.length > BATCH_MAX) { batches.push(batch); batch = []; }
+    batch.push(...g);
+    while (batch.length > BATCH_MAX) { batches.push(batch.slice(0, BATCH_MAX)); batch = batch.slice(BATCH_MAX); }
+  }
+  if (batch.length) batches.push(batch);
+
+  return { pairs, ambiguous, ackHits, recheck: { findings: oldOnly.map((o) => o.id), acknowledged: acks.map((x) => x.key) }, batches };
+}
+
+const FINDING_VERDICTS = ['besteht', 'verschoben', 'weg', 'ueberholt', 'unklar'];
+const ACK_VERDICTS = [...FINDING_VERDICTS, 'begruendung-veraltet'];
+
+function readDir(dir) {
+  const m = readJson(path.join(dir, 'match.json'));
+  const decFile = path.join(dir, 'decisions.json');
+  const decisions = fs.existsSync(decFile) ? readJson(decFile) : {};
+  const verdicts = {};
+  for (const f of fs.readdirSync(dir).filter((x) => /^verdicts-.*\.json$/.test(x)).sort()) {
+    Object.assign(verdicts, readJson(path.join(dir, f)).verdicts ?? {});
+  }
+  Object.assign(verdicts, decisions.verdicts ?? {});
+  return { m, decisions, verdicts };
+}
+
+export function merge(data, prev, { m, decisions = {}, verdicts = {} }) {
+  const errors = [];
+  const cur = data.findings ?? [], old = prev.findings ?? [];
+  const byNew = new Map(cur.map((f) => [f.id, f])), byOld = new Map(old.map((f) => [f.id, f]));
+  const key = (p) => `${p[0]}|${p[1]}`;
+  const unpair = new Set((decisions.unpair ?? []).map(key));
+  const pairList = [...m.pairs.map((p) => [p.new, p.old]).filter((p) => !unpair.has(key(p))), ...(decisions.pairs ?? [])];
+  const suppress = new Set(decisions.suppress ?? []);
+  const newToOld = new Map(), oldToNew = new Map();
+  for (const [n, o] of pairList) {
+    if (!byNew.has(n)) errors.push(`Paar ${n}/${o}: ${n} fehlt im Datensatz`);
+    if (!byOld.has(o)) errors.push(`Paar ${n}/${o}: ${o} fehlt im Vorlauf`);
+    if (newToOld.has(n) || oldToNew.has(o)) errors.push(`Paar ${n}/${o}: eine Seite ist schon gepaart`);
+    newToOld.set(n, o); oldToNew.set(o, n);
+  }
+  for (const id of suppress) if (!byNew.has(id) && !byOld.has(id)) errors.push(`suppress: ${id} gibt es weder im Datensatz noch im Vorlauf`);
+
+  const verdictOf = (k, allowed, what) => {
+    const v = verdicts[k];
+    if (!v) { errors.push(`${what} ${k}: kein Urteil`); return null; }
+    if (!allowed.includes(v.verdict)) { errors.push(`${what} ${k}: Urteil »${v.verdict}« unbekannt`); return null; }
+    if (v.verdict === 'unklar') { errors.push(`${what} ${k}: unklar — selbst prüfen und in decisions.json entscheiden`); return null; }
+    if (v.verdict === 'verschoben' && !v.location) errors.push(`${what} ${k}: verschoben ohne neue location`);
+    if ((v.verdict === 'weg' || v.verdict === 'ueberholt') && !v.evidence) errors.push(`${what} ${k}: ${v.verdict} ohne evidence`);
+    return v;
+  };
+
+  // IDs: ein gepaartes Finding behält die ID des Vorlaufs. Ein neues bekommt eine
+  // frische Nummer, wenn seine ID im Vorlauf oder im Anhang schon vergeben war —
+  // auch an ein inzwischen behobenes Finding, auf das Pläne und Issues noch zeigen.
+  const reserved = new Set([...old.map((f) => f.id), ...(prev.acknowledged ?? []).map((a) => a.id).filter(Boolean)]);
+  const used = new Set();
+  const maxOf = new Map();
+  for (const id of [...reserved, ...cur.map((f) => f.id)]) {
+    const [pre, num] = id.split(/-(?=\d+$)/);
+    maxOf.set(pre, Math.max(maxOf.get(pre) ?? 0, Number(num) || 0));
+  }
+  const renames = [];
+  const fresh = (id) => {
+    const [pre, num] = id.split(/-(?=\d+$)/);
+    const next = (maxOf.get(pre) ?? 0) + 1;
+    maxOf.set(pre, next);
+    return `${pre}-${String(next).padStart(Math.max(3, (num ?? '').length), '0')}`;
+  };
+
+  const findings = [];
+  const counts = { unchanged: 0, improved: 0, new: 0, 'carried-over': 0 };
+  for (const n of cur) {
+    if (suppress.has(n.id)) continue;
+    const o = byOld.get(newToOld.get(n.id));
+    const f = { ...n };
+    delete f.previousSeverity;
+    if (o) {
+      f.id = o.id;
+      if (SEVERITIES.indexOf(n.severity) > SEVERITIES.indexOf(o.severity)) { f.status = 'improved'; f.previousSeverity = o.severity; }
+      else f.status = 'unchanged';
+      if (o.github && !f.github) f.github = o.github;
+      if (o.origin && !f.origin) f.origin = o.origin;
+    } else {
+      f.status = 'new';
+    }
+    findings.push(f);
+  }
+  for (const f of findings) {
+    if (f.status === 'new' && (reserved.has(f.id) || used.has(f.id))) {
+      const to = fresh(f.id);
+      renames.push(`${f.id}→${to}`);
+      f.id = to;
+    }
+    used.add(f.id);
+  }
+  const resolved = [];
+  for (const o of old) {
+    if (oldToNew.has(o.id) || suppress.has(o.id)) continue;
+    const v = verdictOf(o.id, FINDING_VERDICTS, 'Finding');
+    if (!v) continue;
+    if (v.verdict === 'weg' || v.verdict === 'ueberholt') { resolved.push({ id: o.id, title: o.title, verdict: v.verdict, evidence: v.evidence }); continue; }
+    const f = { ...o, status: 'carried-over' };
+    delete f.previousSeverity;
+    if (v.verdict === 'verschoben') { f.location = v.location; if (Array.isArray(v.locations)) f.locations = v.locations; }
+    findings.push(f);
+  }
+  for (const f of findings) counts[f.status]++;
+
+  const acknowledged = [];
+  const ackRemoved = [], ackStale = [];
+  (prev.acknowledged ?? []).forEach((a, i) => {
+    const k = ackKey(a, i);
+    const v = verdictOf(k, ACK_VERDICTS, 'Anhang');
+    if (!v) return;
+    if (v.verdict === 'weg' || v.verdict === 'ueberholt') { ackRemoved.push({ key: k, title: a.title, verdict: v.verdict, evidence: v.evidence, github: a.github?.number }); return; }
+    const e = { ...a };
+    if (v.verdict === 'verschoben') e.location = v.location;
+    if (v.verdict === 'begruendung-veraltet') ackStale.push({ key: k, title: a.title, reason: a.reason, evidence: v.evidence });
+    acknowledged.push(e);
+  });
+  acknowledged.push(...(data.acknowledged ?? []));
+
+  if (errors.length) return { errors };
+  data.findings = findings;
+  data.acknowledged = acknowledged;
+  data.summary.previousDate = prev.summary?.date;
+  data.summary.resolvedCount = resolved.length;
+  if (!data.scoreHistory?.length) data.scoreHistory = prev.scoreHistory ?? [];
+  if (!data.fixHistory?.length) data.fixHistory = prev.fixHistory ?? [];
+  return { errors, report: { counts, resolved, renames, suppressed: [...suppress], ackRemoved, ackStale, ackBefore: (prev.acknowledged ?? []).length, ackAfter: acknowledged.length } };
+}
+
+function pick(obj, dotted) {
+  return dotted.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
+}
+
 class UsageError extends Error {}
 
-export { check, derive, render, extract };
+export { check, derive, render, extract, readDir };
 
 function parseArgs(argv) {
   const [cmd, ...rest] = argv;
@@ -538,11 +783,59 @@ function readJson(p) {
 function main() {
   const { cmd, opts } = parseArgs(process.argv.slice(2));
   if (cmd === 'extract') {
-    process.stdout.write(JSON.stringify(extract(opts._[0] ?? './audit.html'), null, 2) + '\n');
+    const data = extract(opts._[0] ?? './audit.html');
+    const out = opts.fields ? Object.fromEntries(opts.fields.split(',').map((f) => [f, pick(data, f) ?? null])) : data;
+    process.stdout.write(JSON.stringify(out, null, 2) + '\n');
+    return 0;
+  }
+  if (cmd === 'match') {
+    if (!opts._[1] || !opts.out) throw new UsageError('match: <data.json> <previous.json> --out <dir>');
+    const r = match(readJson(opts._[0]), migrate(readJson(opts._[1])));
+    fs.mkdirSync(opts.out, { recursive: true });
+    for (const f of fs.readdirSync(opts.out)) if (/^(recheck-\d+|match)\.json$/.test(f)) fs.rmSync(path.join(opts.out, f));
+    const { batches, ...rest } = r;
+    fs.writeFileSync(path.join(opts.out, 'match.json'), JSON.stringify(rest, null, 2) + '\n');
+    const files = batches.map((b, i) => {
+      const f = path.join(opts.out, `recheck-${i + 1}.json`);
+      fs.writeFileSync(f, JSON.stringify({ batch: i + 1, items: b }, null, 2) + '\n');
+      return `${f} (${b.length})`;
+    });
+    const lines = [
+      `✓ ${r.pairs.length} Paare sicher (davon ${r.pairs.filter((p) => p.how === 'title').length} über den Titel) · ${r.ambiguous.length} mehrdeutige Gruppen · Re-Check: ${r.recheck.findings.length} Findings, ${r.recheck.acknowledged.length} Anhangpunkte in ${batches.length} Stapeln`,
+      ...r.ambiguous.flatMap((g, i) => [`? Gruppe ${i + 1}`,
+        ...g.new.map((f) => `    neu ${f.id} [${f.severity}] ${f.title} · ${f.location}`),
+        ...g.old.map((f) => `    alt ${f.id} [${f.severity}] ${f.title} · ${f.location}`)]),
+      ...r.ackHits.map((h) => `~ Anhang ${h.ack} »${h.ackTitle}« ↔ ${h.side === 'new' ? 'neu' : 'alt'} ${h.finding} »${h.title}«`),
+      ...files.map((f) => `→ ${f}`),
+    ];
+    process.stdout.write(lines.join('\n') + '\n');
+    return 0;
+  }
+  if (cmd === 'merge') {
+    if (!opts._[1] || !opts.dir) throw new UsageError('merge: <data.json> <previous.json> --dir <dir> [--out <data.json>]');
+    const data = readJson(opts._[0]);
+    const r = merge(data, migrate(readJson(opts._[1])), readDir(opts.dir));
+    if (r.errors.length) {
+      for (const e of r.errors) process.stderr.write(`✗ ${e}\n`);
+      process.stderr.write(`${r.errors.length} Fehler — nichts geschrieben.\n`);
+      return 1;
+    }
+    const out = opts.out ?? opts._[0];
+    fs.writeFileSync(out, JSON.stringify(data, null, 2) + '\n');
+    fs.writeFileSync(path.join(opts.dir, 'merge-report.json'), JSON.stringify(r.report, null, 2) + '\n');
+    const c = r.report.counts, rp = r.report;
+    const lines = [
+      `✓ ${out} · ${c.new} neu, ${c.unchanged} unverändert, ${c.improved} verbessert, ${c['carried-over']} übernommen, ${rp.resolved.length} behoben · Anhang ${rp.ackBefore} → ${rp.ackAfter}`,
+      ...rp.renames.map((x) => `  umbenannt ${x}`),
+      ...rp.ackRemoved.map((a) => `  Anhang abgeräumt ${a.key} (${a.verdict}${a.github ? `, Issue #${a.github}` : ''}): ${a.evidence}`),
+      ...rp.ackStale.map((a) => `  Anhang, Begründung trägt nicht mehr ${a.key}: ${a.evidence}`),
+      `→ ${path.join(opts.dir, 'merge-report.json')}`,
+    ];
+    process.stdout.write(lines.join('\n') + '\n');
     return 0;
   }
   if (cmd !== 'build' && cmd !== 'check') {
-    throw new UsageError('Aufruf: build <data.json> [--out ./audit.html] [--record audit|remediation|github-sync] [--previous prev.json] [--date YYYY-MM-DD] | extract [audit.html] | check <data.json>');
+    throw new UsageError('Aufruf: build <data.json> [--out ./audit.html] [--record audit|remediation|github-sync] [--previous prev.json] [--date YYYY-MM-DD] | extract [audit.html] [--fields a.b,c] | check <data.json> | match <data.json> <previous.json> --out <dir> | merge <data.json> <previous.json> --dir <dir> [--out <data.json>]');
   }
   if (!opts._[0]) throw new UsageError(`${cmd}: Datendatei fehlt`);
   if (opts.record && !['audit', 'remediation', 'github-sync'].includes(opts.record)) throw new UsageError('--record: audit, remediation oder github-sync');
@@ -559,7 +852,18 @@ function main() {
   derive(data, { record: opts.record, date: opts.date ?? today(), previous: previous && migrate(previous) });
   const s = data.summary;
   const line = `Score ${s.score} (Modell ${s.scoreModel}) — Code ${s.domains.code.score}, Harness ${s.domains.harness.score} · ${s.counts.findings} Findings, ${s.counts.improvements} Verbesserungen`;
-  if (cmd === 'check') { process.stderr.write(`✓ gültig · ${line}\n`); return 0; }
+  if (cmd === 'check') {
+    // Mit --previous: Delta zum letzten Score und Herkunft der neuen Findings,
+    // damit deltaCause und deltaExplanation vor dem Bauen gesetzt werden können.
+    const last = previous ? [...(previous.scoreHistory ?? [])].reverse().find((h) => (h.scoreModel ?? 1) === s.scoreModel) : null;
+    const b = s.deltaBreakdown;
+    const extra = [
+      last ? ` · Delta ${Math.round((s.score - last.score) * 10) / 10} zu ${last.date}` : '',
+      b ? ` · neue Findings: code ${b.code}, coverage ${b.coverage}, unknown ${b.unknown}` : '',
+    ].join('');
+    process.stderr.write(`✓ gültig · ${line}${extra}\n`);
+    return 0;
+  }
 
   // Die Seite entsteht immer aus dem Template dieses Skills, nie aus dem Markup des
   // Vorgängers. Ein Versionssprung wird gemeldet, damit er im Begleittext landet.
