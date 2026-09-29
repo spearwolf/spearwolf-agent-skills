@@ -73,6 +73,8 @@ Nicht der Agent, der entscheiden will: Der Implementer hat einen Interessenkonfl
 | **Innerhalb der Rails, nicht explizit** | **decide-and-flag**: `provisional` Decision Record, weiterarbeiten | reversible Alternative wählen (Feature Flag, Adapter, Interface statt Implementierung); gibt es keine: **parken** |
 | **Außerhalb der Rails / »Offen«-Zone** | parken + Proposal-Draft | parken + Eskalation |
 
+Die projektspezifische Ausprägung dieser Matrix, also Entscheidungsklassen, Signale, Area-Modifikatoren und harte Invarianten, beschreibt [`drm-format.md`](drm-format.md).
+
 Ist die Klassifikation unsicher, stuft der Supervisor eine Stufe strenger ein (fail closed). Das bleibt billig, weil Parken lokal ist (siehe unten).
 
 ### Mechanismen gegen Stillstand
@@ -186,7 +188,7 @@ Beim Durchdenken aufgefallen und oben bereits adressiert:
 
 ## 8. Nächste Schritte
 
-1. **Decision Rights Matrix ausdetaillieren:** konkrete Entscheidungsklassen, Beispiele pro Zelle, Format eines Decision Records. Masterplan-Format, Scope Gate und Inbox hängen daran.
+1. **Decision Rights Matrix ausdetaillieren:** Format steht in [`drm-format.md`](drm-format.md). Offen sind noch die Diff-Signal-Syntax, das JSON Schema und das Format des Decision Records.
 2. **Masterplan-Schema:** Regel-IDs, »Offen«-Zone, Evolutionspfade.
 3. **Formate** für Charter, Briefing und Decision Inbox.
 4. **Modell- und Effort-Zuordnung pro Rolle** (Orchestrator/Planner vs. Worker vs. Bulk) nach Messung festlegen.
