@@ -191,4 +191,5 @@ Beim Durchdenken aufgefallen und oben bereits adressiert:
 1. **Decision Rights Matrix ausdetaillieren:** Format steht in [`drm-format.md`](drm-format.md). Offen sind noch die Diff-Signal-Syntax, das JSON Schema und das Format des Decision Records.
 2. **Masterplan-Schema:** Regel-IDs, »Offen«-Zone, Evolutionspfade.
 3. **Formate** für Charter, Briefing und Decision Inbox.
-4. **Modell- und Effort-Zuordnung pro Rolle** (Orchestrator/Planner vs. Worker vs. Bulk) nach Messung festlegen.
+4. **Auslieferung und Laufzeit:** Skizze in [`delivery.md`](delivery.md) (Orchestrator-CLI, Plugin, MCP-Gate, Container-Layer).
+5. **Modell- und Effort-Zuordnung pro Rolle** (Orchestrator/Planner vs. Worker vs. Bulk) nach Messung festlegen.
