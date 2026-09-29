@@ -55,8 +55,8 @@ Pro Klasse:
 | `id` | ja | Punkt-Notation, z. B. `dep.add` |
 | `why` | ja | Absicht der Regel in einem Satz |
 | `door` | ja | Default-Door: `two_way` oder `one_way` |
-| `signals.paths` | mind. ein Signal | Glob-Patterns |
-| `signals.diff` | mind. ein Signal | Regex bzw. strukturelle Muster auf dem Diff |
+| `signals.paths` | bedingt: mindestens eines von `paths` und `diff` | Glob-Patterns |
+| `signals.diff` | bedingt: mindestens eines von `paths` und `diff` | Regex bzw. strukturelle Muster auf dem Diff |
 | `hints` | nein | natürlichsprachliche Hinweise für den LLM-Klassifikator, nur verschärfend |
 | `matrix` | nein | überschreibt einzelne Zellen der Grundmatrix |
 | `locked` | nein | `true`: immun gegen Area-Modifikatoren |
@@ -65,6 +65,12 @@ Pro Klasse:
 ### Areas
 
 Modifikatoren per Pfad: `relax: n` oder `tighten: n`. Klassen mit `locked: true` bleiben davon unberührt.
+
+Komposition, unabhängig von der Reihenfolge in der Liste:
+
+- **Überlappende Areas:** Trifft mindestens eine `tighten`-Area, gilt das größte `tighten` aller Treffer, und alle `relax`-Treffer entfallen. Sonst gilt das größte `relax`. Modifikatoren werden nicht aufsummiert. Strenge gewinnt, damit eine lockere Unter-Area eine strenge Ober-Area nicht aushebelt.
+- **Leiterenden:** Die Verschiebung wird an den Enden der Leiter abgeschnitten (`autonomous` bzw. `park+escalate`).
+- **Invarianten zuletzt:** Verletzt der verschobene Modus eine harte Invariante, wird er auf den lockersten zulässigen Modus angehoben.
 
 ## Beispiel `steering/drm.yaml`
 
@@ -123,12 +129,15 @@ inbox:
 
 ## Auswertung durch den Supervisor
 
-1. **Klassen bestimmen:** Signale gegen die Änderung prüfen. Trifft eine Änderung mehrere Klassen, gewinnt die strengste. Trifft sie keine, gilt `defaults.unclassified`.
-2. **Door festlegen:** Default aus der Klasse. Der Reviewer darf `two_way` zu `one_way` hochstufen, nie umgekehrt.
-3. **Coverage bestimmen:** aus der Zitierpflicht gegen den Masterplan, nicht aus der DRM.
-4. **Zelle nachschlagen:** zuerst in `matrix` der Klasse, sonst in `defaults.matrix`.
-5. **Area-Modifikatoren anwenden:** außer bei `locked`, und nie über eine Invariante hinweg.
-6. **Protokollieren:** Der Decision Record enthält `drm_version`, Klasse(n), Zelle und Modus. Ein Audit kann so später prüfen, welche Policy zum Zeitpunkt der Entscheidung galt.
+1. **Klassen bestimmen:** Signale gegen die Änderung prüfen und **alle** Treffer behalten. Trifft keine Klasse, gilt `defaults.unclassified`.
+2. **Coverage bestimmen:** einmal pro Entscheidung, aus der Zitierpflicht gegen den Masterplan, nicht aus der DRM (siehe [`concept-base.md`](concept-base.md), Abschnitt 2).
+3. **Jede getroffene Klasse einzeln bis zum finalen Modus auswerten:**
+   1. Door: Default aus der Klasse. Der Reviewer darf `two_way` zu `one_way` hochstufen, nie umgekehrt.
+   2. Zelle: zuerst in `matrix` der Klasse, sonst in `defaults.matrix`.
+   3. Area-Modifikatoren nach den Kompositionsregeln oben, außer bei `locked`.
+   4. Harte Invarianten prüfen und den Modus bei Bedarf anheben.
+4. **Strengsten finalen Modus wählen:** Erst jetzt wird verglichen. Eine Klasse hat keine feste Strenge, ihr Modus hängt von Coverage, Overrides und Areas ab. Ein Vergleich vor Schritt 3 könnte deshalb die falsche Klasse wählen.
+5. **Protokollieren:** Der Decision Record enthält `drm_version`, alle getroffenen Klassen mit ihrem jeweiligen finalen Modus, die ausschlaggebende Klasse, Zelle und Modus. Ein Audit kann so später prüfen, welche Policy zum Zeitpunkt der Entscheidung galt.
 
 ## Harte Invarianten
 
@@ -139,7 +148,7 @@ Ein Linter prüft sie bei jeder DRM-Änderung. Kein Projekt kann sie überschrei
 - `unclassified` ist nie lockerer als der strengste Modus der Grundmatrix für die jeweilige Coverage.
 - `locked`-Klassen sind immun gegen Area-Modifikatoren.
 - Jede Klasse hat mindestens ein deterministisches Signal (`paths` oder `diff`). Eine Klasse nur mit `hints` legt sich der Agent nach Belieben zurecht.
-- Die DRM ändert nur der Architekt. Die Trust Calibration des Koordinators schreibt ihre Vorschläge als PR, nie direkt in die Datei.
+- Die DRM ändert nur der Architekt. Die Trust Calibration des Koordinators schreibt ihre Vorschläge über das MCP-Tool `policy.propose` als PR, nie direkt in die Datei (siehe [`delivery.md`](delivery.md)).
 
 ## Basis-Klassen der Factory (`factory/drm.base.yaml`)
 

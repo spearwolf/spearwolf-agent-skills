@@ -55,7 +55,7 @@ Mischt man beides in einem Dokument, verändert ein Agent beim Aktualisieren der
 
 ### Regeln, die daraus mehr als Doku machen
 
-1. **Regel-IDs und Zitierpflicht.** Jede Masterplan-Regel trägt eine ID (`MP-DATA-03: Keine direkten DB-Zugriffe außerhalb von /repo`). Jede Agent-Entscheidung nennt die Regel, die sie deckt. Findet der Agent keine, ist das automatisch ein Eskalationsfall. Ein Beleg ist Pflicht, eine Begründung allein reicht nicht.
+1. **Regel-IDs und Zitierpflicht.** Jede Masterplan-Regel trägt eine ID (`MP-DATA-03: Keine direkten DB-Zugriffe außerhalb von /repo`). Eine Entscheidung gilt nur dann als `covered`, wenn sie die Regel-ID nennt, die sie deckt; eine Begründung allein reicht dafür nicht. Findet der Agent keine deckende Regel, eskaliert das nicht automatisch. Der Supervisor ordnet die Entscheidung dann `in_rails` oder `outside` zu, und die Matrix in Abschnitt 3 bestimmt den Modus.
 2. **Pflicht zur »Offen«-Zone.** Der Masterplan listet ausdrücklich, was noch *nicht* entschieden ist (»Auth-Modell für Multi-Tenant: offen«). Ohne diese Liste hält ein Agent jede Lücke für einen Freifahrtschein.
 3. **Harte Durchsetzung.** `CODEOWNERS` auf `masterplan/` und `steering/`, Branch Protection, nur der Architekt merged dort. Der Schutz der Rails hängt dann an Repo-Mechanik, nicht daran, dass ein Agent seinen Prompt befolgt.
 

@@ -55,7 +55,7 @@ Rollen-Prompts, Schemas, Basis-DRM und Scripts liegen **nicht** im Projekt, sie 
 |---|---|---|
 | **Orchestrator-CLI** (`factory`) | Koordinator-Loop, Sprint-State-Machine, Area Locks, Budgets, startet Agent-Sessions | Deterministisches gehört in Code, nicht in ein LLM |
 | **Claude Code Plugin** | Rollen als Subagents (Planner, Implementer, Reviewer, Supervisor), Skills (Proposal schreiben, Masterplan lesen), Hooks | ein Paket, das Claude Code direkt versteht, per Version installierbar |
-| **MCP-Server** (Teil des Plugins) | einzige Schreibschnittstelle der Agents zum Factory-State | das eigentliche Guardrail, siehe unten |
+| **MCP-Server** (läuft im Orchestrator-Prozess außerhalb der Agent-Sandbox; das Plugin bindet ihn nur an) | einzige Schreibschnittstelle der Agents zum Factory-State außerhalb von `architecture/` | das eigentliche Guardrail, siehe unten |
 | **Schemas + `drm.base.yaml`** | Validierung, `factory lint` | versioniert mit der Factory |
 | **Base-Image / Devcontainer Feature** | reproduzierbare Laufzeit mit Isolation | siehe unten |
 
@@ -78,12 +78,16 @@ Agents ändern Factory-State **nicht** durch freies Editieren von YAML- oder Mar
 | `backlog.add(...)` | `discovered-in` und Evidenz |
 | `inbox.ask(...)` | Fragenbudget; Silent Consent nur für two-way doors |
 | `sprint.park(issue, reason)` | Parken des abhängigen Teilgraphen mit Diagnose |
+| `proposal.draft(...)` | Lifecycle-Status `draft`; Accept bleibt beim Architekten bzw. im freigegebenen Rahmen des Koordinators |
+| `policy.propose(patch, rationale)` | stagt eine Änderung an `masterplan/`, `steering/` oder der DRM auf einem Review-Branch und öffnet einen PR; aktiv wird sie erst durch den Merge des Architekten |
 
-Ein Tool, das Masterplan oder Steering schreibt, gibt es nicht. Der Schutz der Rails ist dreifach geschichtet:
+**Direkt schreiben dürfen Agents** nur Projektcode und `.factory/architecture/` (Ist-Beschreibung, siehe [`concept-base.md`](concept-base.md)). Alles andere unter `.factory/` ist MCP-verwalteter State, auch `decisions/`, `sprints/`, Backlog und Inbox. Sonst könnte ein Agent mit Bash-Zugriff Schemas, Budgets und Verfallsfristen einfach umgehen.
 
-1. **MCP:** kein Schreib-Tool für `masterplan/` und `steering/`.
-2. **Hook im Plugin:** blockiert direkte Edits auf `.factory/masterplan/` und `.factory/steering/`.
-3. **Repo:** `CODEOWNERS` und Branch Protection, nur der Architekt merged dort.
+Ein Tool, das Masterplan oder Steering *aktiv* schreibt, gibt es nicht. Agents können Policy-Änderungen nur über `policy.propose` als PR vorschlagen. Der Schutz ist dreifach geschichtet:
+
+1. **Laufzeit:** Der Agent-Container bekommt `.factory/` read-only gemountet, einzig `architecture/` ist beschreibbar. Schreibrechte auf den State hat nur der MCP-Server, der außerhalb der Agent-Sandbox im Orchestrator-Prozess läuft. Damit greift der Schutz auch bei Bash, nicht nur bei Edit-Tools.
+2. **Hook im Plugin:** blockiert direkte Edits auf `.factory/**` außer `architecture/` schon vorher mit einer verständlichen Meldung. Er ist die Komfortschicht, die Durchsetzung liegt beim Mount.
+3. **Repo:** `CODEOWNERS` und Branch Protection auf `masterplan/` und `steering/`, nur der Architekt merged dort.
 
 ## Docker als Laufzeit, nicht als Wahrheitsquelle
 
@@ -114,7 +118,7 @@ factory inbox                # Architekt: offene Entscheidungen, gebündelt
 1. **Schemas + `factory lint`:** billig, und alles Weitere validiert dagegen.
 2. **Plugin mit Rollen-Agents + Schutz-Hooks:** interaktiv testbar, noch ohne Autonomie.
 3. **`factory sprint run` für einen einzelnen Sprint** im Container, mit Supervisor und Eskalationsleiter.
-4. **MCP-Gate:** sobald Agents Decision Records und Backlog-Einträge schreiben.
+4. **MCP-Gate + read-only Mount von `.factory/`:** sobald Agents Decision Records und Backlog-Einträge schreiben.
 5. **`factory coordinate`:** erst wenn einzelne Sprints zuverlässig durchlaufen. Eine Schleife über wackelige Sprints verstärkt nur das Wackeln.
 
 ## Offene Punkte
