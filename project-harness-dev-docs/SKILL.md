@@ -43,6 +43,12 @@ Solange ein Proposal nicht gebaut ist, darf es Alternativen und Planungsteile tr
 
 Der Status steht an **genau einer** Stelle: im Kopf des Proposals. Index, Masterplan, Guide und `CLAUDE.md` verweisen auf das Proposal, statt den Status zu wiederholen — jede Kopie driftet.
 
+**Analysen und bedingte Vorhaben** (Performance, Migration, Skalierung) sind keine eigene Dokumentart, sondern Proposals, deren Soll an Bedingungen hängt. Jede Bedingung ist prüfbar formuliert (»ein Board mit 10⁴ Nodes ist profiliert«, nicht »wenn es nötig wird«), jedes Vorhaben hat einen Roadmap-Eintrag mit dieser Bedingung als *Wenn*. »Nicht nötig« ist ein gültiges Ergebnis und wird als Gegenwart festgehalten, die Messung dahinter als ADR.
+
+### Spec-Anhänge
+
+Maschinenlesbare Specs und Diagramme (JSON Schema, OpenAPI, SVG, Beispiel-Payloads) gehören zu dem Proposal, das sie referenziert. Sie liegen unter `docs/proposals/` oder `docs/` neben ihm, folgen denselben Änderungsrechten und ändern sich im selben Commit wie der Abschnitt, der sie beschreibt. Ein Anhang, den kein Proposal referenziert, ist verwaist; ein Anhang, der dem Proposal widerspricht, ist ein Spec-Bug — das Proposal gilt, der Anhang wird nachgezogen.
+
 ### Nachbardokumente
 
 Neben diesen Dokumenten liegen Dateien, die das Harness berühren, ohne dazuzugehören:
@@ -117,7 +123,7 @@ Ohne Rückfrage erlaubt, aber in der Antwort genannt: Tippfehler, kaputte Links,
 
 ### 7. Verweise
 
-Docs und Code verweisen auf stabile Stellen: Dokument **und** nummerierter Abschnitt (`docs/proposals/auth.md` §4.1), ab der zweiten Nennung in derselben Datei kurz (`auth.md` §4.1), oder ADR-Nummer (`ADR-012`). Eine nackte Abschnittsnummer ohne Dokument ist mehrdeutig, sobald es mehr als ein Proposal gibt. Proposals nummerieren ihre Abschnitte deshalb, und diese Nummern bleiben stabil — auch beim Konsolidieren. Wer doch umnummeriert oder eine Datei umbenennt, zieht vorher alle Verweise darauf mit (`grep -rn "<datei>.md" docs src tests` o. ä.).
+Docs und Code verweisen auf stabile Stellen: Dokument **und** nummerierter Abschnitt (`docs/proposals/auth.md` §4.1), ab der zweiten Nennung in derselben Datei kurz (`auth.md` §4.1), oder ADR-Nummer (`ADR-012`). Eine nackte Abschnittsnummer ohne Dokument ist mehrdeutig, sobald es mehr als ein Proposal gibt. **Keine stabilen Stellen** sind Roadmap-Nummern und die Nummern der Tabelle offener Entscheidungen: sie gelten nur innerhalb der Roadmap, ändern sich beim nächsten Durchgang und stehen deshalb nie in Code, Tests, Proposals oder ADRs. Proposals nummerieren ihre Abschnitte deshalb, und diese Nummern bleiben stabil — auch beim Konsolidieren. Wer doch umnummeriert oder eine Datei umbenennt, zieht vorher alle Verweise darauf mit (`grep -rn "<datei>.md" docs src tests` o. ä.).
 
 ## Konsolidieren und Drift-Check
 

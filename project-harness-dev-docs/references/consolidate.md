@@ -7,7 +7,7 @@ Zwei Abläufe für denselben Zweck: die Docs zeigen den Stand, der gilt. Der Dri
 Nur lesen, nichts schreiben. Geprüft wird, was sich mechanisch feststellen lässt:
 
 1. **Status an einer Stelle.** Jedes Proposal hat einen Status-Kopf. Wiederholen Index, Masterplan, Guide oder `CLAUDE.md` einen Status, stimmt die Kopie mit dem Kopf überein? Ein gebautes Proposal, das anderswo als »nicht gebaut« geführt wird, ist der häufigste Fund.
-2. **Index vollständig.** Jedes Proposal unter `docs/proposals/` steht im Index mit seiner Zuständigkeit; jedes nicht-Pre-Proposal steht in der Vorrangregel. Stimmt eine Zählung im Fließtext (»sechzehn Proposals«) mit der Zahl der Dateien?
+2. **Index vollständig.** Jedes Proposal unter `docs/proposals/` steht im Index mit seiner Zuständigkeit; jedes nicht-Pre-Proposal steht in der Vorrangregel. Stimmt eine Zählung im Fließtext (»sechzehn Proposals«) mit der Zahl der Dateien? Wird jeder Spec-Anhang (Schema, Diagramm) von mindestens einem Proposal referenziert?
 3. **Verweise lösen auf.** Jeder Verweis der Form `<datei>.md §N.M` in Docs, Code und Tests zeigt auf eine existierende Datei mit existierendem Abschnitt. Gesammelt über Docs, Quelltext und Tests, dann gegen die Überschriften der Zieldatei geprüft:
 
    ```bash
