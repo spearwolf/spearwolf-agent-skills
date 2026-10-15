@@ -54,7 +54,7 @@ Maschinenlesbare Specs und Diagramme (JSON Schema, OpenAPI, SVG, Beispiel-Payloa
 Neben diesen Dokumenten liegen Dateien, die das Harness berühren, ohne dazuzugehören:
 
 - **`CLAUDE.md` / `AGENTS.md`** — Einstieg für Agents, immer im Kontext und deshalb teuer. Eine Invariante steht dort als eine Zeile mit Verweis (Proposal-Abschnitt oder ADR-Nummer); die Begründung lebt am Ziel.
-- **Arbeitsablagen** (`docs/superpowers/`, `docs/plans/`, Notizen eines Laufs) — Zwischenstände, kein Spec. Nach dem Lauf wandert Tragendes ins zuständige Proposal, Entscheidungsgründe als Entwurf in die ADR, die Ablage wird gelöscht. Nichts verlinkt dorthin.
+- **Arbeitsablagen** (`docs/superpowers/`, `docs/plans/`, Notizen eines Laufs) — Zwischenstände, kein Spec. Nach dem Lauf wandert Tragendes ins zuständige Proposal, Entscheidungsgründe als Entwurf in die ADR, die Ablage wird gelöscht. Nichts verlinkt dorthin. Löschen darf der Agent, sobald Tragendes übertragen ist und nichts mehr auf die Ablage verweist — git hält sie. Der Drift-Check meldet sie nur.
 - **Audit- und Remediation-Artefakte** — spiegeln den Implementierungsstand, sind keine Quelle für Architekturentscheidungen.
 
 ## Workflow
@@ -75,7 +75,7 @@ Fehlt die Struktur ganz und will der User sie einführen: weiter mit »Struktur 
 
 Das zuständige Proposal ist die Grundlage jedes Implementierungs- oder Umsetzungsplans. Der Plan leitet sich aus dem Soll ab und nennt die Abschnitte, auf denen er fußt (`docs/proposals/rendering.md` §3.2).
 
-- **Kein passendes Proposal.** Bugfix oder Refactoring ohne Verhaltensänderung brauchen keins. Was ein Nutzer, eine API oder eine andere Domain danach anders erlebt als vorher, braucht ein Soll: erst das Domain-Proposal erweitern oder ein neues als `Entwurf` anlegen, dann planen.
+- **Kein passendes Proposal.** Bugfix oder Refactoring ohne Verhaltensänderung brauchen keins. Was ein Nutzer, eine API oder eine andere Domain danach anders erlebt als vorher, braucht ein Soll: erst das Domain-Proposal erweitern oder ein neues als `Entwurf` anlegen, dann planen. Hat das Projekt keine eigene Form für Proposals oder ADRs, stehen Vorlagen in `references/templates.md`.
 - **Nur ein Pre-Proposal.** Es ist kein Spec. Erst die dort genannten Entscheidungen klären, dann einen Spec schreiben, dann planen.
 - **Entwurf statt spezifiziert.** Planen ist erlaubt; der Plan nennt, dass er auf einem nicht freigegebenen Spec steht.
 
@@ -88,6 +88,8 @@ Das Proposal ist die Norm, nicht das aktuelle Code-Verhalten. Beim Erweitern gil
 - **Gegenentwurf** — der Code tut etwas anderes, als das Soll will. Nicht auflösen: beide Stellen benennen, fragen.
 
 Im Zweifel ist es ein Gegenentwurf. Das Soll wird nie an die Umsetzung angepasst, um eine Lücke zu verdecken.
+
+Wer das Ist eines Proposals nachzieht, sucht Präzisierungen aktiv, statt nur Widersprüche zu melden: Wie verhält sich der Code in Fällen, die der Spec nicht regelt — leere Eingabe, Grenzwerte, Defaults, Fehlerpfade? Was davon der Absicht des Specs folgt, wird nachgezogen.
 
 ### 4. Widersprüche zwischen Dokumenten
 
@@ -140,10 +142,6 @@ Konsolidieren heißt: das Proposal bleibt, wo es ist, und wird zur reinen Gegenw
 
 ## Struktur einführen
 
-Nur auf Ansage des Users. Vorher `references/templates.md` lesen; dort stehen die Vorlagen.
+Auslöser: der User will die Struktur in einem Projekt einführen, das sie nicht oder nur teilweise hat (»führe die Struktur ein«, »set up the dev docs«). Dann `references/introduce.md` lesen und dem Ablauf dort folgen.
 
-- Angelegt werden `docs/proposals/` mit `README.md` als Index, `docs/adr/` mit `README.md` als Index und ohne Einträge, `ROADMAP.md` als Gerüst. Einen Masterplan nur, wenn der User einen will; den Architektur-Guide erst, wenn es Gebautes zu kartieren gibt.
-- Inhalte werden nicht erfunden. Vision, Ziele, Leitplanken, Meilensteine und Termine kommen vom User; wo sie fehlen, steht ein Platzhalter mit der offenen Frage. Ist-Zustände für Proposals und den Guide darf der Agent aus dem bestehenden Code ableiten — Proposals als `Entwurf`.
-- Liegen Entscheidungen oder Leitplanken schon anderswo (Invarianten im `CLAUDE.md`, Entscheidungsabschnitte in Proposals), wird ihr Umzug vorgeschlagen, nicht vollzogen.
-- Sprache der Docs: die der vorhandenen Projekt-Docs, sonst die des Users. Die Überschriften der Vorlagen werden mitübersetzt.
-- Anbieten, nicht ungefragt schreiben: ein kurzer Block in `CLAUDE.md` bzw. `AGENTS.md` des Projekts, der auf die Dokumente, die Spec-Regel aus Schritt 3 und die Änderungsrechte aus Schritt 6 zeigt. Damit halten sich auch Agents daran, die diesen Skill nicht geladen haben.
+Kern: vorhandene Docs werden zugeordnet, nicht ungefragt umgezogen; der Domain-Schnitt ist ein Vorschlag zur Freigabe; ein Lauf legt das Gerüst und höchstens ein Proposal an, die übrigen entstehen, wenn ihre Domain berührt wird.

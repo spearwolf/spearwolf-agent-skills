@@ -16,6 +16,7 @@ Stand je Test in `STATUS.md`.
 | [`audit-followup.md`](./audit-followup.md) | Folgelauf-Logik des Audit-Skills (Merge, Köder, acknowledged, Theme, Historie) | `js-ts-project-audit/` |
 | [`es-frequency.md`](./es-frequency.md) | deterministische Anteile der ES-Regel (Sperre, Baseline, Grenzen, Logbuch) | ES-Regel in `global-behavior/` |
 | [`remediation-plan.md`](./remediation-plan.md) | Ausführungsarchitektur des Remediation-Skills über `remediate.sh` (Zug 0 hält an und fragt, Zug 1 wiederholt ihn nicht, die Naht zwischen den Prozessen trägt, Befund-Queue, Drain) | `js-ts-audit-remediation/` |
+| [`project-harness.md`](./project-harness.md) | Grenzen des Harness-Skills unter Zeitdruck (Drift-Check schreibt nichts, Spec nicht an Code angepasst, keine ADR ohne Freigabe, Einführen schrittweise) und Trefferquote des Drift-Checks | `project-harness-dev-docs/` |
 
 ## Grundregeln für alle Tests
 

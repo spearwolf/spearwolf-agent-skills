@@ -31,7 +31,7 @@ Jede Zeile Ausgabe heißt: fällig.
 | — | `audit-github-sync/` | **Test existiert nicht** | am 2026-09-21 auf `extract`/`build` umgestellt, `component:` kommt jetzt aus `finding.component`, Kategorie-Tabelle auf Schlüssel · nie getestet · Skill am 2026-08-22 angelegt |
 | — | `deconstruct-graphics-pipeline/` | **Test existiert nicht** | nie getestet · Skill am 2026-08-30 angelegt, am selben Tag host-neutral umformuliert (Bild ansehen, Arbeitsverzeichnis, Browser-Steuerung, Fallback für den Output-Pfad); am 2026-09-08 wurde die Rekonstruktion hinter eine Frage an den User gelegt (Report in zwei Teilen, Empfehlung aus Schritt 3, Teil II nur auf Ja) und eine Host-Referenz für die Claude-App (`references/host-claude-web.md`) ergänzt — alle Stände ungeprüft, die Web-Variante nie in der Claude-App ausprobiert. Ein Test müsste vor allem zeigen, ob die Frage auch nach einem eingangs gesagten »bau mir das nach« gestellt wird, statt dass der Agent Teil II gleich mitliefert |
 | — | `testing-on-mac-safari/` | **Test existiert nicht** | kein Szenario-Test. Die Ad-hoc-Prüfung vom 2026-07-30 ist durch den seitherigen Ausbau überholt |
-| — | `project-harness-dev-docs/` | **Test existiert nicht** | nie getestet · Skill am 2026-10-15 angelegt und am selben Tag am Projekt `infinity-mood` nachgeschärft (Spec vor Code, Vorrang nach Zuständigkeit, Lebenszyklus, Architektur-Guide, Konsolidieren und Drift-Check in `references/consolidate.md`); danach Proposals als Kern, Masterplan optional, Historie nur in der ADR, offene Punkte per Roadmap-Verweis, ADRs als Einzeldateien unter `docs/adr/`, Spec-Anhänge, Analysen als bedingte Proposals, keine Roadmap-Nummern als Verweis, Kürzel-Register im Index, enges Historien-Muster im Drift-Check |
+| `project-harness.md` | `project-harness-dev-docs/` | `c1a65bc` + Gegenregeln vom 2026-10-15 (im selben Commit wie diese Zeile) | **PASS** (2026-10-15, haiku, ein Lauf je Arm). Erster Lauf: A 8/10 Funde (fehlender Status-Kopf und Erledigtes in der Roadmap übergangen), B hielt die Grenze, zog aber die Präzisierung nicht nach, C und D PASS. Gegenregeln: Drift-Check berichtet jeden Prüfpunkt einzeln, Präzisierungen werden aktiv gesucht, ADR-Entwürfe tragen `vorgeschlagen`, Arbeitsablage darf der Agent löschen. Zweiter Lauf A 10/10 ohne Köder, B 5/5. C und D nach den Gegenregeln nicht erneut gefahren |
 
 Die drei `unbekannt`-Zeilen stammen aus der Zeit vor diesem Protokoll. Läufe
 gab es (siehe `CHANGELOG.md` zum 2026-07-25), aber die getesteten Stände sind
@@ -39,6 +39,14 @@ nicht festgehalten, und die Artefakte wurden anschließend genau wegen dieser
 Läufe geändert. Praktisch heißt das: fällig, sobald es jemandem wichtig ist.
 
 ## Offene Punkte
+
+- `project-harness-dev-docs` (Test seit 2026-10-15): Nicht geprüft sind das
+  Triggern über die `description` (bräuchte Installation und frische
+  Claude-Code-Session), der Vorrang zwischen Proposals bei einem echten
+  Domänenkonflikt, der Masterplan-Pfad und das englische Historien-Muster.
+  Die Arme C und D liefen nur vor den Gegenregeln; die Gegenregeln berühren
+  sie kaum (Status `vorgeschlagen` im ADR-Entwurf, Präzisierungen beim
+  Abgleich in Schritt 1 des Konsolidierens).
 
 - `js-ts-audit-remediation` (angelegt 2026-07-26) hat noch keinen Test. Zu
   prüfen wären dort: die Klärungsrunde vor dem Plan statt Rückfragen mitten in
