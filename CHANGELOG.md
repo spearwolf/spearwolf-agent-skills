@@ -2,6 +2,11 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-10-15
+
+### Hinzugefügt
+- **Neuer Skill `project-harness-dev-docs`.** Beschreibt die Dev-Docs eines Projekts als Harness für Coding Agents: `docs/masterplan/*.md` (Vision, Strategie), `docs/proposals/*.md` (Ist und Soll je Feature oder Domain, Grundlage jedes Umsetzungsplans), `docs/adr.md` (Architekturentscheidungen) und `ROADMAP.md` (Meilensteine, Fortschritt). Kern sind die Änderungsrechte: Proposals darf ein Agent anlegen und ändern, solange er jede Änderung offenlegt; Masterplan, ADRs und Roadmap-Meilensteine ändert er erst nach Freigabe, Widersprüche zwischen den Ebenen löst er nicht allein auf. Vorlagen für die Einführung der Struktur liegen in `references/templates.md`.
+
 ## 2026-09-26
 
 ### Geändert

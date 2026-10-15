@@ -42,6 +42,11 @@ chaotisch, gelegentlich gefährlich, und der Bibliothekar sagt zu allem nur
     Bild, an dem er hängt, und trägt seine Konfidenz offen. Heraus kommt eine
     `./graphics-pipeline-analysis.md` mit einer nach Wirkung sortierten
     Roadmap für Browser, WebGPU und three.js.
+  - [`project-harness-dev-docs`](./project-harness-dev-docs/) — legt fest,
+    wie Masterplan, Proposals, ADRs und Roadmap eines Projekts zusammen das
+    Harness für Coding Agents bilden: was wohin gehört, worauf ein
+    Umsetzungsplan fußt, und wer was ändern darf — Proposals der Agent,
+    Masterplan und ADRs nur nach Abstimmung.
 - **[`global-behavior/`](./global-behavior/)** — *kein* Skill, sondern
   Anweisungen dazu, wie sich Claude generell verhalten soll (z. B.
   Fortschritts-Meldungen im Scheibenwelt-Stil, eine Sammlung absurder
