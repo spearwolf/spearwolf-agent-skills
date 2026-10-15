@@ -56,9 +56,13 @@ Konsolidieren wandern sie in die ADR, hier bleibt je Entscheidung eine Zeile.>
 Verbindliche Spezifikation, eine Datei je Domain. Der Status jedes Proposals
 steht in seinem Kopf, nicht hier.
 
-| Proposal | Zuständig für — hier gewinnt es |
-| --- | --- |
-| [`<datei>.md`](./<datei>.md) | <Domain, in einer Zeile> |
+| Proposal | Kürzel | Zuständig für — hier gewinnt es |
+| --- | --- | --- |
+| [`<datei>.md`](./<datei>.md) | <XY> | <Domain, in einer Zeile> |
+
+Ein Kürzel ist die einzige Definition und wird nie geändert oder neu vergeben.
+Verweise in `docs/` und `ROADMAP.md` dürfen es nutzen (`XY §3.2`); Code, Tests
+und Commit-Messages schreiben den Dateinamen.
 
 ## Vorrang
 

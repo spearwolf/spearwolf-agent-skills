@@ -11,7 +11,7 @@ Den Kern bilden die Proposals: sie sind die verbindliche Spezifikation, aus der 
 
 | Dokument | Pfad | Inhalt | Wer ändert |
 | --- | --- | --- | --- |
-| **Proposals** — Kern | `docs/proposals/*.md`, Index in `docs/proposals/README.md` | **Verbindliche Spezifikation** je Feature oder Domain: was gilt (Ist) und was gelten soll (Soll). Der Index nennt die Zuständigkeit jedes Proposals und die Vorrangregel. | Der Agent darf anlegen und ändern — transparent. Zuständigkeiten und Vorrangregel: Team/User. |
+| **Proposals** — Kern | `docs/proposals/*.md`, Index in `docs/proposals/README.md` | **Verbindliche Spezifikation** je Feature oder Domain: was gilt (Ist) und was gelten soll (Soll). Der Index nennt die Zuständigkeit jedes Proposals, sein Kürzel und die Vorrangregel. | Der Agent darf anlegen und ändern — transparent. Zuständigkeiten und Vorrangregel: Team/User. |
 | ADR | `docs/adr/NNN-<titel>.md`, Index in `docs/adr/README.md` | Architekturentscheidungen samt ihrer **Historie**: was vorher galt, welche Alternativen verworfen wurden, warum es sich änderte. Eine Datei je Entscheidung, fortlaufend nummeriert. | Team/User. Der Agent entwirft, geschrieben wird nach Freigabe. |
 | Roadmap | `ROADMAP.md` | Navigationsinstrument für das Offene: jeder offene Punkt eines Proposals als Eintrag mit Verweis darauf, nach Terminen oder Abhängigkeiten geordnet; dazu die offenen Entscheidungen. Kein Spec. | Fortschritt: der Agent. Neue Stränge, Reihenfolge, Termine, Prioritäten: Team/User. |
 | Masterplan — optional | `docs/masterplan/*.md` | Vision, Ziele, Nicht-Ziele, Leitplanken. High level, ohne Feature-Details und ohne Umsetzungsstand. Fehlt er, fehlt nichts Verbindliches. | Team/User. Der Agent schlägt vor. |
@@ -111,7 +111,7 @@ Im Zweifel ist es ein Gegenentwurf. Das Soll wird nie an die Umsetzung angepasst
 
 ### 6. Änderungsrechte
 
-**Proposals und Guide — der Agent darf, transparent.** Proposals anlegen, erweitern, Ist nachführen, Präzisierungen nachziehen, Status nach der Tabelle oben setzen; den Guide dem gebauten Stand nachführen; neue Proposals in den Index eintragen. Transparent heißt: jede Änderung steht in der Antwort an den User (Datei, Abschnitt, was sich verschoben hat, warum), und wird sie mit Code committet, nennt die Commit-Message sie.
+**Proposals und Guide — der Agent darf, transparent.** Proposals anlegen, erweitern, Ist nachführen, Präzisierungen nachziehen, Status nach der Tabelle oben setzen; den Guide dem gebauten Stand nachführen; neue Proposals samt neuem Kürzel in den Index eintragen. Transparent heißt: jede Änderung steht in der Antwort an den User (Datei, Abschnitt, was sich verschoben hat, warum), und wird sie mit Code committet, nennt die Commit-Message sie.
 
 **ADR, Masterplan, Zuständigkeiten und Vorrangregel — nur nach Abstimmung.** Signifikant ist jede Änderung, die Bedeutung verschiebt: eine Entscheidung, ihre Begründung, ihr Status, ihr Geltungsbereich, ein Ziel, eine Leitplanke, die Domain eines bestehenden Proposals, seine Stellung in der Vorrangregel; ebenso jede neue ADR und jeder neue Masterplan-Abschnitt. Ablauf: Entwurf als Text in der Konversation (Diff oder neuer Abschnitt), Freigabe abwarten, dann schreiben. Mehrere Entwürfe dürfen gebündelt zur Freigabe vorgelegt werden. Ein »passt, trag ein« zu einem konkreten Entwurf ist eine Freigabe; ein allgemeines »kümmer dich um die Docs« oder »räum auf« deckt diese Dokumente nicht.
 
@@ -123,7 +123,14 @@ Ohne Rückfrage erlaubt, aber in der Antwort genannt: Tippfehler, kaputte Links,
 
 ### 7. Verweise
 
-Docs und Code verweisen auf stabile Stellen: Dokument **und** nummerierter Abschnitt (`docs/proposals/auth.md` §4.1), ab der zweiten Nennung in derselben Datei kurz (`auth.md` §4.1), oder ADR-Nummer (`ADR-012`). Eine nackte Abschnittsnummer ohne Dokument ist mehrdeutig, sobald es mehr als ein Proposal gibt. **Keine stabilen Stellen** sind Roadmap-Nummern und die Nummern der Tabelle offener Entscheidungen: sie gelten nur innerhalb der Roadmap, ändern sich beim nächsten Durchgang und stehen deshalb nie in Code, Tests, Proposals oder ADRs. Proposals nummerieren ihre Abschnitte deshalb, und diese Nummern bleiben stabil — auch beim Konsolidieren. Wer doch umnummeriert oder eine Datei umbenennt, zieht vorher alle Verweise darauf mit (`grep -rn "<datei>.md" docs src tests` o. ä.).
+Docs und Code verweisen auf stabile Stellen: Dokument **und** nummerierter Abschnitt (`docs/proposals/auth.md` §4.1), ab der zweiten Nennung in derselben Datei kurz (`auth.md` §4.1), oder ADR-Nummer (`ADR-012`). Eine nackte Abschnittsnummer ohne Dokument ist mehrdeutig, sobald es mehr als ein Proposal gibt. **Keine stabilen Stellen** sind Roadmap-Nummern und die Nummern der Tabelle offener Entscheidungen: sie gelten nur innerhalb der Roadmap, ändern sich beim nächsten Durchgang und stehen deshalb nie in Code, Tests, Proposals oder ADRs. Proposals nummerieren ihre Abschnitte deshalb, und diese Nummern bleiben stabil — auch beim Konsolidieren. Wer doch umnummeriert oder eine Datei umbenennt, zieht vorher alle Verweise darauf mit (`grep -rn "<datei>.md" docs src tests` o. ä.; gibt es ein Kürzel, ein zweites Mal danach).
+
+**Kürzel.** Ein Projekt darf seinen Proposals Kürzel geben (`MS` für `mood-sketcher.md`), damit dichte Querverweise lesbar bleiben. Dann gilt:
+
+- **Eine Definition.** Ein Kürzel steht an genau einer Stelle: in der Spalte »Kürzel« des Proposal-Index. Kürzel-Köpfe in einzelnen Dateien (»Verweise auf … tragen den Zusatz (MS)«) sind Kopien; sie entfallen beim nächsten Anfassen der Datei, nicht im Sammellauf.
+- **Eins zu eins und unveränderlich.** Jedes Proposal hat höchstens ein Kürzel, jedes Kürzel steht für genau ein Proposal. Vergeben wird es mit der Index-Zeile beim Anlegen; danach wird es nie geändert und nie neu vergeben, auch nicht nach `verworfen` — sonst zeigen alte Verweise still auf etwas anderes.
+- **Eine Schreibweise.** `MS §5.3` für einen Abschnitt, `MS` allein für das ganze Dokument. Nachgestellte Formen (`§5.3 MS`) und Klammerformen mitten im Satz werden beim Anfassen vereinheitlicht.
+- **Nur in den Docs.** Kürzel stehen in `docs/` und `ROADMAP.md`. Code, Tests und Commit-Messages schreiben den Dateinamen — wer Code liest, sucht nach Dateinamen, nicht in einem Register.
 
 ## Konsolidieren und Drift-Check
 

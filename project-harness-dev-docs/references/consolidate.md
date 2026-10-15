@@ -8,18 +8,34 @@ Nur lesen, nichts schreiben. Geprüft wird, was sich mechanisch feststellen läs
 
 1. **Status an einer Stelle.** Jedes Proposal hat einen Status-Kopf. Wiederholen Index, Masterplan, Guide oder `CLAUDE.md` einen Status, stimmt die Kopie mit dem Kopf überein? Ein gebautes Proposal, das anderswo als »nicht gebaut« geführt wird, ist der häufigste Fund.
 2. **Index vollständig.** Jedes Proposal unter `docs/proposals/` steht im Index mit seiner Zuständigkeit; jedes nicht-Pre-Proposal steht in der Vorrangregel. Stimmt eine Zählung im Fließtext (»sechzehn Proposals«) mit der Zahl der Dateien? Wird jeder Spec-Anhang (Schema, Diagramm) von mindestens einem Proposal referenziert?
-3. **Verweise lösen auf.** Jeder Verweis der Form `<datei>.md §N.M` in Docs, Code und Tests zeigt auf eine existierende Datei mit existierendem Abschnitt. Gesammelt über Docs, Quelltext und Tests, dann gegen die Überschriften der Zieldatei geprüft:
+3. **Verweise lösen auf.** Jeder Verweis der Form `<datei>.md §N.M` oder `<Kürzel> §N.M` zeigt auf eine existierende Datei mit existierendem Abschnitt. Zuerst die Kürzel aus dem Index lesen, dann beide Formen über Docs, Quelltext und Tests sammeln und gegen die Überschriften der Zieldatei prüfen:
 
    ```bash
    grep -rnoE "[a-z0-9-]+\.md[^§]{0,3}§[0-9.]+" docs src tests ROADMAP.md CLAUDE.md
+   grep -rnoE "\b(<K1>|<K2>|…) §[0-9.]+" docs ROADMAP.md      # Kürzel aus dem Index
    ```
+
+   Ohne Register im Index führt das Projekt seine Kürzel verstreut. Dann die Zuordnung aus den Kürzel-Köpfen der Dateien einsammeln, auf Kollisionen prüfen (ein Kürzel, zwei Dateien; eine Datei, zwei Kürzel) und das Register als Fund vorschlagen. Für die Kürzel selbst wird zusätzlich gemeldet:
+
+   - ein Kürzel vor `§`, das nicht im Register steht oder in der Datei nirgends definiert ist;
+   - ein Kürzel in Code, Tests oder Commit-Messages statt des Dateinamens (`grep` mit demselben Muster über `src tests e2e`);
+   - Kürzel-Köpfe in einzelnen Dateien, sobald ein Register existiert — sie sind Kopien;
+   - abweichende Schreibweisen (`§5.3 MS`).
 
 4. **Offenes ist referenziert.** Jeder offene Punkt eines Proposals (Soll, das nicht gebaut ist; Abschnitt »Was offen bleibt«) hat einen Roadmap-Eintrag, der auf ihn verweist. Umgekehrt zeigt jeder offene Roadmap-Eintrag auf einen Punkt, der im Proposal noch offen ist.
-5. **Historie in Gegenwartsdokumenten.** Gebaute Proposals und der Guide, die noch Historie oder Code-Archäologie tragen (Definition im Skill, Abschnitt »Gegenwart in den Proposals, Historie in der ADR«). Kandidaten liefert eine Suche nach den Signalwörtern, die Treffer werden einzeln beurteilt:
+5. **Historie in Gegenwartsdokumenten.** Gebaute Proposals und der Guide, die noch Historie oder Code-Archäologie tragen (Definition im Skill, Abschnitt »Gegenwart in den Proposals, Historie in der ADR«). Zwei Suchen liefern die Kandidaten:
 
-   ```bash
-   grep -rniE "früher|bisher|ursprünglich|erster Entwurf|gegenüber dem|entfällt|entfallen|ersetzt|nicht mehr|Meilenstein|Umsetzung in Schritten|[0-9a-f]{7,40}\b" docs/proposals docs/architecture-guide.md
-   ```
+   - **Formulierungen** — ein enges Muster aus Wendungen, die fast nur in Historie vorkommen:
+
+     ```bash
+     grep -rniE "frühere[rn]? (Fassung|Entwurf|Stand|Version)|(im|der|den|dem) ersten Entwurf|gegenüber dem (ersten|alten|früheren)|ersatzlos (entfallen|gestrichen)|\bvormals\b|bisher galt|galt bisher|war bisher|Präzisierungen? gegenüber|wurde (später )?(umgebaut|ersetzt|verworfen)|[Cc]ommit \`?[0-9a-f]{7,40}" docs/proposals docs/architecture-guide.md
+     ```
+
+     Für englische Docs sinngemäß (gegen echte Daten noch nicht erprobt): `earlier (draft|version)|previous (draft|version)|first draft|formerly|was (later )?(replaced|rejected|reworked)|compared to the (original|first|earlier)|removed without replacement|[Cc]ommit \`?[0-9a-f]{7,40}`.
+
+   - **Struktur** — in Proposals mit Status `gebaut`: Abschnitte »Tests«, »Umsetzung in Schritten«, »Meilensteine«, und Meilenstein-Zeilen mit dem Vermerk »gebaut« (`grep -nE '^\*\*M[0-9]+[a-z]? — [^*]*\b[Gg]ebaut\b'`).
+
+   Weiche Wörter wie »bisher«, »ersetzt«, »entfällt«, »ursprünglich«, »nicht mehr« oder »Meilenstein« gehören nicht ins Muster: Sie sind meist Fachsprache (»den ursprünglichen Vorzustand wiederherstellen«), ein Testlauf gegen 22 Proposals ergab damit über 250 Treffer, mit dem engen Muster 14, alle echt. Treffer werden trotzdem einzeln beurteilt. Ein »wurde verworfen« ist meist eine verworfene Alternative — Material für einen ADR-Entwurf, nicht zum Streichen.
 
 6. **Roadmap ohne Erledigtes.** Abgehakte Punkte und Abschnitte, deren Meilensteine alle stehen.
 7. **Liegengebliebene Arbeitsablagen.** Ordner wie `docs/superpowers/` oder `docs/plans/` aus abgeschlossenen Läufen.
