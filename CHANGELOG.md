@@ -2,6 +2,13 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-10-23
+
+### Geändert
+- **`testing-on-mac-safari` kennt einen Lokal-Modus.** `macHost = local` in `~/.testing-on-mac-safari.conf` heißt: der Agent läuft auf dem Mac selbst. `references/lokal-auf-dem-mac.md` übersetzt jeden `ssh`-/`scp`-Befehl in seine lokale Form, nennt den MCP-Server `safari-local` und listet die einmalige Einrichtung (Technology Preview, `safaridriver --enable`, Xcode für den Simulator). `scripts/mcp_safari.py` startet `safaridriver` in diesem Fall ohne SSH.
+- **`testing-on-mac-safari`: Konsole und Netzwerk richtig anzapfen.** Beide Puffer zeichnen erst auf, nachdem das Tool auf der aktuellen Seite einmal aufgerufen wurde, und Safaris HTTPS-Versuch bei `http://`-URLs auf LAN-Hostnamen verliert die Aufzeichnung wieder. Die Referenz gibt dafür einen Dreischritt vor: navigieren, beide Tools aufrufen, erneut navigieren. Der TLS-Fehler aus dem HTTPS-Versuch ist als harmlos dokumentiert. Der Statusfilter von `list_network_requests` steht verschachtelt unter `filter`; die Referenz hatte ihn auf oberster Ebene, wo er wirkungslos blieb.
+- **`testing-on-mac-safari`: Warnung bei fehlendem iOS-Simulator.** Bevor der Simulator-Weg startet, prüft `xcrun simctl list runtimes`, ob Xcode und eine iOS-Runtime da sind. Fehlt eins, gibt der Agent sofort eine abgesetzte Warnung mit den Installationsschritten aus. Bei ausdrücklicher Mobil-Anfrage endet der Lauf dort; sonst darf er auf den Desktop-Weg ausweichen und benennt, was dort nicht prüfbar ist.
+
 ## 2026-10-15
 
 ### Hinzugefügt

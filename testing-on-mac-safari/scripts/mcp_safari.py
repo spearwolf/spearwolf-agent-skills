@@ -7,6 +7,7 @@ Example: mcp_safari.py '{"method":"tools/list","params":{}}'
 
 The mac's ssh host is not baked in. It is taken from, in order of precedence:
 --host, $MAC_HOST, or the macHost key in ~/.testing-on-mac-safari.conf.
+The value `local` means this machine is the mac: safaridriver runs directly, no ssh.
 """
 import json
 import os
@@ -46,13 +47,17 @@ if not mac_host:
         f"no mac host: pass --host, set $MAC_HOST, or put `macHost = <name>` in {CONFIG}"
     )
 
-SSH_CMD = [
-    "ssh", "-o", "BatchMode=yes", mac_host,
-    '"/Applications/Safari Technology Preview.app/Contents/MacOS/safaridriver" --mcp',
-]
+SAFARIDRIVER = "/Applications/Safari Technology Preview.app/Contents/MacOS/safaridriver"
+
+if mac_host == "local":
+    if not os.access(SAFARIDRIVER, os.X_OK):
+        raise SystemExit(f"not found: {SAFARIDRIVER} — install Safari Technology Preview")
+    CMD = [SAFARIDRIVER, "--mcp"]
+else:
+    CMD = ["ssh", "-o", "BatchMode=yes", mac_host, f'"{SAFARIDRIVER}" --mcp']
 
 proc = subprocess.Popen(
-    SSH_CMD, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+    CMD, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
     stderr=subprocess.PIPE, text=True, bufsize=1,
 )
 

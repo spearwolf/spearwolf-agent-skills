@@ -11,9 +11,12 @@ Ein physischer Mac (macOS 26) läuft im selben LAN, per SSH erreichbar. Damit wi
 WebKit auf echter Hardware prüfbar — nicht als Ersatz für lokales Testen, sondern für die
 Fälle, in denen genau diese Engine der Punkt ist.
 
-Die Server und Services laufen dabei so gut wie immer **auf diesem Linux-Rechner**; der
-Mac greift übers Netz darauf zu. Er ist Anzeigegerät, keine Entwicklungsmaschine — das
-Repository liegt dort nicht.
+Im Fernbetrieb laufen die Server und Services **auf diesem Linux-Rechner**; der Mac greift
+übers Netz darauf zu. Er ist Anzeigegerät, keine Entwicklungsmaschine — das Repository
+liegt dort nicht.
+
+Im **Lokal-Modus** ist dieser Rechner selbst der Mac: kein SSH, kein `scp`, Dev-Server und
+Safari auf derselben Maschine. Welcher Fall gilt, sagt die Konfiguration (Schritt 0).
 
 ## Wann
 
@@ -53,10 +56,16 @@ macHost = <ssh-name des macs>
 devHost = <lan-name dieses rechners>
 ```
 
+**`macHost = local` heißt: dieser Rechner ist der Mac.** Dann gilt `devHost = localhost`,
+und bevor du weitermachst, lies
+[`references/lokal-auf-dem-mac.md`](./references/lokal-auf-dem-mac.md). Sie übersetzt jeden
+`ssh`- und `scp`-Befehl dieses Skills in seine lokale Form und listet die einmalige
+Einrichtung.
+
 **Fehlt die Datei oder einer der beiden Schlüssel**, frag den Nutzer danach — beide Werte in
 *einer* Rückfrage, nicht in zweien — und schreib sie anschließend in genau diesem Format
-dorthin. Eine vorhandene Datei wird ergänzt, nicht überschrieben. Danach läuft der Ablauf
-normal weiter.
+dorthin. Meldet `uname` hier `Darwin`, biete `local` als Antwort an. Eine vorhandene Datei
+wird ergänzt, nicht überschrieben. Danach läuft der Ablauf normal weiter.
 
 Rate die Werte nicht und leite sie nicht aus `hostname`, `~/.ssh/config` oder einer früheren
 Session ab. Ein falscher `$devHost` produziert am Mac keinen sprechenden Fehler, sondern
@@ -178,3 +187,6 @@ holst; beides verhält sich anders, als man erwartet.
 in den Trust-Store des Simulators, Seite öffnen, Screenshot holen, tippen und wischen. Dazu
 die drei Bedingungen, unter denen die Safari-Leiste einklappt, und wie man Messwerte ohne
 Inspector aus der Seite bekommt.
+
+[`references/lokal-auf-dem-mac.md`](./references/lokal-auf-dem-mac.md) — nur bei
+`macHost = local`: lokale Form der Befehle, einmalige Einrichtung auf dem Mac selbst.

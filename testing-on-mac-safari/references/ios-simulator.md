@@ -9,6 +9,28 @@ MCP-Server ist nicht beteiligt.
 `$macHost` und `$devHost` sind die beiden Werte aus `~/.testing-on-mac-safari.conf`
 (siehe „Schritt 0" in der `SKILL.md`). Sie stehen in jedem Befehl hier; setz sie ein.
 
+## Zuerst: ist der Simulator überhaupt da?
+
+Bevor du irgendetwas bootest:
+
+```bash
+ssh $macHost 'xcrun simctl list runtimes 2>&1 | grep -c "^iOS"'
+```
+
+Eine Zahl größer 0 heißt: los. Alles andere — `unable to find utility "simctl"` (nur die
+Command Line Tools, kein Xcode) oder `0` (Xcode ohne iOS-Runtime) — heißt: der Simulator ist
+nicht installiert. Dann gibst du **sofort** eine Warnung aus, deutlich abgesetzt und vor
+jedem weiteren Schritt:
+
+> ⚠️ **iOS-Simulator nicht installiert** auf `$macHost` — mobiles Safari ist dort nicht
+> testbar. Nötig: Xcode aus dem App Store, `sudo xcode-select -s /Applications/Xcode.app`,
+> `xcodebuild -downloadPlatform iOS`.
+
+Hat der Nutzer ausdrücklich nach mobilem Safari, iPhone oder Simulator gefragt, endet der
+Lauf mit dieser Warnung. Hast du den Simulator selbst gewählt, weil der Fehler nach mobiler
+Browser-UI aussieht, darfst du danach den Desktop-Weg fahren — aber nur mit dem Satz, dass
+Safari-Leiste, Touch und `env(safe-area-inset-*)` dort nicht prüfbar sind.
+
 ## Gerät wählen und starten
 
 ```bash

@@ -32,7 +32,10 @@ als man erwartet.
 | --- | --- | --- |
 | Seite wirkt leer, `root.children.length === 0` | Zu früh gemessen; `wait_for_navigation` kehrt vor dem Mount zurück | Einige Sekunden warten, erneut prüfen |
 | `list_tabs` liefert `[]`, obwohl ein Tab geöffnet wurde | safaridriver schließt alle Automatisierungs-Tabs beim Sessionende | Ganzes Szenario in einer Session fahren |
-| `list_network_requests` liefert nichts | Der von `create_tab` ausgelöste Ladevorgang wird nicht aufgezeichnet | `create_tab` auf `about:blank`, dann `navigate_to_url` |
+| `list_network_requests` oder `browser_console_messages` liefern nichts, obwohl die Seite Fehler erzeugt | Beide Puffer zeichnen erst auf, nachdem das Tool auf der aktuellen Seite einmal aufgerufen wurde, und ein Neuladen über den HTTPS-Rückfall (nächste Zeile) verliert die Aufzeichnung wieder | Dreischritt: `navigate_to_url`, beide Tools einmal aufrufen, dann dieselbe URL mit veränderter Query (`?v=2`) erneut ansteuern |
+| Konsole meldet „A TLS error caused the secure connection to fail", die Seite steht trotzdem | Safari versucht eine `http://`-URL auf einem LAN-Hostnamen zuerst über HTTPS und fällt danach auf HTTP zurück; bei `localhost` nicht | Kein Fehler der App. Den Eintrag ignorieren und nach dem Dreischritt messen |
+| Filter in `list_network_requests` wirkt nicht | Die Kriterien stehen verschachtelt unter `filter` | `{"filter": {"status_min": 400}}` |
+| Konsolenmeldung beim zweiten Abruf weg | `browser_console_messages` leert den Puffer standardmäßig | `"clear": false` setzen, wenn du erneut lesen willst |
 | `screenshot` liefert kein Bild | Es schreibt eine PNG in den Temp-Ordner des Macs und gibt den Pfad zurück | `scp $macHost:<pfad> ./shot.png`, dann lesen |
 | `evaluate_javascript` gibt `undefined` | Der Ausdruck ist ein Funktionskörper | Explizites `return` setzen |
 | Safari zeigt eine Zertifikatswarnung | Über die IP verbunden statt über den Hostnamen | `$devHost` verwenden |
@@ -40,7 +43,7 @@ als man erwartet.
 | Dev-Server antwortet mit „Blocked request" | Host-Header-Prüfung | Fremde Hostnamen freigeben (Vite: `server.allowedHosts`) |
 
 Fehlgeschlagene Requests zählt man am schnellsten mit
-`list_network_requests` und `{"status_min": 400}`.
+`list_network_requests` und `{"filter": {"status_min": 400}}`.
 
 ## Fallback ohne MCP-Server
 
@@ -53,7 +56,11 @@ sonst ist der Tab beim nächsten Aufruf bereits geschlossen.
 
 ```bash
 python3 <skill-verzeichnis>/scripts/mcp_safari.py \
-  '{"method":"tools/call","params":{"name":"create_tab","arguments":{"url":"https://$devHost:5173/"}}}' \
+  '{"method":"tools/call","params":{"name":"create_tab","arguments":{"url":"about:blank"}}}' \
+  '{"method":"tools/call","params":{"name":"navigate_to_url","arguments":{"url":"https://$devHost:5173/"}}}' \
+  '{"method":"tools/call","params":{"name":"browser_console_messages","arguments":{}}}' \
+  '{"method":"tools/call","params":{"name":"list_network_requests","arguments":{}}}' \
+  '{"method":"tools/call","params":{"name":"navigate_to_url","arguments":{"url":"https://$devHost:5173/?v=2"}}}' \
   '{"method":"__sleep","params":{"s":8}}' \
   '{"method":"tools/call","params":{"name":"evaluate_javascript","arguments":{"expression":"return document.getElementById(\"root\").children.length"}}}' \
   '{"method":"tools/call","params":{"name":"browser_console_messages","arguments":{"limit":50,"level_filter":["error"]}}}'
