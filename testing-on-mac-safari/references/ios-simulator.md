@@ -34,10 +34,14 @@ Safari-Leiste, Touch und `env(safe-area-inset-*)` dort nicht prüfbar sind.
 ## Gerät wählen und starten
 
 ```bash
-ssh $macHost 'xcrun simctl list devices available'   # iOS 26.5: iPhone 17, iPhone Air, iPads …
-ssh $macHost 'xcrun simctl boot <UDID>; open -a Simulator'
+ssh $macHost 'xcrun simctl list devices available'   # Xcode 27.1: iPhone 17 unter iOS 27.0, iPads …
+ssh $macHost 'xcrun simctl boot <UDID>; open /Applications/Xcode.app/Contents/Applications/DeviceHub.app'
 ssh $macHost 'xcrun simctl list devices | grep Booted'
 ```
+
+Seit Xcode 27 heißt die App, die das Gerät zeigt, **DeviceHub**; eine `Simulator.app` gibt es
+nicht mehr, `open -a Simulator` findet nichts. Unter älterem Xcode steht an derselben Stelle
+`open -a Simulator`. Der Prozessname im AX-Baum folgt dem App-Namen.
 
 Die UDIDs sind pro Mac stabil, aber nicht allgemeingültig — hol sie dir, statt sie zu
 raten. Der **erste** `boot` nach längerer Pause kann mit „Install Failed: Es ist eine
@@ -46,9 +50,9 @@ Das ist kein echter Fehler: derselbe Befehl noch einmal, und das Gerät bootet.
 
 ## HTTPS: der mkcert-Root muss extra rein
 
-Der Simulator hat einen **eigenen** Trust-Store. Dass der mkcert-Root im Keychain des Macs
-liegt, hilft ihm nicht — ohne diesen Schritt zeigt Safari eine Zertifikatswarnung statt
-der App:
+Der Simulator hat einen **eigenen** Trust-Store. Ob der mkcert-Root im Keychain des Macs
+liegt, ist ihm egal — ohne diesen Schritt zeigt Safari eine Zertifikatswarnung statt der
+App. Dafür braucht er weder `sudo` noch den Nutzer:
 
 ```bash
 scp ~/.local/share/mkcert/rootCA.pem $macHost:/tmp/ca.pem
@@ -63,6 +67,10 @@ Der Hostname gilt wie beim Desktop-Safari: `$devHost`, **nie** die IP.
 ssh $macHost 'xcrun simctl launch <UDID> com.apple.mobilesafari'
 ssh $macHost 'xcrun simctl openurl <UDID> "https://$devHost:5173/…"'
 ```
+
+Jedes `openurl` öffnet einen neuen Tab. Das ist im Querformat nicht egal: ab zwei Tabs zeigt
+Safari dort eine Tab-Leiste unter der Adressleiste, und beide zusammen kosten auf dem iPhone 17
+110 der 402 Punkte Höhe. Wer im Querformat misst, sagt dazu, wie viele Tabs offen waren.
 
 `openurl` läuft in einen Timeout (`NSPOSIXErrorDomain code=60`), wenn Safari noch gar
 nicht läuft — erst `launch`, dann `openurl`. Danach mehrere Sekunden warten, bis die SPA
@@ -97,16 +105,17 @@ Systemeinstellungen → Datenschutz & Sicherheit → **Bedienungshilfen** → `+
 Probe, ob die Freigabe sitzt:
 
 ```bash
-ssh $macHost 'osascript -e "tell application \"System Events\" to tell process \"Simulator\" to get {position, size} of window 1"'
+ssh $macHost 'osascript -e "tell application \"System Events\" to tell process \"DeviceHub\" to get {position, size} of window 1"'
 ```
 
-Zahlen statt „Fehler -1719" heißt: es geht.
+Zahlen statt „Fehler -1719" heißt: es geht. Unter älterem Xcode heißt der Prozess `Simulator`.
 
 Dann `scripts/sim_input.js` aus diesem Skill-Verzeichnis auf den Mac kopieren und
 benutzen. Koordinaten sind **CSS-Punkte des simulierten Geräts** — Screenshot-Pixel
 geteilt durch `devicePixelRatio`. Die Lage des Gerätebildschirms auf dem Desktop liest das
-Skript selbst aus dem AX-Baum (`window 1` → Element mit Subrolle `iOSContentGroup`), das
-Fenster darf also stehen und skaliert sein, wie es will.
+Skript selbst aus dem AX-Baum (`window 1` von DeviceHub oder Simulator → das erste Element mit
+Subrolle `iOSContentGroup`, bei DeviceHub einige Ebenen tief), das Fenster darf also stehen
+und skaliert sein, wie es will.
 
 ```bash
 scp <skill-verzeichnis>/scripts/sim_input.js $macHost:/tmp/
@@ -114,7 +123,25 @@ ssh $macHost 'osascript -l JavaScript /tmp/sim_input.js tap 201 265'
 ssh $macHost 'osascript -l JavaScript /tmp/sim_input.js swipe 200 650 200 300 12 0.005'
 ```
 
-Bei einem anderen Gerät als dem iPhone 17 die CSS-Breite als letztes Argument mitgeben.
+Bei einem anderen Gerät als dem iPhone 17 die CSS-Breite als letztes Argument mitgeben, im
+Querformat ebenso: dort ist die Breite die lange Seite, beim iPhone 17 also 874.
+
+## Drehen
+
+`simctl` kann das Gerät nicht drehen. DeviceHub kann es über das Menü *Controls → Rotate
+Left / Rotate Right*, und das Menü lässt sich mit derselben Bedienungshilfen-Freigabe
+fernsteuern:
+
+```bash
+ssh $macHost 'osascript -e "tell application \"System Events\" to tell process \"DeviceHub\"
+  set frontmost to true
+  click menu item \"Rotate Left\" of menu 1 of menu bar item \"Controls\" of menu bar 1
+end tell"'
+```
+
+Die Seite bekommt dabei eine echte Drehung: `screen.orientation` wechselt auf
+`landscape-primary` und feuert `change`. Der
+Screenshot kommt danach quer, beim iPhone 17 mit 2622×1206 Pixeln, also 874×402 CSS-Punkten.
 
 ## Die Safari-Leiste einklappen
 
@@ -128,7 +155,10 @@ müssen zusammenkommen:
    Leiste stehen. Prüfe das im Zweifel: `window.scrollY` gegen `document.body.scrollTop`.
    Bleibt `scrollY` bei 0, während `body.scrollTop` wächst, ist body der Scroller und die
    Leiste klappt nie ein. Das passiert schneller, als man denkt — `html, body { overflow-x:
-   hidden }` zusammen mit einer 100%-Höhe genügt schon.
+   hidden }` zusammen mit einer 100%-Höhe genügt schon. Ebenso sperrt ein `position:
+   fixed`-Element, das den ganzen Viewport bedeckt: eine Wischgeste darauf scrollt das
+   Dokument nicht, auch wenn der Root scrollen dürfte (`scrollY` bleibt 0). Was beim Start
+   eines solchen Overlays an Leiste steht, bleibt stehen.
 3. **Genug Scroll-Reserve.** Am Dokumentende klappt Safari die Leiste sofort wieder aus.
    Sorge für Inhalt unterhalb der Stelle, die du sehen willst, und höre vor dem Ende auf.
 
@@ -136,6 +166,9 @@ Ist die Leiste eingeklappt, springt `innerHeight` von `svh` auf `lvh` — iPhone
 iOS 26.5: von 714 auf 754. Ein `position: fixed`-Element mit `inset: 0` wächst dann mit und
 verschwindet unter der schwebenden Pille. `dvh` folgt diesem Sprung ebenfalls; nur `svh`
 bleibt konstant und hält den unteren Rand frei.
+
+Im Querformat (iPhone 17, iOS 27.0) klappt dieselbe Geste Adress- und Tab-Leiste ganz weg:
+`innerHeight` springt von 292 auf 402, die Seite hat den vollen Bildschirm.
 
 ## Werte aus der Seite holen
 
@@ -155,3 +188,10 @@ Er ist der einzige Weg an **mobiles** WebKit: Viewport-Einheiten gegen echte Bro
 (`lvh` ≠ `svh`), Touch- und Pointer-Events, `env(safe-area-inset-*)`, das Verhalten von
 `position: fixed` gegenüber der ein- und ausgeklappten Leiste. Am Desktop-Safari ist davon
 nichts zu sehen, egal wie schmal man das Fenster zieht.
+
+**WebGPU kann er nicht.** Auch im sicheren Kontext ist `navigator.gpu` zwar vorhanden, aber
+`requestAdapter()` liefert `null` (iOS 26.5, mit und ohne `powerPreference`). three.js'
+`WebGPURenderer` fällt dann still auf WebGL 2 zurück. Ein WebGL-Bild im Simulator sagt
+also nichts über WebGPU auf dem iPhone. WebGPU in WebKit prüfst du im Desktop-Safari; welches
+Backend läuft, verrät dort `canvas.getContext('webgpu')` — ein Canvas trägt nur einen
+Kontexttyp, `null` heißt, WebGL hat ihn belegt.

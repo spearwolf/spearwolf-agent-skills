@@ -3,8 +3,9 @@
 //   osascript -l JavaScript sim_input.js tap   X Y [cssWidth]
 //   osascript -l JavaScript sim_input.js swipe X1 Y1 X2 Y2 [steps] [delay] [cssWidth]
 //
-// Coordinates are CSS points of the simulated device (iPhone 17: 402 x 874),
-// the same space `devicePixelRatio` divides screenshot pixels into.
+// Coordinates are CSS points of the simulated device (iPhone 17: 402 x 874,
+// in landscape 874 x 402 — pass 874 as cssWidth there), the same space
+// `devicePixelRatio` divides screenshot pixels into.
 // Where the device screen sits on the mac desktop is read from the
 // accessibility tree, so the window may be anywhere and at any scale.
 //
@@ -17,18 +18,36 @@ ObjC.import('Foundation');
 
 var DEFAULT_CSS_WIDTH = 402; // iPhone 17
 
-function deviceScreen() {
-  var win = Application('System Events').processes['Simulator'].windows[0];
-  var els = win.uiElements();
-  for (var i = 0; i < els.length; i++) {
+// Xcode 27 replaced the Simulator app with DeviceHub, whose screen group sits deeper in the tree
+var APPS = ['DeviceHub', 'Simulator'];
+
+function findScreen(el, depth) {
+  var kids;
+  try { kids = el.uiElements(); } catch (e) { return null; }
+  for (var i = 0; i < kids.length; i++) {
     var sub;
-    try { sub = els[i].subrole(); } catch (e) { continue; }
+    try { sub = kids[i].subrole(); } catch (e) { sub = null; }
     if (sub === 'iOSContentGroup') {
-      var p = els[i].position(), s = els[i].size();
+      var p = kids[i].position(), s = kids[i].size();
       return { x: p[0], y: p[1], w: s[0], h: s[1] };
     }
+    if (depth < 7) {
+      var found = findScreen(kids[i], depth + 1);
+      if (found) return found;
+    }
   }
-  throw new Error('iOSContentGroup not found — is the Simulator window open?');
+  return null;
+}
+
+function deviceScreen() {
+  var procs = Application('System Events').processes;
+  for (var i = 0; i < APPS.length; i++) {
+    var win;
+    try { win = procs[APPS[i]].windows[0]; win.name(); } catch (e) { continue; }
+    var found = findScreen(win, 0);
+    if (found) return found;
+  }
+  throw new Error('iOSContentGroup not found — is the DeviceHub (or Simulator) window open?');
 }
 
 function sleep(s) { $.NSThread.sleepForTimeInterval(s); }

@@ -2,6 +2,13 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-10-26
+
+### Geändert
+- **`testing-on-mac-safari` findet den Simulator unter Xcode 27.** Dort heißt die App DeviceHub, `open -a Simulator` findet nichts mehr. `scripts/sim_input.js` sucht den Gerätebildschirm jetzt in DeviceHub und, für älteres Xcode, in Simulator. Neu in `references/ios-simulator.md`: Drehen über das Menü *Controls → Rotate Left/Right*, die Koordinaten im Querformat und zwei Ursachen für eine Safari-Leiste, die stehen bleibt: die Tab-Leiste ab zwei Tabs und ein `fixed`-Overlay über dem ganzen Viewport, das Wischgesten schluckt.
+- **`testing-on-mac-safari` erkennt einen gesperrten Mac.** Ein Abschnitt in der `SKILL.md` nennt die Anzeichen (Dokument `hidden`, schwarzer Screenshot, abgelehnter Fullscreen trotz `isTrusted`-Klick), gibt einen `ioreg`-Befehl zum Prüfen und lässt den Nutzer entsperren.
+- **`testing-on-mac-safari`: mkcert-Root und WebGPU im Simulator.** Vor dem ersten HTTPS-Test prüft der Skill per Fingerprint, ob der mkcert-Root im System-Keychain des Macs vertraut ist; fehlt er, trägt ihn der Nutzer mit `sudo` ein, und `CertificateWarningFall2023.html` in `location.href` verrät das Versäumnis. Der Simulator kann kein WebGPU (`requestAdapter()` liefert `null`); WebGPU in WebKit wird im Desktop-Safari geprüft.
+
 ## 2026-10-23
 
 ### Geändert

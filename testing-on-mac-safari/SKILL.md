@@ -99,6 +99,22 @@ du wissen willst, rendert die Seite in ein `fixed`-Kästchen, das du mit abfotog
 Ablauf, Freigabe und die Bedingungen fürs Einklappen der Safari-Leiste stehen in
 [`references/ios-simulator.md`](./references/ios-simulator.md).
 
+## Der Mac muss entsperrt sein
+
+Ein gesperrter Bildschirm sieht nicht nach Sperre aus, sondern nach kaputter Seite. Im
+Desktop-Safari meldet das Dokument `visibilityState: "hidden"` und `hasFocus() === false`,
+`requestAnimationFrame` läuft nicht, der Screenshot ist schwarz, und ein Fullscreen wird
+abgelehnt, obwohl der Klick als `isTrusted` ankommt. Im Simulator gehen Booten, `openurl`
+und `simctl io screenshot` weiter, Tippen, Wischen und Drehen nicht.
+
+Vor dem ersten Test, und sobald eines dieser Zeichen auftaucht, prüfen:
+
+```bash
+ssh $macHost 'ioreg -n Root -d1 | grep -o "CGSSessionScreenIsLocked\"=[A-Za-z]*" || echo unlocked'
+```
+
+Bei `=Yes` entsperrt **der Nutzer** den Mac; bis dahin geht nur, was ohne Fenster auskommt.
+
 ## Zugang zum Desktop-Safari
 
 | Was | Wert |
@@ -127,10 +143,32 @@ Wert eine Domain, funktioniert meist auch die kurze Form ohne — verlass dich d
 sondern nimm, was in der Datei steht.
 
 **Niemals die IP verwenden.** Bei HTTPS bricht sonst die Zertifikatsprüfung: die
-mkcert-Zertifikate tragen die Hostnamen als SAN, keine Adressen. Der mkcert-Root ist im
-Keychain des Macs bereits vertraut, über den Hostnamen ist TLS also sauber — über die IP
-zeigt Safari eine Warnseite statt der App. Der Simulator hat einen eigenen Trust-Store und
-braucht den Root extra.
+mkcert-Zertifikate tragen die Hostnamen als SAN, keine Adressen. Über die IP zeigt Safari
+eine Warnseite statt der App. Der Simulator hat einen eigenen Trust-Store und braucht den
+Root extra.
+
+**Der mkcert-Root muss im System-Keychain des Macs vertraut sein**, sonst endet auch der
+Hostname auf der Warnseite. Das ist nicht selbstverständlich — vor dem ersten HTTPS-Test
+prüfen, ob der Fingerprint des lokalen Roots dort auftaucht:
+
+```bash
+openssl x509 -in ~/.local/share/mkcert/rootCA.pem -noout -fingerprint -sha1 | tr -d :
+ssh $macHost 'security find-certificate -a -c mkcert -Z /Library/Keychains/System.keychain ~/Library/Keychains/login.keychain-db | grep SHA-1'
+```
+
+Fehlt er, trägt **der Nutzer** ihn ein — das braucht `sudo` und sein Passwort am Mac. Nicht
+selbst anstoßen; den Root vorher bereitlegen und den Befehl zum Abtippen nennen:
+
+```bash
+scp ~/.local/share/mkcert/rootCA.pem $macHost:/tmp/ca.pem
+# am Mac:
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain /tmp/ca.pem
+```
+
+Erkennungszeichen, falls es übersehen wurde: `location.href` meldet
+`safari-resource:/CertificateWarningFall2023.html` statt der App-URL. Ein `curl` vom Mac
+aus ist kein Gegenbeweis — es benutzt den Keychain nicht und scheitert auch dann, wenn
+Safari dem Root längst vertraut.
 
 **Protokoll und Port sind projektspezifisch**, und zwar bis hinunter zur einzelnen App.
 Zwei Apps im selben Repo können auseinanderlaufen: die eine unter HTTPS auf 5173, die andere
@@ -184,7 +222,7 @@ Fallback-Skripts. Lies sie, bevor du Netzwerk-Requests auswertest oder einen Scr
 holst; beides verhält sich anders, als man erwartet.
 
 [`references/ios-simulator.md`](./references/ios-simulator.md) — Gerät booten, mkcert-Root
-in den Trust-Store des Simulators, Seite öffnen, Screenshot holen, tippen und wischen. Dazu
+in den Trust-Store des Simulators, Seite öffnen, Screenshot holen, tippen, wischen und drehen. Dazu
 die drei Bedingungen, unter denen die Safari-Leiste einklappt, und wie man Messwerte ohne
 Inspector aus der Seite bekommt.
 
