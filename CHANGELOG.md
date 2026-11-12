@@ -2,6 +2,12 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-11-12
+
+### Geändert
+- **`audit-github-sync` und `project-harness-dev-docs` laden wieder in strengen YAML-Parsern.** Ein `: ` in der einzeiligen `description` ließ das `skills`-CLI beide Skills mit »Nested mappings are not allowed in compact mappings« überspringen; ersetzt durch `—`. Das Repo-`CLAUDE.md` verbietet `: ` in der `description` und nennt einen Prüfbefehl.
+- **`audit-github-sync` ist zurückgestellt.** Der Skill bleibt im Repo, trägt aber `metadata.internal: true` und wird bei »alle Skills installieren« übersprungen, ebenso vom `skills`-CLI; installiert wird er nur noch auf ausdrückliche Nennung.
+
 ## 2026-10-26
 
 ### Geändert

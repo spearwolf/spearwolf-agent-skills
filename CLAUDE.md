@@ -27,6 +27,12 @@ description: <one paragraph>   # this is the trigger heuristic Claude uses to de
 
 The `description` field is **load-bearing**. It is the only part of the skill another agent sees before deciding to invoke. Treat it as a precision-engineered trigger: list the file/import/keyword signals that should activate the skill, plus the informal phrasings users actually type ("review my repo", "schau mal drauf"). The body of the skill is only read after the agent has already decided to load it — so put trigger semantics in the frontmatter, not the body.
 
+The frontmatter must be **strict YAML**. `description` is an unquoted one-line scalar, so it must not contain `: ` (colon + space) anywhere — strict parsers such as the `skills` CLI reject the whole skill with "Nested mappings are not allowed in compact mappings", while Claude Code silently tolerates it, so the breakage goes unnoticed here. Use `—` instead. Check after every frontmatter edit:
+
+```bash
+for f in */SKILL.md; do python3 -c "import sys,yaml; yaml.safe_load(open(sys.argv[1]).read().split('---')[1])" "$f" || echo "BROKEN: $f"; done
+```
+
 ## The `global-behavior` directory
 
 `global-behavior/` is the home of global behavior instructions (see "Repository purpose"). Its central artifact is `global-behavior/CLAUDE.md`, which is installed as a marked block inside the user's `$HOME/.claude/CLAUDE.md` via the steps in `global-behavior/INSTALL.md`, so it governs Claude's behavior across all projects.
@@ -53,6 +59,7 @@ When the user asks to **install / update / uninstall** the contents of this repo
 - **One symlink per skill and per target directory:** for skill `<name>`, create `$HOME/.claude/skills/<name>` *and* `$HOME/.agents/skills/<name>`, each pointing at the absolute path of this repo's `<name>/` directory. Example: `$HOME/.claude/skills/js-ts-project-audit` → `<repo>/js-ts-project-audit`. Always link the repo path directly — never chain one skills directory through the other, so a moved or broken link on one side cannot take the other down with it.
 - **Check the two directories before linking, and link with `ln -sn`.** If `readlink -f $HOME/.claude/skills` and `readlink -f $HOME/.agents/skills` resolve to the same path, someone chained the directories (this machine had that until 2026-10-23). Then stop and report it instead of linking — a second `ln -s` into the same directory finds the first link already there, treats it as a directory, and drops a self-referencing link *inside this repo's skill directory*. `ln -sn` refuses to descend into an existing link and fails loudly instead; after any install, `git status` must show no new entry inside a skill directory.
 - **Granularity:** install all skills, or only the specific skill(s) the user names. "Install `js-ts-project-audit`" links only that one — in both directories.
+- **Deferred skills (*zurückgestellt*) are not part of "all".** A skill whose frontmatter carries `metadata:` / `internal: true` stays in the repo but is skipped by every install-all and update-all; it is linked only when the user names it explicitly. The same marker hides it from the `skills` CLI (`npx skills add`, unless `INSTALL_INTERNAL_SKILLS=1`). Deferring a skill means: set the marker, remove both links, mark it in `README.md`. Currently deferred: `audit-github-sync` (since 2026-11-12).
 - **Collision on first install:** decide this per target directory. If `<dir>/<name>` already exists and is *not already* a symlink into this repo (i.e. it is a real directory, or a symlink pointing at some unknown/foreign folder), move that existing entry into the backup directory beside it — `$HOME/.claude/skills--backupz/` resp. `$HOME/.agents/skills--backupz/`, created if needed — and only then create the symlink. Never overwrite or delete foreign content — always back it up. If the entry already points at this repo's skill, that side is already installed (treat as an update / no-op).
 - **A running skill reads this repo live.** Because installation is a symlink, editing a skill here changes the files an in-flight run is using. For a skill that is just markdown, that means a runner may pick up new instructions mid-task; for `js-ts-audit-remediation/scripts/remediate.sh` it is worse, since bash re-reads a script file while executing it and a rewritten file leaves the running process at a meaningless offset. Before editing a skill, check whether one of its runs is live (`tmux ls`, `ps`), and if so either wait or stop the run first.
 - **Uninstall / remove / delete a skill:** remove the symlink from *both* directories. Do this per-skill when the user names specific skills. Never touch the skill source in this repo, and never delete anything that was moved to a `--backupz/` directory.
@@ -107,7 +114,7 @@ Every install, update, or removal of a skill or of the global behavior — anyth
 | `js-ts-project-audit/` (SKILL.md or `references/`) | `scenario-tests/audit-followup.md` |
 | ES rule (`## ES` section in `global-behavior/CLAUDE.md`) | `scenario-tests/es-frequency.md` |
 | `js-ts-audit-remediation/` (SKILL.md or `references/`) | `scenario-tests/remediation-plan.md` |
-| `audit-github-sync/` (SKILL.md or `references/`) | none — **no test written**, so this artifact has never been tested at all |
+| `audit-github-sync/` (SKILL.md or `references/`) — deferred, not installed | none — **no test written**, so this artifact has never been tested at all |
 | `deconstruct-graphics-pipeline/` (SKILL.md or `references/`) | none — **no test written**, so this artifact has never been tested at all |
 | `project-harness-dev-docs/` (SKILL.md or `references/`) | `scenario-tests/project-harness.md` |
 

@@ -1,6 +1,8 @@
 ---
 name: audit-github-sync
-description: Use when an existing `./audit.html` should be reconciled with the issues of a GitHub repository — "synchronisiere die audit issues mit github", "leg für die findings github issues an", "gleich das audit mit den issues ab", "hol den stand der github issues ins audit", "push the audit backlog to github", "sync audit findings with github issues". Runs in both directions: publishes backlog findings as English, self-contained GitHub issues with labels for severity, domain, category and component, and writes issue state, wontfix decisions, assignees and human comments back into the report. Needs a GitHub remote plus working `gh` or GitHub MCP access. Producing the audit is `js-ts-project-audit`; fixing findings is `js-ts-audit-remediation`.
+description: Use when an existing `./audit.html` should be reconciled with the issues of a GitHub repository — "synchronisiere die audit issues mit github", "leg für die findings github issues an", "gleich das audit mit den issues ab", "hol den stand der github issues ins audit", "push the audit backlog to github", "sync audit findings with github issues". Runs in both directions — publishes backlog findings as English, self-contained GitHub issues with labels for severity, domain, category and component, and writes issue state, wontfix decisions, assignees and human comments back into the report. Needs a GitHub remote plus working `gh` or GitHub MCP access. Producing the audit is `js-ts-project-audit`; fixing findings is `js-ts-audit-remediation`.
+metadata:
+  internal: true
 ---
 
 # Audit ↔ GitHub-Sync

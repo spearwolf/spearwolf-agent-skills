@@ -27,7 +27,8 @@ chaotisch, gelegentlich gefährlich, und der Bibliothekar sagt zu allem nur
     welche Zustände der Lauf dabei durchläuft,
     [`state-machine.html`](./js-ts-audit-remediation/state-machine.html)
     — beide im Browser öffnen, sie sind eigenständig.
-  - [`audit-github-sync`](./audit-github-sync/) — gleicht das Backlog aus
+  - [`audit-github-sync`](./audit-github-sync/) — **zurückgestellt**, wird
+    nicht mehr mitinstalliert (nur noch auf ausdrücklichen Wunsch). Gleicht das Backlog aus
     so einem Audit mit den Issues eines GitHub-Repos ab, in beide Richtungen:
     Findings werden zu englischen, für sich stehenden Issues mit Labels, und
     was auf GitHub passiert — geschlossen, abgelehnt, kommentiert — kommt in
