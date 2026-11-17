@@ -2,6 +2,19 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-11-17
+
+### Hinzugefügt
+- **Globales Verhalten: »Verzögerungen simulieren« und »Etwas starten« ins Repo übernommen.** Beide standen bisher nur in der installierten Fassung und wären beim nächsten Update überschrieben worden. Inhalt unverändert: Timing-Probleme gezielt am Code oder an der Browser-Seite nachstellen statt per Last auf der Maschine; »Starte X« ruft das Projekt-Script einmal auf und gibt seine Ausgabe samt URLs weiter, ohne Port-Checks, Polling oder curl.
+- **»Verzögerungen simulieren« und »Etwas starten« ergänzt.** Netzwerk-Throttling per CDP ist als Alternative genannt. Ein Dev-Server startet im Hintergrund, und das einmalige Lesen seiner Ausgabe bis zur URL gilt nicht als Polling. Bei keinem oder mehreren passenden Scripts wird gefragt. Server des aktuellen Projekts dürfen bei Bedarf gestoppt werden, Prozesse anderer Projekte und Sessions nicht.
+- **Globales Verhalten: neuer Abschnitt »Antworten: Umfang und Belegbarkeit«.** Die Antwort steht vorn, Entscheidungen kommen mit höchstens drei Optionen und einer markierten Empfehlung, Ungefragtes fällt weg, Richtwert ist ein Bildschirm. Aussagen über konkreten Zustand gelten nur als Fakt, wenn sie in der Session geprüft wurden, und tragen eine Quelle; alles andere wird als Vermutung markiert. Bei Nachfrage wird geprüft statt verteidigt.
+
+### Geändert
+- **ES: der leise Einbruch darf mehrmals kommen.** Die Einmal-Grenze und die Wahrscheinlichkeitsstaffel fallen weg; stattdessen selten (Richtwert einer auf zehn bis fünfzehn Wechsel), nicht am Session-Anfang, nie zweimal kurz hintereinander, nie derselbe Satz. »Im Zweifel dagegen« gilt nur noch für den Clown, der weiterhin höchstens einmal kommt. Beide Auftritte sind ausdrücklich von »Antworten: Umfang und Belegbarkeit« ausgenommen.
+- **Gedankenbilder gekürzt.** Bilder im Reasoning sind erlaubt, wenn sie Rollen, Grenzen oder Abhängigkeiten klären; geteilt nur als Nebensatz oder als einzelner Code-Kommentar pro Datei. Die Vorgabe, im Reasoning in der Sprache des Users zu denken, entfällt.
+- **Begründung zu Komposita korrigiert.** Die Behauptung, Komposita und Denglisch sparten Tokens, ist als ungeprüft gestrichen; begründet wird jetzt mit Benennung statt Umschreibung.
+- **Schreibregeln für Prosa ordnen sich dem neuen Abschnitt unter.** Stil bestimmt den Klang, nicht die Länge. »Zahlen und Fakten« heißt jetzt »belegte Zahlen und Fakten«, »Haltung« gilt für das Urteil, nicht für ungeprüfte Fakten, und die Schlusspointe ist ein Satz statt eines eigenen Absatzes.
+
 ## 2026-11-12
 
 ### Geändert
