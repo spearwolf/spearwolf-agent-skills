@@ -26,6 +26,7 @@ Code und steht in `docs/remediation/paket-<N>.md`.
 | Datei | Wann |
 | --- | --- |
 | `references/resume.md` | **vor allem anderen**, sobald ein `./remediation-plan.md` im Projekt liegt — egal ob der Nutzer »arbeite das Audit ab« oder »mach weiter« sagt |
+| `references/entscheidungsvorlage.md` | sobald du den Nutzer etwas fragst: Klärungsrunde (4), Freigabe (5), Rückfrage aus der Schleife (6) — nicht vorher |
 | `references/shell-runner.md` | einmal vor Schritt 6, bevor du das Skript startest |
 | `references/runner.md` | **nie von dir.** Der Text gehört den Runnern; in deinem Kontext bliebe er bis zum Ende des Laufs stehen, ohne dass du ihn brauchst |
 | `references/semver-and-closeout.md` | Schritt 7 |
@@ -150,9 +151,14 @@ Ursache mit einem noch offenen Paket.
 
 ### 4. Offene Entscheidungen klären
 
-Vor dem Plan, gebündelt in einer Runde, je mit Vorschlag. Gefragt wird, wo
-eine Entscheidung fehlt:
+Vor dem Plan, gebündelt in einer Runde, je als Vorlage nach
+`references/entscheidungsvorlage.md`. Gefragt wird, wo eine Entscheidung
+fehlt:
 
+- Findings mit `decision` in der JSON-Insel. Frage, Optionen, Vorschlag und
+  Kipp-Punkt hat das Audit schon formuliert; du prüfst zuerst den Kipp-Punkt
+  gegen den heutigen Code. Hat er sich seither geklärt, ist es keine Frage
+  mehr — die Empfehlung gilt, und im Plan steht, woran es sich geklärt hat.
 - die Sektion »Offene Fragen« des Reports
 - Empfehlungen, die zwei gleichwertige Wege offenlassen
 - Findings, die eine Produkt- oder API-Entscheidung berühren: Export
@@ -166,7 +172,8 @@ fremder Aufrufer sieht. Der Test: Müsste jemand, der dieses Projekt einbindet,
 seinen Code anfassen? Dann in die Klärungsrunde, samt Vorschlag, wie weit der
 Lauf die eigenen Aufrufer mitzieht.
 
-Die Antworten kommen mit Datum in den Plan-Abschnitt »Entscheidungen«.
+Die Antworten kommen mit Datum in den Plan-Abschnitt »Entscheidungen«, als
+Regel, wo eine Antwort eine ganze Klasse von Fällen trifft.
 
 ### 5. Pakete, Reihenfolge, Grobplan
 
@@ -317,20 +324,43 @@ Zum Template:
 - Ein Paket, dessen Ziel sich nicht in einem Satz sagen lässt, ist falsch
   geschnitten.
 
-**Freigabe.** Der Grobplan wird vorgelegt, ausdrücklich mit Branch und
-Commit-Modus: »<N> Pakete, <N> Commits direkt auf `<branch>`, ohne
-GPG-Signatur«. Dazu je ein Satz:
+**Freigabe.** Sie ist die Vollmacht für den ganzen Lauf samt Abschluss und
+deshalb die Stelle, an der am leichtesten abgenickt wird: ein langer Plan,
+eine Zustimmung. Vorgelegt wird darum nicht der Plan in Prosa, sondern eine
+Struktur, die das Urteil an die richtigen Stellen lenkt — erst die Kriterien
+einzeln, das Gesamturteil zuletzt. Die Nachricht hat vier Teile, in dieser
+Reihenfolge.
+
+**Kopfzeile**, ausdrücklich mit Branch und Commit-Modus: »<N> Pakete, <N>
+Commits direkt auf `<branch>`, ohne GPG-Signatur«, dazu der Pfad zu
+`./remediation-plan.md`.
+
+**Prüfzeilen**, je Kriterium eine, mit Zahl und ✓ oder ⚠, jede am Plan
+gemessen und nicht am Eindruck:
+
+| Prüfzeile | ⚠ wenn |
+| --- | --- |
+| Schnitt: Findings je Paket, Kaltstarts aus dem Plan-Kopf, grob die Laufzeit | unter fünf Findings je Paket; dann steht der Blocker, der das erzwingt, in der Zeile — der Nutzer soll einen zu feinen Schnitt zurückweisen können, bevor er bezahlt ist |
+| Fremde Aufrufer: Pakete, deren Änderung sieht, wer das Projekt einbindet | eines davon ist durch keine Zeile in »Entscheidungen« gedeckt |
+| Abweichungen von einer Empfehlung des Audits | mindestens eine |
+| `decision` aus dem Audit im Scope | eine ist unbeantwortet — dann ist Schritt 4 nicht fertig |
+| Severity im Paket | ein `critical` oder `high` teilt ein Paket mit Kosmetik |
+| Baseline | rot außerhalb der namentlich notierten vorbestehenden Fehler |
+
+**Je ⚠ eine Vorlage** nach `references/entscheidungsvorlage.md`. Ein ⚠, das
+nichts zu entscheiden hat, trägt seine Begründung in der Prüfzeile. Danach,
+**zuletzt, die Gesamtfrage**, konkret: »Schnitt und Reihenfolge so, oder ein
+Paket anders schneiden oder verschieben?« Nie vorweg — wer zuerst um ein
+Gesamturteil gebeten wird, liest die Zeilen darunter nicht mehr.
+
+**Ansagen**, je eine Zeile. Sie brauchen keine Antwort; ein Widerspruch wird
+eingearbeitet:
 
 - Jedes Paket wird unmittelbar vor seiner Umsetzung gegen den dann aktuellen
   Code detailliert; eine Umplanung, die Zielsetzung oder Architektur berührt,
   kommt zurück zum Nutzer.
 - Folgen werden in diesem Lauf mit behoben, notfalls in zusätzlichen Paketen —
   die Paketzahl ist eine Untergrenze.
-- Die Kaltstart-Rechnung aus dem Plan-Kopf, in einem Satz: wie viele Agenten
-  der Schnitt kostet, wie viele Findings im Schnitt auf ein Paket entfallen und
-  was das grob an Laufzeit bedeutet. Liegt der Schnitt unter fünf Findings je
-  Paket, steht dabei, welcher Blocker das erzwingt — der Nutzer soll einen zu
-  feinen Schnitt zurückweisen können, bevor er bezahlt ist.
 - Nebenbefunde, mit der Scope-Regel wörtlich: was darunter fällt, wird in
   diesem Lauf behoben, der Rest geht als neues Finding ins Audit — beides ohne
   Rückfrage, beides im Abschlussreport nachlesbar.
@@ -353,7 +383,8 @@ GPG-Signatur«. Dazu je ein Satz:
   deshalb nicht liegen können.
 
 Diese Freigabe ist die Vollmacht für den ganzen Abschluss; danach wird nicht
-mehr gefragt. Ohne sie beginnt die Umsetzung nicht.
+mehr gefragt. Ohne sie beginnt die Umsetzung nicht. Was ein pauschales »ok«
+deckt und was nicht, steht in der Vorlage unter »Wenn die Antwort kommt«.
 
 ### 6. Die Schleife
 
@@ -439,7 +470,7 @@ Antwort ohnehin — trotzdem senden, statt zu raten.
 | `status=committed` | Push mit Paketnummer, Kurzhash und Paketstand |
 | `status=dropped`, `marke=[x]` | Push, knapp |
 | `status=review-offen` | **nichts.** Die Schleife zieht den Review nach; die nächste Zeile zu dem Paket ist seine `status=committed` |
-| `status=question` | Push, der die Frage nennt. Die Antwort gibt allein der Nutzer; dann `references/shell-runner.md` |
+| `status=question` | Push mit der Kopfzeile der Vorlage aus `for_you`; die Vorlage selbst legst du in der Session vor. Die Antwort gibt allein der Nutzer; dann `references/shell-runner.md` |
 | `status=blocked`, `marke=[!]` | `references/shell-runner.md`, »Blockiert: wer entscheidet«: steht die Antwort fest, entscheidest du und pushst die Entscheidung; sonst Push mit der Frage |
 | `ende exit=0` | Push, und **sofort** Schritt 7 — nicht auf ein Signal des Nutzers warten |
 | `ende exit=` mit anderer Zahl | Push, der die Zahl nennt, dann die Exit-Tabelle |

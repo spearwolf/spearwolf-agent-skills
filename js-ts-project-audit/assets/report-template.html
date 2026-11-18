@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="audit-template-version" content="2.2.0">
+<meta name="audit-template-version" content="2.3.0">
 <title>Audit</title>
 <script id="audit-data" type="application/json">/*__AUDIT_DATA__*/</script>
 <script>
@@ -227,6 +227,10 @@ details.row[open] > summary { background: var(--surface-2); }
 .st-improved { --b: var(--good); }
 .st-unchanged { --b: var(--muted); font-weight: 500; }
 .st-carried-over { --b: var(--faint); font-weight: 500; background: transparent; border: 1px dashed var(--border-strong); }
+.st-decision { --b: var(--sev-medium); }
+.decision { border-left: 3px solid var(--sev-medium); padding-left: 12px; display: grid; gap: 6px; }
+.decision ol { margin: 0; padding-left: 1.4em; }
+.decision li + li { margin-top: 4px; }
 .row-body { padding: 4px 4px 20px; display: grid; gap: 12px; }
 @media (min-width: 720px) { .row-body { padding-left: var(--indent-md); } }
 @media (min-width: 1200px) { .row-body { padding-left: var(--indent-lg); } }
@@ -286,6 +290,8 @@ var STRINGS = {
     colSev: 'Prio', colId: 'ID', colFeat: 'Feature', colTitle: 'Description', colDom: 'Section', colCat: 'Type', colEffort: 'Size', colStatus: 'Status',
     effort: 'Aufwand', location: 'Fundstelle', locations: 'Fundstellen', description: 'Problem', evidence: 'Beleg', recommendation: 'Empfehlung',
     copy: 'Als Markdown kopieren', copied: 'Kopiert', induced: 'entstanden durch Fix', discoveredOrigin: 'bei Fix-Arbeit vorgefunden',
+    decision: 'Entscheidung offen', recommendedOpt: 'empfohlen', hinge: 'Kippt, wenn',
+    decisionsWaiting: function (n) { return n === 1 ? 'Ein Finding wartet auf eine Entscheidung, bevor es jemand behebt:' : n + ' Findings warten auf eine Entscheidung, bevor sie jemand behebt:'; },
     ghAssignee: 'Zugewiesen', closed: 'geschlossen',
     scoreChart: 'Health-Score', scoreCaption: function (d) { return 'Verlauf der Health-Scores seit ' + d + '.'; },
     lgAudit: 'Audit', lgRemediation: 'nachgerechnet (Remediation, GitHub-Sync)', lgCoverage: 'Prüfabdeckung',
@@ -342,6 +348,8 @@ var STRINGS = {
     colSev: 'Prio', colId: 'ID', colFeat: 'Feature', colTitle: 'Description', colDom: 'Section', colCat: 'Type', colEffort: 'Size', colStatus: 'Status',
     effort: 'Effort', location: 'Location', locations: 'Locations', description: 'Problem', evidence: 'Evidence', recommendation: 'Recommendation',
     copy: 'Copy as Markdown', copied: 'Copied', induced: 'introduced by a fix', discoveredOrigin: 'found during fix work',
+    decision: 'Decision needed', recommendedOpt: 'recommended', hinge: 'Flips if',
+    decisionsWaiting: function (n) { return n === 1 ? 'One finding needs a decision before anyone fixes it:' : n + ' findings need a decision before anyone fixes them:'; },
     ghAssignee: 'Assignee', closed: 'closed',
     scoreChart: 'Health score', scoreCaption: function (d) { return 'Health score history since ' + d + '.'; },
     lgAudit: 'Audit', lgRemediation: 'recalculated (remediation, GitHub sync)', lgCoverage: 'Review coverage',
@@ -941,6 +949,12 @@ function toMarkdown(f) {
   lines.push(f.description, '');
   if (f.evidence) lines.push('**' + T.evidence + ':** ' + f.evidence, '');
   lines.push('**' + T.recommendation + ':** ' + f.recommendation);
+  if (f.decision) {
+    var dc = f.decision;
+    lines.push('', '**' + T.decision + ':** ' + dc.question);
+    dc.options.forEach(function (o, i) { lines.push((i + 1) + '. **' + o.label + '**' + (i === dc.recommended ? ' (' + T.recommendedOpt + ')' : '') + ' — ' + o.effect); });
+    lines.push('', '**' + T.hinge + ':** ' + dc.hinge);
+  }
   if (f.github && f.github.url) lines.push('', f.github.url);
   return lines.join('\n');
 }
@@ -963,6 +977,18 @@ function ghMeta(g) {
   return h('a', { href: g.url, target: '_blank', rel: 'noopener noreferrer', 'class': closed ? 'gh-closed' : '' }, '#' + (g.number || '?') + (closed ? ' ' + T.closed : ''));
 }
 
+function decisionBlock(dc) {
+  return h('div', { 'class': 'decision' },
+    h('h5', null, h('span', { 'class': 'badge st-decision' }, T.decision)),
+    md(dc.question),
+    h('ol', { 'class': 'prose' }, dc.options.map(function (o, i) {
+      return h('li', null, h('strong', null, inline(o.label)),
+        i === dc.recommended ? [' ', h('span', { 'class': 'badge st-new' }, T.recommendedOpt)] : null,
+        ' — ', inline(o.effect));
+    })),
+    h('p', { 'class': 'small prose' }, h('strong', null, T.hinge + ': '), inline(dc.hinge)));
+}
+
 var ROWS = {};
 // cfg: { prio, feat, status } — welche optionalen Spalten die Tabelle führt.
 function row(f, cfg) {
@@ -975,6 +1001,7 @@ function row(f, cfg) {
     f.effort ? h('span', { 'class': 'm-md' }, T.effort + ' ' + f.effort) : null,
     cfg.status && f.status ? h('span', { 'class': 'm-md' }, statusBadge(f)) : null,
     f.origin ? h('span', null, f.origin.kind === 'induced' ? T.induced : T.discoveredOrigin) : null,
+    f.decision ? h('span', null, h('span', { 'class': 'badge st-decision' }, T.decision)) : null,
     ghMeta(f.github));
   var summary = h('summary', null,
     cfg.prio ? h('span', { 'class': 'c-sev' }, sevBadge(f.severity)) : null,
@@ -992,6 +1019,7 @@ function row(f, cfg) {
     h('div', null, h('h5', null, T.description), md(f.description)),
     f.evidence ? h('div', null, h('h5', null, T.evidence), md(f.evidence)) : null,
     h('div', null, h('h5', null, T.recommendation), md(f.recommendation)),
+    f.decision ? decisionBlock(f.decision) : null,
     f.github && f.github.note ? md(f.github.note, 'muted') : null,
     f.github && f.github.assignee ? h('div', { 'class': 'small muted' }, T.ghAssignee + ': ' + f.github.assignee) : null,
     copyBtn);
@@ -1145,8 +1173,17 @@ function openFinding(id) {
 // --- Übrige Sektionen
 function openQuestions() {
   var q = D.openQuestions || [];
-  if (!q.length) return null;
-  return section('open-questions', T.openQuestions, h('ul', { 'class': 'prose wide' }, q.map(function (x) { return h('li', null, md(x, 'wide')); })));
+  // Findings mit offener Entscheidung stehen hier noch einmal: sie sind Fragen an einen Menschen, keine Arbeit für einen Agenten.
+  var dec = (D.findings || []).filter(function (f) { return f.decision; });
+  if (!q.length && !dec.length) return null;
+  var waiting = dec.length ? h('p', { 'class': 'prose wide' }, T.decisionsWaiting(dec.length) + ' ',
+    dec.map(function (f, i) {
+      var a = h('a', { href: '#f=' + encodeURIComponent(f.id) }, f.id);
+      a.addEventListener('click', function (e) { e.preventDefault(); state.f = f.id; writeHash(); openFinding(f.id); });
+      return i ? [', ', a] : a;
+    })) : null;
+  return section('open-questions', T.openQuestions, h('div', null, waiting,
+    q.length ? h('ul', { 'class': 'prose wide' }, q.map(function (x) { return h('li', null, md(x, 'wide')); })) : null));
 }
 
 function improvements() {

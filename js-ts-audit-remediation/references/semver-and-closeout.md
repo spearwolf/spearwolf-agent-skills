@@ -25,7 +25,7 @@ ausgeführt, nicht neu verhandelt:
 | --- | --- |
 | `→ Scope` | Neues Paket am Ende der Liste, `Nebenbefund` statt `Findings`. Erst die tmux-Session des vorigen Durchlaufs beenden (`tmux kill-session -t <session>`; sie steht noch mit totem Pane, und das Skript verweigert sonst den Start mit Exit 40), dann Skript starten wie in Schritt 6, Wachposten setzen, bei `ende exit=0` zurück hierher. |
 | `→ Audit` | Beim Nachführen der `./audit.html` als neues Finding aufnehmen: Severity, Fundstelle, Vermerk »aufgefallen in Remediation-Lauf vom <Datum>«. |
-| `→ Rückfrage` | Wie `→ Audit`, zusätzlich mit dem Satz, wogegen der Fix läuft. Ein Fix, der eine Architekturentscheidung kippt, gehört nicht ungefragt in diesen Lauf, und gefragt wird nicht mehr — also ins Audit, wo er auf den nächsten Lauf wartet. Der Report nennt diese Einträge gesondert. |
+| `→ Rückfrage` | Wie `→ Audit`, zusätzlich mit einer `decision` nach dem Schema des Audits — Frage, Optionen samt Folge, Vorschlag, Kipp-Punkt; wogegen der Fix läuft, steht in der `description`. Ein Fix, der eine Architekturentscheidung kippt, gehört nicht ungefragt in diesen Lauf, und gefragt wird nicht mehr — also ins Audit, wo er auf den nächsten Lauf wartet. Der Report nennt diese Einträge gesondert. |
 | fehlt | Nach der `Scope-Regel:` nachtragen, dann wie oben. Fehlt die Regel selbst: alles `→ Audit`, im Report benannt. |
 
 Du meldest dem Nutzer in einer Zeile, was passiert (»Drain: 2 Pakete aus der
@@ -238,7 +238,7 @@ steht im Report.
 | Ausrede | Wirklichkeit |
 | --- | --- |
 | »Ich lege die Drain-Pakete vor und warte auf das Okay« | Die Scope-Regel ist das Okay, wörtlich freigegeben in Schritt 5. Eine Ansage, hinter der nichts passiert, ist der Fehler, den dieser Abschluss verbietet. |
-| »Die Rückfrage-Einträge brauchen eine Antwort, also frage ich« | Sie gehen ins Audit, mit der Frage im Text. Dort beantwortet sie der Nutzer, wenn er den nächsten Lauf plant. |
+| »Die Rückfrage-Einträge brauchen eine Antwort, also frage ich« | Sie gehen ins Audit, mit der Frage als `decision`. Dort legt sie Schritt 4 des nächsten Laufs vor, und das Audit zeigt sie bis dahin als offene Entscheidung. |
 | »Waren doch alles Bugfixes, also patch« | Gezählt wird die Oberfläche, nicht die Absicht. Ein entfernter Export ist major, auch im Bugfix-Lauf. |
 | »Die Typänderung ist nur Kosmetik« | Ein fremder Build, der daran rot wird, sieht das anders. |
 | »Das war eine große Umstellung, also breaking« | Groß ist nicht breaking. Ohne eine Zeile fremden Codes, die scheitert, ist es eine neue Funktion. |

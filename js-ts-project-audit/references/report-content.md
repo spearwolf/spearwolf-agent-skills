@@ -45,9 +45,49 @@ es erschiene als Text.
   Backticks, ein Grep-Ergebnis, eine Zahl. Kein Codeblock über drei Zeilen.
 - **`finding.recommendation`**: wie konkret beheben, so dass jemand ohne
   Kontext anfangen kann.
-- **`openQuestions`**: je Eintrag eine Frage, die nur ein Mensch beantworten
-  kann, mit dem Anlass. Nur rendern, was aktuell offen ist; keine Rückschau
-  auf früher Geklärtes.
+- **`finding.decision`**: nur, wenn der richtige Weg an etwas hängt, das der
+  Code nicht zeigt — ob ein Export von außen benutzt wird, was das Produkt
+  will, was der Betrieb verträgt. Dann wählst du nicht still einen Weg und
+  schreibst ihn als Empfehlung hin, als wäre er der einzige; `recommendation`
+  beschreibt den empfohlenen, `decision` legt die Wahl offen. Format und
+  Prüfung unten unter »Entscheidungen«.
+- **`openQuestions`**: Fragen ohne eigenes Finding — Zweck eines Moduls unklar,
+  Scope des Projekts offen. Je Eintrag erst die Frage, dann der Anlass als
+  belegte Beobachtung (`datei:zeile`, Zahl), dann, woran die Antwort etwas
+  ändert: »Ist `destroy()` öffentliche API? — Die README nennt sie nicht, zwei
+  Beispiele rufen sie auf (`examples/basic.ts:40`). Davon hängt ab, ob
+  API-003 ein Breaking Change ist.« Nur, was aktuell offen ist; keine Rückschau
+  auf früher Geklärtes. Findings mit `decision` stehen hier nicht noch einmal,
+  das Template verlinkt sie selbst.
+
+## Entscheidungen
+
+Wer den Report liest, nickt ab, was flüssig formuliert ist — auch die
+Empfehlung, die ein Agent hingeschrieben hat, ohne die Wahl zu sehen. Eine
+offene Entscheidung soll deshalb auf einen Blick erkennbar sein (das Template
+setzt ein Badge) und, wenn jemand sie liest, nicht mit »klingt gut« zu
+beantworten sein.
+
+- **`question`** nennt, zwischen was gewählt wird. Nicht »Wie soll mit
+  `parseConfig` verfahren werden?«, sondern »`parseConfig` entfernen oder bis
+  zum nächsten Major deprecaten?«.
+- **`options`**: zwei oder drei, je mit `effect` in einem Satz — was die Wahl
+  im Projekt und für fremde Aufrufer nach sich zieht. Optionen, die niemand
+  ernsthaft wählen würde, fallen weg; »bewusst so lassen« ist eine Option,
+  wenn sie vertretbar ist.
+- **`recommended`** zeigt auf die Option, die `recommendation` beschreibt.
+- **`hinge`**, der Kipp-Punkt, ist das Wichtigste: die eine Tatsache außerhalb
+  des Codes, die die Empfehlung umwirft, als Frage, die ein Mensch aus seinem
+  Wissen beantwortet — »Importiert ein Paket außerhalb dieses Repos
+  `parseConfig`?«. Wer sie liest, prüft ein Faktum, statt eine Begründung zu
+  bewerten.
+
+Prüfung vor dem Eintragen: Ließe sich der Kipp-Punkt mit einem Blick ins Repo
+klären (`rg`, `package.json`, Tests)? Dann ist es keine offene Entscheidung —
+klären und die Empfehlung danach schreiben. Hat es zwei Wege, die beide nur
+das Projekt selbst betreffen und gleich viel kosten? Dann wählst du und
+nennst den Grund in der Empfehlung. `decision` ist für das, was nur ein
+Mensch weiß.
 - **`methodology.text`**: was vollständig gelesen wurde, was nur
   stichprobenweise, was gar nicht, und welche Kommandos gelaufen sind, mit
   Ergebnis. Die Zahlen des Umfangs stehen in `scope` und erscheinen

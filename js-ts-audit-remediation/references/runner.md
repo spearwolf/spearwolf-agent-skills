@@ -224,6 +224,11 @@ der Rückgabe. Die Liste ist abschließend:
 Faustregel: Passt eine Änderung samt Grund nicht in zwei Sätze in den Plan,
 ist sie zu groß, um sie allein zu treffen.
 
+**Wie du fragst**: in der Form aus `references/entscheidungsvorlage.md` im
+Skill-Verzeichnis — lies sie, sobald eine Frage feststeht, nicht vorher.
+Vorher ein Blick in »Entscheidungen«: trifft eine Regel dort den Fall schon,
+ist es keine Frage mehr, sondern ihre Anwendung.
+
 ### Feierabendzeichen
 
 Als A ist deine letzte Handlung, nachdem Paketdatei und Marke stehen:
@@ -469,8 +474,8 @@ Baum.
 - Die Schleife prüft danach Marke `[!]` und sauberen Baum; fällt eins davon,
   endet der Lauf mit Exit 20.
 - `Stand:` auf das nächste Paket, Arbeitsbaum als sauber vermerkt.
-- Rückgabe `blocked` mit den offenen Befunden, oder `question` mit der Frage
-  und deinem Vorschlag in `for_you`; bauen spätere Pakete darauf
+- Rückgabe `blocked` mit den offenen Befunden, oder `question` mit der
+  Vorlage aus `references/entscheidungsvorlage.md` in `for_you`; bauen spätere Pakete darauf
   auf, sagst du das dazu. Schreib dazu, ob die offenen Befunde Folgen deines
   eigenen Diffs sind und ob Verify im gesicherten Stand grün war — daran
   entscheidet der Orchestrator, ob er selbst weitermachen darf.
@@ -611,7 +616,7 @@ die Schleife Kontext.
 | `committed` | `[x]`, Hash eingetragen | B, N |
 | `dropped` | `[x]`, `Ergebnis: entfallen` mit Begründung — ein spurlos verschwundenes Paket sieht im Folgeaudit aus wie ein vergessenes | B |
 | `blocked` | `[!]`, Arbeitsbaum im Stash | B, N |
-| `question` | `[!]`, Arbeitsbaum im Stash wie bei `blocked`; `for_you` nennt die Frage samt Vorschlag, entscheiden kann nur der Nutzer | B, N |
+| `question` | `[!]`, Arbeitsbaum im Stash wie bei `blocked`; `for_you` trägt die Vorlage aus `references/entscheidungsvorlage.md`, entscheiden kann nur der Nutzer | B, N |
 
 Pflicht bei `committed`: `hash`, `verify_log` (absolut, im Arbeitsverzeichnis),
 `verify_exit`, `rounds` (Runden der Fehlerkette, 0 wenn der erste Anlauf saß).

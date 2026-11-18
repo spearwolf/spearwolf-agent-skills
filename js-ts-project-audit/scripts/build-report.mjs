@@ -246,6 +246,10 @@ function semanticChecks(data) {
   for (const [i, f] of data.findings.entries()) {
     if (f.component && !comps.has(f.component)) errors.push(`findings[${i}].component: »${f.component}« steht nicht in portrait.components`);
     if (f.package && !pkgs.has(f.package)) errors.push(`findings[${i}].package: »${f.package}« steht nicht in summary.packages`);
+    const d = f.decision;
+    if (d && Array.isArray(d.options) && Number.isInteger(d.recommended) && d.recommended >= d.options.length) {
+      errors.push(`findings[${i}].decision.recommended: ${d.recommended} zeigt auf keine der ${d.options.length} Optionen`);
+    }
   }
   for (const [i, a] of (data.acknowledged ?? []).entries()) {
     if (a.component && !comps.has(a.component)) errors.push(`acknowledged[${i}].component: »${a.component}« unbekannt`);
@@ -702,6 +706,8 @@ export function merge(data, prev, { m, decisions = {}, verdicts = {} }) {
       else f.status = 'unchanged';
       if (o.github && !f.github) f.github = o.github;
       if (o.origin && !f.origin) f.origin = o.origin;
+      // Eine offene Entscheidung beantwortet kein Codeblick; sie bleibt, bis jemand sie trifft.
+      if (o.decision && !f.decision) f.decision = o.decision;
     } else {
       f.status = 'new';
     }

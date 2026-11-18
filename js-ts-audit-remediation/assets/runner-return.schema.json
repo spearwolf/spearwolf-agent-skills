@@ -54,7 +54,7 @@
     },
     "for_you": {
       "type": "string",
-      "description": "Nur bei status=question oder blocked gefüllt: was der Nutzer entscheiden soll, je mit deinem Vorschlag. Sonst ein Strich. Das ist das einzige Feld, das lang werden darf."
+      "description": "Nur bei status=question oder blocked gefüllt: was der Nutzer entscheiden soll, je als Vorlage nach references/entscheidungsvorlage.md — Kopfzeile mit der Frage, Auslöser, zwei bis drei Optionen samt Folge und markiertem Vorschlag, Kipp-Punkt, Geprüft/Angenommen. Sonst ein Strich. Das ist das einzige Feld, das lang werden darf."
     }
   }
 }

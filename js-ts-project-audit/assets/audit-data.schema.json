@@ -246,6 +246,27 @@
       "type": "object",
       "description": "Gehört audit-github-sync (Felder dort in references/reverse-sync.md: number, url, state, stateReason, assignee, note, lastSynced). Andere Skills tragen es unverändert mit; das Template liest url, number, state, note und assignee."
     },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["question", "options", "recommended", "hinge"],
+      "description": "Offene Entscheidung vor der Behebung: nur, wenn der richtige Weg an etwas hängt, das der Code nicht zeigt — Produktabsicht, fremde Aufrufer, Betrieb, Vertrag mit Dritten. recommendation beschreibt dann den empfohlenen Weg. Wer das Finding behebt, legt die Frage zuerst einem Menschen vor.",
+      "properties": {
+        "question": { "type": "string", "description": "Die Frage, konkret und nicht mit »ok« zu beantworten; sie nennt, zwischen was gewählt wird. Markdown-Subset." },
+        "options": {
+          "type": "array", "minItems": 2, "maxItems": 3,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["label", "effect"],
+            "properties": {
+              "label": { "type": "string", "description": "Die Wahl in wenigen Worten." },
+              "effect": { "type": "string", "description": "Was diese Wahl nach sich zieht, ein Satz — für das Projekt und für fremde Aufrufer." }
+            }
+          }
+        },
+        "recommended": { "type": "integer", "minimum": 0, "maximum": 2, "description": "Index der empfohlenen Option in options." },
+        "hinge": { "type": "string", "description": "Kipp-Punkt: die eine Tatsache außerhalb des Codes, die die Empfehlung umwirft, als prüfbarer Satz — »Importiert ein Paket außerhalb dieses Repos `parseConfig`?«." }
+      }
+    },
     "finding": {
       "type": "object",
       "additionalProperties": false,
@@ -264,6 +285,7 @@
         "description": { "type": "string" },
         "evidence": { "type": "string", "description": "Optional: Beleg, etwa ein kurzer Code-Auszug in `…` oder eine Messung." },
         "recommendation": { "type": "string" },
+        "decision": { "$ref": "#/$defs/decision" },
         "effort": { "enum": ["S", "M", "L"] },
         "status": { "enum": ["new", "unchanged", "improved", "carried-over"] },
         "previousSeverity": { "enum": ["critical", "high", "medium", "low", "info"] },

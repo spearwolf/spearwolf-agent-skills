@@ -96,6 +96,29 @@ test('Schema: unbekannte Felder, falsche Enums, fehlende Pflichtfelder', () => {
   assert.match(errors, /Pflichtfeld »title«/);
 });
 
+const DECISION = {
+  question: 'Export `parseConfig` entfernen oder bis zum nächsten Major deprecaten?',
+  options: [
+    { label: 'Entfernen', effect: 'Breaking Change, Major-Version.' },
+    { label: 'Deprecaten', effect: 'Bleibt bis zum nächsten Major, Warnung beim Aufruf.' },
+  ],
+  recommended: 1,
+  hinge: 'Importiert ein Paket außerhalb dieses Repos `parseConfig`?',
+};
+
+test('decision: gültig, Index der Empfehlung, Zahl der Optionen, Kipp-Punkt Pflicht', () => {
+  const d = load('first-run-de.json');
+  d.findings[0].decision = structuredClone(DECISION);
+  assert.deepEqual(check(d), []);
+  d.findings[0].decision.recommended = 2;
+  assert.match(check(d).join('\n'), /decision\.recommended: 2 zeigt auf keine der 2 Optionen/);
+  d.findings[0].decision = { ...structuredClone(DECISION), options: [DECISION.options[0]] };
+  assert.match(check(d).join('\n'), /mindestens 2 Einträge/);
+  const { hinge, ...ohne } = DECISION;
+  d.findings[0].decision = ohne;
+  assert.match(check(d).join('\n'), /Pflichtfeld »hinge«/);
+});
+
 test('SVG-Diagramm: feste Farben, Skripte und externe Links werden abgelehnt', () => {
   const bad = [
     '<svg viewBox="0 0 10 10"><script>alert(1)</script></svg>',
@@ -256,6 +279,7 @@ test('merge: Status, ID-Kontinuität, Übernahmen, Anhang abräumen', () => {
   verdicts['PERF-001'] = { verdict: 'weg', evidence: 'BloomPass.ts:23 cached jetzt die Textur' };
   verdicts['ARCH-004'] = { verdict: 'ueberholt', evidence: 'docs/adr/007-event-bus.md gestrichen, Bus entfernt' };
   const decisions = { pairs: [['ASYNC-001', 'ASYNC-002']], suppress: ['ARCH-001'] };
+  prev.findings.find((f) => f.id === 'BUG-001').decision = structuredClone(DECISION);
   const r = merge(data, prev, { m, decisions, verdicts });
   assert.deepEqual(r.errors, []);
   const by = Object.fromEntries(data.findings.map((f) => [f.id, f]));
@@ -268,6 +292,7 @@ test('merge: Status, ID-Kontinuität, Übernahmen, Anhang abräumen', () => {
   assert.equal(by['SEC-001'].status, 'carried-over');
   assert.equal(by['MEM-001'].location, 'src/tiles/TileCache.ts:60');
   assert.ok(by['MEM-001'].github, 'github wandert mit');
+  assert.deepEqual(by['BUG-001'].decision, DECISION, 'eine offene Entscheidung wandert mit, der Codeblick beantwortet sie nicht');
   assert.ok(!by['PERF-001'] && !by['ARCH-001']);
   assert.equal(data.summary.resolvedCount, 1);
   assert.equal(data.summary.previousDate, prev.summary.date);

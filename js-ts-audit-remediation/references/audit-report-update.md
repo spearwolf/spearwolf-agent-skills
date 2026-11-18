@@ -52,6 +52,12 @@ die dieser Schritt nicht antastet: hier wird gebucht, dort wird geprüft.
 | Paket auf `[!]`, Reviewer offen, Fundstelle fehlt, Hash fehlt | bleibt unverändert im Backlog |
 | Nie im Scope gewesen (Schritt 3 der `SKILL.md`), `acknowledged` | unverändert, wird hier nicht angefasst |
 
+**Beantwortete Entscheidungen.** Trägt ein Finding, das offen bleibt, eine
+`decision`, die dieser Lauf beantwortet hat (Zeile in »Entscheidungen«), wird
+die gewählte Option seine `recommendation`, und `decision` entfällt. Eine
+beantwortete Frage, die im Report offen stehen bleibt, stellt der nächste Lauf
+noch einmal.
+
 Geschlossen heißt: **aus `findings` entfernt und in `summary.resolvedCount`
 gezählt.** Kein Status, keine Archivliste. Der Report zeigt den Zustand, nicht
 die Geschichte. Wer die Einzelheiten je Finding braucht, hat
@@ -67,6 +73,7 @@ sie hier erneut aufzumachen kehrt seine Entscheidung um:
 | Quelle | Wird zu | `origin.kind` |
 | --- | --- | --- |
 | »Offene Befunde« im Plan mit Urteil `→ Audit` (oder in der Drain-Runde dorthin entschieden) | Finding, `status: "new"` | `discovered` |
+| »Offene Befunde« mit Urteil `→ Rückfrage` | Finding, `status: "new"`, mit `decision` (Frage, Optionen, Vorschlag, Kipp-Punkt) | `discovered` |
 | `Folgen:`-Zeilen im Plan, die in einem blockierten Paket hängengeblieben sind | Finding, `status: "new"`, Severity nach Wirkung | `induced` |
 | `klein`-Befunde des Reviewers aus den Paketdateien, die keine Runde ausgelöst haben | Finding, `severity: "low"` oder `"info"` | `induced` |
 | Abweichungen von der Empfehlung, die etwas offen gelassen haben (Paketdatei) | Finding, Severity nach Wirkung | `induced` |

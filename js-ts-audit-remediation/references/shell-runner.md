@@ -215,7 +215,10 @@ Schleife neu starten. Der Nutzer bekommt eine Push-Zeile
 mit der Entscheidung, keine Frage; widerspricht er, gilt seins, und du nimmst
 deinen Eintrag heraus.
 
-**Sonst fragst du ihn**, mit deinem Vorschlag. Das ist der Fall bei einem
+**Sonst fragst du ihn**, als Vorlage nach `references/entscheidungsvorlage.md`.
+Steht in `for_you` schon eine, prüfst du ihren Kipp-Punkt, bevor du sie
+weitergibst — was du mit einem Blick in Plan oder Code klärst, legst du ihm
+nicht vor. Das ist der Fall bei einem
 Widerspruch zwischen Befund und Plan (`status=question` geht immer an ihn),
 bei einem offenen Befund, der vorbestehend ist oder die Scope-Regel verlässt,
 bei mehreren vertretbaren Wegen mit Folgen für API oder Architektur, bei

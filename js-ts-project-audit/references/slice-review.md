@@ -52,7 +52,15 @@ EOF
 
 - Pflicht: `category`, `domain`, `severity`, `title`, `location`,
   `description`, `recommendation`. Optional: `locations`, `evidence`,
-  `effort` (`S`/`M`/`L`), `kind: "improvement"`.
+  `effort` (`S`/`M`/`L`), `kind: "improvement"`, `decision`.
+- `decision` nur, wenn der richtige Weg an etwas hängt, das der Code nicht
+  zeigt (fremde Aufrufer, Produktabsicht): `{"question":"A oder B?",
+  "options":[{"label":"A","effect":"…"},{"label":"B","effect":"…"}],
+  "recommended":1,"hinge":"die eine Tatsache, die die Empfehlung umwirft"}`.
+  `recommendation` beschreibt dann die empfohlene Option. Einen Weg still zu
+  wählen, wo die Wahl an solch einer Tatsache hängt, ist der Fehler, den das
+  Feld verhindern soll; zwei gleichwertige Wege ohne Außenwirkung wählst du
+  dagegen selbst.
 - Keine `id`, kein `status`, kein `component` — die vergibt der Orchestrator.
 - `title` kurz und als Aufgabe formuliert (»Timer in `stop()` löschen«),
   `description` sagt, was passiert und wann, `recommendation`, was zu tun ist.

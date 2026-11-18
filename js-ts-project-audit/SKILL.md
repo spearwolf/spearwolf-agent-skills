@@ -123,6 +123,7 @@ Aus den Notizdateien wird der Datensatz so:
 - **`component`**: die `id` des Features, unter dessen Pfade die Fundstelle fällt. Liegen die Fundstellen in mehreren Features oder in keinem, bleibt das Feld weg — das Finding erscheint als »projektweit«.
 - **Umfang**: `reviewedFiles` sind die Dateien der Code-Slices aus `$TMP/bundles/index.json` ohne die gemeldeten `unread`, `reviewedLoc` deren Zeilensumme aus derselben Datei. Überflogene oder nur an einer Fundstelle geöffnete Dateien zählen nicht.
 - **Felder, die das Skript schreibt** (im Schema mit »Vom Skript« markiert: Scores, Zählungen, `scoreModel`, `deltaBreakdown`, der aktuelle Eintrag in `scoreHistory`), lässt du weg oder übernimmst sie unverändert — das Skript überschreibt sie ohnehin.
+- **`decision`**: ein Slice-Agent sieht nur seinen Ausschnitt. Jeden Kipp-Punkt prüfst du gegen das ganze Repo, bevor er stehen bleibt — wer `parseConfig` importiert, zeigt ein `rg` über alle Packages. Was sich so klären lässt, wird Empfehlung, keine Entscheidung. Umgekehrt: eine Empfehlung, die stillschweigend an Produktabsicht oder fremden Aufrufern hängt, bekommt eine. Regeln in `references/report-content.md`, Abschnitt »Entscheidungen«.
 - `acknowledged` sind vom Nutzer zurückgestellte Punkte: keine Backlog-Findings, kein Gewicht im Score (Details in `references/followup-audit.md`).
 
 ### 5. Health-Score
@@ -171,6 +172,7 @@ Im Folgelauf zusätzlich `--previous "$TMP/previous.json"` (siehe `references/fo
 - Datei übergeben über den Mechanismus, den der Host zum Präsentieren von Dateien anbietet; gibt es keinen, den Pfad `./audit.html` klar benennen.
 - Begleittext von maximal 5–8 Zeilen: Health-Score mit beiden Teilscores (»Gesamt 74 — Code & Laufzeit 81, Projekt-Harness 62«), geprüfter Umfang (»9,3 von 12,8 kLOC gelesen«), Top-3 aus critical/high, Hinweis auf die Methodik-Sektion. Den Report nicht im Chat wiederholen.
 - Im Folgelauf eine Zeile „X behoben / Y verbessert / Z neu seit `<Datum>`" — behobene Punkte nicht einzeln aufzählen. Hat der Nutzer in diesem Lauf Punkte zurückgestellt, das in einer Zeile bestätigen und auf den Anhang verweisen. Hat der Lauf überholte Anhangpunkte abgeräumt, deren Zahl in derselben Zeile.
+- Tragen Findings eine `decision`, eine Zeile mit ihrer Zahl und den IDs: das sind die Stellen, an denen vor einer Behebung ein Mensch gebraucht wird. Die Fragen selbst stehen im Report, nicht im Chat.
 - Enthält das Backlog Findings ab `medium`, zum Schluss eine Zeile: ob die Punkte abgearbeitet werden sollen, dann übernimmt `js-ts-audit-remediation` mit Umsetzungsplan und Subagenten. Ein Angebot, keine Ankündigung — ohne Zusage endet der Lauf hier.
 
 ## Prinzipien
