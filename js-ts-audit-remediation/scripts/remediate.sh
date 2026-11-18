@@ -165,11 +165,17 @@ ZUG0_TIMEOUT=${ZUG0_TIMEOUT:-1800}  # Obergrenze für einen unbeaufsichtigten Zu
 # einmal an; bleibt es danach genauso lange still, schließt sie das Fenster
 # selbst. 0 nimmt beides weg und wartet wieder allein auf die Datei.
 ZUG0_SETTLE=${ZUG0_SETTLE:-120}     # Stille vor dem Stupser und noch einmal vor dem Abschluss von außen
-# Der Vertrauensdialog der CLI (»Is this a project you trust?«) erscheint in
-# jedem Verzeichnis, das sie noch nie gesehen hat. Er entfällt in -p, trifft also
-# nur Zug 0, und keine Flagge nimmt ihn weg. Steht er länger als diese Frist,
-# bricht die Schleife ab und sagt, was zu tun ist — sonst wartet sie auf eine
-# Taste, die niemand drückt.
+# Der Vertrauensdialog der CLI erscheint in jedem Verzeichnis, das sie noch nie
+# gesehen hat. Er entfällt in -p, trifft also nur Zug 0, und keine Flagge nimmt
+# ihn weg. Es gibt ihn in zwei Formen: für das Startverzeichnis (»trust this
+# folder«) und — seit spätestens 2.1.323 — für jedes --add-dir (»Adding a new
+# directory: … This session hasn't worked here before«), und die zweite trifft
+# das Arbeitsverzeichnis, denn das ist ein frisches Scratchpad je Orchestrator-
+# Session. Ihre Antwort gilt laut CLI nur für die eine Session, also fragt sie
+# bei jedem Paket neu. Den Dialog für genau das eigene Arbeitsverzeichnis
+# beantwortet die Schleife selbst (zug0_vertrauen); jeden anderen nicht. Steht
+# er dann länger als diese Frist, bricht sie ab und sagt, was zu tun ist —
+# sonst wartet sie auf eine Taste, die niemand drückt.
 ZUG0_TRUST_GRACE=${ZUG0_TRUST_GRACE:-60}
 # »Es hing ein Client an der Session« war einmal der einzige Beleg dafür, dass
 # ein Mensch da war. Er ist es nicht mehr: Zug 0 startet mit --remote-control,
@@ -1051,6 +1057,52 @@ close_zug0_window() { # $1 = tmux-Fenster; erst höflich, dann bestimmt
   "$TMUX_BIN" kill-window -t "$win" >/dev/null 2>&1 || true
 }
 
+zug0_dialog() { # $1 = tmux-Fenster; welcher Vertrauensdialog steht im Pane?
+  # Ausgabe: nichts (keiner), »ordner« (Startverzeichnis), »eigen« (--add-dir
+  # für genau $WORK) oder »fremd:<pfad>« (--add-dir für etwas anderes).
+  # Verglichen wird ohne Leerraum: die TUI bricht den Pfad an der Fensterbreite
+  # um, und ein Vergleich über Zeilen hinweg ginge an jeder Breite anders aus.
+  local raw flat pfad home_form
+  raw=$("$TMUX_BIN" capture-pane -p -t "$1" 2>/dev/null) || true
+  flat=$(printf '%s' "$raw" | tr -d '[:space:]')
+  case "$flat" in
+    *'Addinganewdirectory:'*'Thissessionhasn'*'Yes,addit'*) ;;
+    *) printf '%s' "$raw" | grep -qi 'trust this folder' && printf 'ordner'
+       return 0 ;;
+  esac
+  pfad=${flat#*Addinganewdirectory:}
+  pfad=${pfad%%Thissessionhasn*}
+  home_form="~${WORK#"$HOME"}"
+  if [ "$pfad" = "$(printf '%s' "$WORK" | tr -d '[:space:]')" ] \
+     || { [ "${WORK#"$HOME"/}" != "$WORK" ] \
+          && [ "$pfad" = "$(printf '%s' "$home_form" | tr -d '[:space:]')" ]; }; then
+    printf 'eigen'
+  else
+    printf 'fremd:%s' "$pfad"
+  fi
+}
+
+zug0_vertrauen() { # $1 = tmux-Fenster; beantwortet den Dialog für $WORK mit »Yes, add it«
+  # Vorausgewählt ist »No, exit«, und ein blindes Enter beendete den Planer.
+  # Deshalb erst ↓, dann nachsehen, ob der Zeiger wirklich auf »Yes« steht, und
+  # nur dann Enter. Steht er nach zwei Versuchen nicht dort, drückt die
+  # Schleife nichts, und die Frist in dispatch_zug0 übernimmt.
+  # Das Verzeichnis hat dieser Lauf selbst angelegt, und die Freigabe gilt nur
+  # für die eine Sitzung — es ist dieselbe Erlaubnis, die --add-dir ohnehin
+  # erteilen soll, nicht eine zusätzliche.
+  local i=0
+  while [ "$i" -lt 2 ]; do
+    "$TMUX_BIN" send-keys -t "$1" Down >/dev/null 2>&1 || return 1
+    sleep 1; i=$((i + 1))
+    if "$TMUX_BIN" capture-pane -p -t "$1" 2>/dev/null | tr -d '[:space:]' \
+         | grep -qF '❯Yes,addit'; then
+      "$TMUX_BIN" send-keys -t "$1" Enter >/dev/null 2>&1 || return 1
+      return 0
+    fi
+  done
+  return 1
+}
+
 zug0_fertig_laut_plan() { # $1 = Paketnummer; wahr, sobald Zug 0 seine Rückgabe geleistet hat
   # Die Marke ist die Rückgabe von Rolle A — run_a entscheidet hinterher allein
   # nach ihr. Steht sie, ist der Zug fachlich fertig; ob er sich auch
@@ -1097,6 +1149,7 @@ zug0_stupser() { # $1 = tmux-Fenster, $2 = Pfad des Feierabendzeichens
 dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
   local pkg=$1 brief win wname done_file log_file brieffile starter a waited=0 trusted_wait=0 saw_client=0 ents_before
   local spur spur_prev='' pane pane_prev='' quiet=0 quiet_files=0 quiet_pane=0 nudged=0 since_nudge=0
+  local dialog bestaetigt=0
   brief=$(brief_for A "$pkg")
   tool_args_zug0 "$pkg"
 
@@ -1192,13 +1245,26 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
     # Zeitpunkt nicht einmal seinen Brief gelesen. Ohne diese Probe wartet die
     # Schleife auf ein Feierabendzeichen von jemandem, der noch gar nicht
     # angefangen hat.
-    if "$TMUX_BIN" capture-pane -p -t "$win" 2>/dev/null \
-         | grep -qi 'trust this folder'; then
+    dialog=$(zug0_dialog "$win")
+    if [ "$dialog" = eigen ] && [ "$bestaetigt" = 0 ]; then
+      bestaetigt=1
+      if zug0_vertrauen "$win"; then
+        journal "paket=$pkg rolle=A vertrauensdialog arbeitsverzeichnis bestaetigt"
+        say "  Die CLI fragte nach dem Arbeitsverzeichnis — die Schleife hat es für diese Sitzung freigegeben."
+        sleep "$ZUG0_POLL"
+        continue
+      fi
+    fi
+    if [ -n "$dialog" ]; then
       trusted_wait=$((trusted_wait + ZUG0_POLL))
       if [ "$trusted_wait" -ge "$ZUG0_TRUST_GRACE" ]; then
         close_zug0_window "$win"
-        journal "paket=$pkg rolle=A abgebrochen vertrauensdialog nach ${trusted_wait}s"
-        die $EX_PRE "Zug 0 für Paket $pkg steht im Vertrauensdialog der CLI: sie kennt $(pwd) noch nicht. Öffne dort einmal »claude«, bestätige den Ordner, beende die Sitzung und starte den Lauf erneut."
+        journal "paket=$pkg rolle=A abgebrochen vertrauensdialog ${dialog%%:*} nach ${trusted_wait}s"
+        case "$dialog" in
+          ordner) die $EX_PRE "Zug 0 für Paket $pkg steht im Vertrauensdialog der CLI: sie kennt $(pwd) noch nicht. Öffne dort einmal »claude«, bestätige den Ordner, beende die Sitzung und starte den Lauf erneut." ;;
+          eigen)  die $EX_PRE "Zug 0 für Paket $pkg fragt, ob die CLI dem Arbeitsverzeichnis $WORK trauen soll, und die Schleife konnte den Dialog nicht selbst beantworten. Öffne dort einmal »claude«, bestätige den Ordner — das gilt dann dauerhaft —, beende die Sitzung und starte den Lauf erneut." ;;
+          *)      die $EX_PRE "Zug 0 für Paket $pkg fragt, ob die CLI dem Verzeichnis ${dialog#fremd:} trauen soll. Die Schleife bestätigt nur ihr eigenes Arbeitsverzeichnis ($WORK), dieses nicht. Öffne dort einmal »claude«, bestätige den Ordner, beende die Sitzung und starte den Lauf erneut." ;;
+        esac
       fi
     else
       trusted_wait=0

@@ -2,6 +2,11 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-11-18
+
+### Geändert
+- **`js-ts-audit-remediation`: Zug 0 hängt nicht mehr im neuen Vertrauensdialog für Zusatzverzeichnisse.** Neuere CLI-Versionen fragen bei jedem `--add-dir` nach, ob sie einem unbekannten Verzeichnis trauen sollen, und die Antwort gilt nur für die eine Sitzung. Das traf das Arbeitsverzeichnis bei jedem Paket, und die Schleife erkannte den Dialog nicht. Sie beantwortet ihn jetzt selbst mit »Yes, add it«, aber nur für ihr eigenes Arbeitsverzeichnis und erst, wenn der Zeiger nachweislich auf »Yes« steht. Für jedes andere Verzeichnis bricht sie nach `ZUG0_TRUST_GRACE` mit Exit 40 ab und nennt den Pfad.
+
 ## 2026-11-17
 
 ### Hinzugefügt
