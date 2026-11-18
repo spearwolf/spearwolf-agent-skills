@@ -25,6 +25,7 @@ Läuft in tmux-Session »remediate-mein-projekt«.
   tmux attach -t remediate-mein-projekt   ansehen und antworten
   Ctrl-b d                                wieder ablösen, der Lauf läuft weiter
   tmux capture-pane -p -t remediate-…     hineinsehen, ohne anzuhängen
+  tmux attach -t remediate-…:live         live sehen, was die Runner gerade tun
   tmux kill-session -t remediate-…        abbrechen
 
 Mitschrift: /tmp/remediation-mein-projekt/remediate.pane.log
@@ -119,6 +120,7 @@ ein paar Minuten, und nur wenn er angehängt ist.
 | Wozu | Kommando |
 | --- | --- |
 | Was steht gerade im Pane der Schleife | `tmux capture-pane -p -t <session>:0` |
+| Was die Runner gerade tun (B, Implementierer, Reviewer) | Fenster `live`: `tmux attach -t <session>:live`, oder von Hand `<skill>/scripts/watch.sh <projekt>` |
 | Welche Fenster offen sind | `tmux list-windows -t <session>` |
 | Was ist bisher passiert | `cat <arbeitsdir>/remediate.log` |
 | Die ganze Ausgabe der Schleife | `cat <arbeitsdir>/remediate.pane.log` |

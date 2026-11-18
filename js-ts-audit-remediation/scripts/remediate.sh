@@ -889,6 +889,7 @@ launch_tmux() { # $@ = die Argumente, mit denen der Lauf drinnen starten soll
   printf '  %-38s %s\n' "tmux attach -t $SESSION"           "ansehen und antworten"
   printf '  %-38s %s\n' "Ctrl-b d"                          "wieder ablösen, der Lauf läuft weiter"
   printf '  %-38s %s\n' "tmux capture-pane -p -t $SESSION"  "hineinsehen, ohne anzuhängen"
+  printf '  %-38s %s\n' "tmux attach -t $SESSION:live"      "live sehen, was die Runner gerade tun"
   printf '  %-38s %s\n' "tmux kill-session -t $SESSION"     "abbrechen"
   say ""
   say "Mitschrift: $log"
@@ -988,6 +989,26 @@ preflight() {
   fi
 
   [ "$(count_with_marker '.')" != "0" ] || die $EX_PRE "der Plan enthält kein einziges Paket"
+
+  if [ "$INSIDE" = 1 ]; then live_fenster; fi
+}
+
+live_fenster() { # öffnet neben der Schleife das Fenster »live«
+  # Runner B, Implementierer und Reviewer laufen in -p, ohne Terminal; was sie
+  # tun, stand bisher erst am Ende im JSON. Ihre Transkripte schreibt die CLI
+  # aber laufend mit, und watch.sh liest sie mit. Das Fenster ist reine
+  # Ansicht: es endet mit der Schleife (--pid), damit nach ihrem Ende nichts
+  # mehr in der Session läuft, und ein Fehler darin hält den Lauf nicht auf.
+  # Es läuft als Kopie im Arbeitsverzeichnis, aus demselben Grund wie die
+  # Schleife selbst (siehe launch_tmux).
+  local src="$SKILL_DIR/scripts/watch.sh" snap="$WORK/remediate.watch.sh"
+  [ -f "$src" ] || return 0
+  { cp -- "$src" "$snap" && chmod +x "$snap"; } 2>/dev/null || return 0
+  "$TMUX_BIN" kill-window -t "$SESSION:live" >/dev/null 2>&1 || true
+  "$TMUX_BIN" new-window -d -t "$SESSION" -n live -c "$(pwd)" \
+    "$(printf '%q --pid %q %q' "$snap" "$$" "$(pwd)")" >/dev/null 2>&1 || return 0
+  "$TMUX_BIN" set-option -t "$SESSION:live" -w remain-on-exit off >/dev/null 2>&1 || true
+  return 0
 }
 
 # --- Der Brief --------------------------------------------------------------
