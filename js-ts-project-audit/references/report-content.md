@@ -59,6 +59,15 @@ es erschiene als Text.
   API-003 ein Breaking Change ist.« Nur, was aktuell offen ist; keine Rückschau
   auf früher Geklärtes. Findings mit `decision` stehen hier nicht noch einmal,
   das Template verlinkt sie selbst.
+- **`methodology.text`**: was vollständig gelesen wurde, was nur
+  stichprobenweise, was gar nicht, und welche Kommandos gelaufen sind, mit
+  Ergebnis. Die Zahlen des Umfangs stehen in `scope` und erscheinen
+  daneben; der Text erklärt die Auswahl. Der nächste Lauf vergleicht seinen
+  Umfang gegen diesen — wer ihn weglässt, macht den Folgelauf blind.
+- **`methodology.notes`**: Besonderheiten dieses Laufs, je ein Satz: die
+  Match-Strategie im Folgelauf, kontextbedingt entfernte Findings samt Quelle,
+  Nachführungen durch andere Skills. Formel und Theme-Hinweis ergänzt das
+  Template selbst.
 
 ## Entscheidungen
 
@@ -88,15 +97,6 @@ klären und die Empfehlung danach schreiben. Hat es zwei Wege, die beide nur
 das Projekt selbst betreffen und gleich viel kosten? Dann wählst du und
 nennst den Grund in der Empfehlung. `decision` ist für das, was nur ein
 Mensch weiß.
-- **`methodology.text`**: was vollständig gelesen wurde, was nur
-  stichprobenweise, was gar nicht, und welche Kommandos gelaufen sind, mit
-  Ergebnis. Die Zahlen des Umfangs stehen in `scope` und erscheinen
-  daneben; der Text erklärt die Auswahl. Der nächste Lauf vergleicht seinen
-  Umfang gegen diesen — wer ihn weglässt, macht den Folgelauf blind.
-- **`methodology.notes`**: Besonderheiten dieses Laufs, je ein Satz: die
-  Match-Strategie im Folgelauf, kontextbedingt entfernte Findings samt Quelle,
-  Nachführungen durch andere Skills. Formel und Theme-Hinweis ergänzt das
-  Template selbst.
 
 ## Features
 
