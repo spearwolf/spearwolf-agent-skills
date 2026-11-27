@@ -78,6 +78,12 @@ Paketdatei; der Pfad genügt.
   ohne Deprecation (2026-11-18, Nutzer, Anlass Paket 3)`. Ein späterer Runner
   misst daran, statt dieselbe Frage noch einmal zu stellen — jede Antwort soll
   eine künftige Frage einsparen.
+- **Beschluss und Folgerung getrennt.** In die Zeile kommt, was der Nutzer
+  gewählt hat. Was du daraus über den Code ableitest, steht dahinter als
+  `· Folgerung: …` — sonst hält ein Runner deine Folgerung für seinen Willen
+  und muss ihn fragen, sobald der Code ihr widerspricht. »Geprüft« und
+  »Angenommen« aus der Vorlage wandern höchstens hinter `· Folgerung:`, nie
+  in den Beschluss-Teil.
 - **Ein pauschales »ok«, »passt«, »mach so«** gilt als Zustimmung zu allen
   Vorschlägen — außer zu einem Vorschlag, der selbst fremde Aufrufer bricht,
   Daten migriert oder sich nicht per `git revert` zurücknehmen lässt. Der

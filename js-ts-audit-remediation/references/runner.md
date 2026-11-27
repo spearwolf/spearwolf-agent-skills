@@ -205,7 +205,14 @@ Bei diesen Punkten änderst du nichts, sondern fragst — als A direkt im Fenste
 die Antwort datiert in »Entscheidungen«; als B oder N mit Status `question` in
 der Rückgabe. Die Liste ist abschließend:
 
-- Etwas, das eine Zeile aus »Entscheidungen« umkehren würde.
+- Etwas, das eine Zeile aus »Entscheidungen« umkehren würde. Gemeint ist der
+  Beschluss vor `· Folgerung:`. Eine Folgerung dahinter, die der Code
+  widerlegt, berichtigst du selbst, ohne zu fragen: den Text nach
+  `· Folgerung:` ersetzen, `(berichtigt <Datum>, Paket <N>, <Fundstelle>)`
+  anhängen, weiter. Das gilt, solange der Beschluss mit der berichtigten
+  Folgerung noch dasselbe Ergebnis will; kippt er mit ihr, ist es eine Frage.
+  Eine Folgerung neu anfügen oder streichen ist kein Berichtigen — das gehört zu einer Antwort
+  des Nutzers, die du einträgst.
 - Ein anderer Lösungs- oder Architekturweg als der freigegebene.
 - Findings aufnehmen oder streichen, die den Scope verschieben — ausgenommen
   der nachweislich behobene Fall und die triagierten Folgen.
@@ -660,7 +667,10 @@ wieder geöffnet wird es nur vom Nutzer:
 - Kein Aufruf ist an einer Rechteschranke gescheitert.
 - Zug 0 hat »Entscheidungen« nur fortgeschrieben, wenn ein Nutzer erreichbar
   war — am Fenster oder per Remote Control. Eine Entscheidung des Nutzers
-  setzt einen Nutzer voraus.
+  setzt einen Nutzer voraus. Eine Folgerung hinter `· Folgerung:` zählt dabei
+  nur nicht mit, wenn sie ersetzt wurde und einen neuen Vermerk
+  `(berichtigt …` trägt; neu angefügt, gestrichen oder ohne Vermerk geändert,
+  ist sie eine Entscheidung.
 
 Bleibt nach deinem Commit etwas im Arbeitsbaum, gibt es eine Warnung; der
 nächste Diff enthält es dann.

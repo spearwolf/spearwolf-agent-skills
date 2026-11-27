@@ -180,6 +180,15 @@ Lauf die eigenen Aufrufer mitzieht.
 Die Antworten kommen mit Datum in den Plan-Abschnitt »Entscheidungen«, als
 Regel, wo eine Antwort eine ganze Klasse von Fällen trifft.
 
+Eine Zeile dort trägt nur, was der Nutzer beschlossen hat. Was du daraus
+folgerst — wie sich der Beschluss im heutigen Code auswirkt, eine Konsequenz,
+die er nicht ausgesprochen hat —, steht am Ende derselben Zeile hinter
+`· Folgerung:`, mit Fundstelle, wo du es geprüft hast. Eine Folgerung ist kein
+Beschluss: widerlegt der Code sie, berichtigt der Runner sie selbst, ohne
+Rückfrage (`references/runner.md`). Steht sie dagegen im Beschluss-Teil, gilt
+sie als Wille des Nutzers, und ihr Widerspruch zum Code kostet ihn eine
+Unterbrechung.
+
 ### 5. Pakete, Reihenfolge, Grobplan
 
 **Bündeln ist die Regel, Trennen die Ausnahme.** Jedes Paket kostet einen
@@ -267,7 +276,8 @@ Statusmarken: `[ ]` offen · `[~]` Detailplan steht, Umsetzung läuft · `[x]`
 erledigt · `[r]` committet, Review wird nachgezogen · `[!]` geparkt, Stand im Stash.
 
 ## Entscheidungen
-- Alten `parseConfig`-Export entfernen statt deprecaten (2026-07-26)
+- Alten `parseConfig`-Export entfernen statt deprecaten (2026-07-26, Nutzer)
+- Retry-Deckel 5 Versuche für alle Clients (2026-07-26, Nutzer) · Folgerung: `src/net/pool.ts:80` nutzt denselben Zähler
 
 ## Konventionen
 Gelten für jede Zeile, die in diesem Lauf entsteht — Code, Kommentare,
@@ -341,7 +351,9 @@ Commits direkt auf `<branch>`, ohne GPG-Signatur«, dazu der Pfad zu
 `./remediation-plan.md`.
 
 **Prüfzeilen**, je Kriterium eine, mit Zahl und ✓ oder ⚠, jede am Plan
-gemessen und nicht am Eindruck:
+gemessen und nicht am Eindruck. Eine Zeile in »Entscheidungen« deckt dabei
+nur mit ihrem Beschluss; was hinter `· Folgerung:` steht, ist deine
+Ableitung und deckt nichts:
 
 | Prüfzeile | ⚠ wenn |
 | --- | --- |

@@ -232,6 +232,33 @@ entscheidungen() { # der Abschnitt »Entscheidungen« aus dem Plan, roh
   sed -n '/^## Entscheidungen/,/^## /p' "$PLAN" 2>/dev/null
 }
 
+entscheidungen_neu() { # $1 = Abschnitt vorher, $2 = nachher; Erfolg, wenn etwas Neues entschieden wurde
+  # Alles ab »· Folgerung:« bis Zeilenende ist eine Ableitung, kein Beschluss
+  # des Nutzers. Ein Runner darf eine widerlegte Folgerung berichtigen, ohne
+  # dass das als erfundene Entscheidung zählt — aber nur das: ersetzen, mit
+  # neuem Vermerk »(berichtigt …«. Eine Folgerung an einer Zeile, die keine
+  # hatte, eine gestrichene oder eine ohne Vermerk geänderte trägt sonst
+  # unbemerkt eine neue Regel hinter das Trennzeichen, genau dorthin, wo die
+  # Probe nicht hinsieht. Leerraum um den Punkt ist frei: ein fehlendes
+  # Leerzeichen soll keine Berichtigung als Erfindung melden.
+  local strip='s/[[:space:]]*·[[:space:]]*Folgerung:.*$//'
+  [ "$(printf '%s\n' "$1" | sed "$strip")" != "$(printf '%s\n' "$2" | sed "$strip")" ] && return 0
+  ENT_VORHER=$1 ENT_NACHHER=$2 awk '
+    function folgerung(s) { return match(s, /[ \t]*·[ \t]*Folgerung:/) ? substr(s, RSTART) : "" }
+    function vermerke(s) { return gsub(/\(berichtigt /, "", s) }
+    BEGIN {
+      n = split(ENVIRON["ENT_VORHER"], b, "\n"); m = split(ENVIRON["ENT_NACHHER"], a, "\n")
+      if (n != m) exit 0
+      for (i = 1; i <= n; i++) {
+        vb = folgerung(b[i]); va = folgerung(a[i])
+        if (va == vb) continue
+        if (vb == "" || va == "") exit 0
+        if (vermerke(va) <= vermerke(vb)) exit 0
+      }
+      exit 1
+    }'
+}
+
 # Der zweite Antwortweg, den dieses Skript selbst öffnet: Remote Control macht
 # die Session vom Account aus erreichbar, und der Nutzer antwortet vom Browser
 # oder vom Handy. Ein solcher Nutzer taucht in list-clients nicht auf. Die CLI
@@ -1384,9 +1411,9 @@ dispatch_zug0() { # $1 = Paketnummer; Zug 0 in einem eigenen tmux-Fenster
   # »Vorgabewert 30000 ms«, eine Zahl, die weder im Code noch im Audit steht.
   # Das wiegt schwerer als ein Hänger — die Zeile trägt ein Datum und wird von
   # jedem späteren Lauf als beschlossen behandelt.
-  if [ "$saw_client" = 0 ] && [ "$ZUG0_ASSUME_USER" != 1 ] && [ "$(entscheidungen)" != "$ents_before" ]; then
+  if [ "$saw_client" = 0 ] && [ "$ZUG0_ASSUME_USER" != 1 ] && entscheidungen_neu "$ents_before" "$(entscheidungen)"; then
     journal "paket=$pkg rolle=A entscheidungen ohne nutzer"
-    die $EX_CONTRACT "Zug 0 für Paket $pkg hat »Entscheidungen« fortgeschrieben, aber der Nutzer war zu keinem Zeitpunkt erreichbar — kein Client am Fenster, kein offener Remote-Control-Kanal. Diese Antworten hat niemand gegeben. Der Plan ist unverändert zu behandeln: nimm die neuen Zeilen dort heraus, sei erreichbar — am Fenster ($TMUX_BIN attach -t $SESSION) oder über Remote Control — und starte erneut. Die Mitschrift liegt in $WORK/paket-$pkg.zug0.pane.log."
+    die $EX_CONTRACT "Zug 0 für Paket $pkg hat »Entscheidungen« fortgeschrieben, aber der Nutzer war zu keinem Zeitpunkt erreichbar — kein Client am Fenster, kein offener Remote-Control-Kanal. Diese Antworten hat niemand gegeben. Der Plan ist unverändert zu behandeln: nimm die neuen Zeilen dort heraus und stell jede Folgerung hinter »· Folgerung:« wieder her, die ohne Vermerk »(berichtigt …« neu, gestrichen oder geändert ist, sei erreichbar — am Fenster ($TMUX_BIN attach -t $SESSION) oder über Remote Control — und starte erneut. Die Mitschrift liegt in $WORK/paket-$pkg.zug0.pane.log."
   fi
 
   # Es gibt keine Rückgabe zum Parsen. Der Plan trägt den Stand, und die Marke
