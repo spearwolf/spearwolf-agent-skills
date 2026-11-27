@@ -6,7 +6,7 @@ Gerüste für ein Projekt, das die Struktur neu bekommt, und für einzelne neue 
 
 Dateiname in kebab-case nach der Domain oder dem Feature, nicht nach einem Datum oder einer Nummer (`interaction-model.md`, `asset-pipeline.md`). Ein Proposal pro Domain wächst mit; ein neues Feature innerhalb einer bestehenden Domain wird dort ergänzt, statt eine zweite Datei zu eröffnen. Ein Satellit, der einen Baustein einer bestehenden Domain vertieft, bekommt eine eigene Datei und eine eigene Zeile im Index.
 
-Die mit *(Plan)* markierten Abschnitte leben nur bis zum Konsolidieren. Danach enthält das Proposal nur noch Gegenwart; Entscheidungsgründe und Alternativen stehen in `docs/adr/`.
+Die mit *(Plan)* markierten Abschnitte leben nur bis zum Konsolidieren. Danach enthält das Proposal nur noch Gegenwart; je Entscheidung bleibt in §3 eine Zeile mit einem Satz warum, die Gründe von Architekturentscheidungen stehen zusätzlich in `docs/adr/`.
 
 ```markdown
 # <Titel>
@@ -33,10 +33,11 @@ dass ein Agent daraus einen Plan ableiten kann.>
 
 ## 3. Designentscheidungen
 
-- **<Entscheidung als geltende Regel>** — <ein Satz warum>. ADR-NNN
+- **<Entscheidung als geltende Regel>** — <ein Satz warum>. <ADR-NNN, falls es eine gibt>
 
-<Vor dem Bau dürfen hier Alternativen und Abwägungen stehen; beim
-Konsolidieren wandern sie in die ADR, hier bleibt je Entscheidung eine Zeile.>
+<Vor dem Bau dürfen hier Alternativen und Abwägungen stehen. Beim
+Konsolidieren bleibt je Entscheidung eine Zeile; nur Gründe über der
+ADR-Schwelle wandern vorher in einen ADR-Entwurf, der Rest geht an git.>
 
 ## 4. Was offen bleibt
 
@@ -108,18 +109,20 @@ Welches Proposal wofür zuständig ist, sagt docs/proposals/README.md.>
 
 ## ADR — `docs/adr/NNN-<titel>.md`
 
-Eine Datei je Entscheidung. Dateiname: dreistellige Nummer plus kebab-case-Titel (`007-zwei-runtime-deps.md`), verwiesen wird mit `ADR-007`. Die nächste Nummer ist die höchste vorhandene plus eins. Nummern werden nie neu vergeben, Dateien nie umbenannt oder gelöscht. Der einzige Ort für Historie: was vorher galt, was verworfen wurde, warum es sich änderte. Der Status steht nur im Kopf der ADR, nicht im Index.
+Eine Datei je Entscheidung. Dateiname: dreistellige Nummer plus kebab-case-Titel (`007-zwei-runtime-deps.md`), verwiesen wird mit `ADR-007`. Die nächste Nummer ist die höchste vorhandene plus eins. Nummern werden nie neu vergeben, Dateien nie umbenannt oder gelöscht. Nur für Entscheidungen über der Schwelle (Skill, Abschnitt »Was eine ADR bindet«): was vorher galt, was verworfen wurde, warum es sich änderte. Status und Geltungsbereich stehen nur im Kopf der ADR, nicht im Index.
 
 ### Index — `docs/adr/README.md`
 
 ```markdown
 # Architecture Decision Records
 
-Entscheidungen und ihre Geschichte, eine Datei je Entscheidung. Die Proposals
-sagen, was gilt; hier steht, warum, welche Alternativen verworfen wurden und
-was vorher galt. Eine geänderte Entscheidung bekommt eine neue ADR; die alte
-bleibt stehen und wird als abgelöst markiert. Der Status steht im Kopf jeder
-ADR.
+Architekturentscheidungen — domainübergreifend oder teuer umkehrbar — und ihre
+Geschichte, eine Datei je Entscheidung. Die Proposals sagen, was gilt; hier
+steht, warum, welche Alternativen verworfen wurden und was vorher galt. Jede
+ADR bindet nur in ihrem Geltungsbereich und ist keine Schablone für neue
+Features. Eine geänderte Entscheidung bekommt eine neue ADR; die alte bleibt
+stehen und wird als abgelöst markiert. Status und Geltungsbereich stehen im
+Kopf jeder ADR.
 
 | ADR | Entscheidung | Bezug |
 | --- | --- | --- |
@@ -131,8 +134,9 @@ ADR.
 ```markdown
 # ADR-NNN: <Entscheidung in einem Satz>
 
-- **Status:** vorgeschlagen | akzeptiert | abgelöst durch ADR-NNN | verworfen
+- **Status:** vorgeschlagen | akzeptiert | abgelöst durch ADR-NNN | abgelöst durch <datei>.md §N.M | verworfen
 - **Datum:** <YYYY-MM-DD>
+- **Gilt für:** <Domains, Schichten oder Codepfade, die diese Entscheidung bindet — außerhalb davon bindet sie nichts>
 - **Bezug:** <Proposal-Abschnitte, Masterplan-Abschnitt>
 - **Löst ab:** <ADR-NNN, falls zutreffend>
 
@@ -150,7 +154,7 @@ ADR.
 
 ## Konsequenzen
 
-<Was dadurch leichter, was schwerer wird; was jetzt bindet.>
+<Was dadurch leichter, was schwerer wird; was jetzt bindet, innerhalb von »Gilt für«.>
 ```
 
 ## Roadmap — `ROADMAP.md`

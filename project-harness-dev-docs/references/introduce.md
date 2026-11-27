@@ -19,7 +19,7 @@ Vorhandene Docs erfassen und jedem Dokument eine Rolle vorschlagen, als Tabelle 
 | Specs, Design-Docs, vorhandene Proposals | Proposal: Index-Zeile, Status-Kopf |
 | Architektur-Übersicht | Kandidat für den Architektur-Guide |
 | Backlog, `TODO.md`, Roadmap-artige Listen | Kandidat für `ROADMAP.md` |
-| Entscheidungen im `CLAUDE.md`/`AGENTS.md`, Begründungen in Design-Docs | ADR-Kandidaten |
+| Entscheidungen im `CLAUDE.md`/`AGENTS.md`, Begründungen in Design-Docs | ADR-Kandidat nur über der Schwelle (Skill, »Was eine ADR bindet«); Leitplanken in den Masterplan, Domain-Regeln ins Proposal §3 |
 | Audit- und Remediation-Reports, `CHANGELOG.md`, Service-READMEs | Nachbardokumente — bleiben, wie sie sind |
 
 Je Dokument steht dabei: übernehmen (bleibt, wo es ist, bekommt Kopf und Index-Zeile), umziehen (Pfad oder Form ändert sich), oder bleibt Nachbar. Umgezogen und umgeschrieben wird nur, was der User bestätigt.
@@ -47,7 +47,7 @@ Für die Domain, die der User nennt; nennt er keine, fragen. Der Ist-Zustand wir
 ### 5. Was nicht erfunden und nicht vollzogen wird
 
 - Vision, Ziele, Leitplanken, Meilensteine und Termine kommen vom User; wo sie fehlen, steht `> Offen: …`.
-- Liegen Entscheidungen oder Leitplanken schon anderswo (Invarianten im `CLAUDE.md`, Begründungen in Design-Docs), wird ihr Umzug in ADRs vorgeschlagen, nicht vollzogen.
+- Liegen Entscheidungen oder Leitplanken schon anderswo (Invarianten im `CLAUDE.md`, Begründungen in Design-Docs), wird ihr Umzug nach der Zuordnung aus Schritt 1 vorgeschlagen, nicht vollzogen.
 - Sprache der Docs: die der vorhandenen Projekt-Docs, sonst die des Users. Die Überschriften der Vorlagen werden mitübersetzt.
 
 ### 6. Den Block im Projekt anbieten

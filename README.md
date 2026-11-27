@@ -45,11 +45,15 @@ chaotisch, gelegentlich gefährlich, und der Bibliothekar sagt zu allem nur
     Roadmap für Browser, WebGPU und three.js.
   - [`project-harness-dev-docs`](./project-harness-dev-docs/) — legt fest,
     wie die Dev-Docs eines Projekts das Harness für Coding Agents bilden:
-    Proposals als verbindlicher Kern, ADRs als einziger Ort für Historie,
+    Proposals als verbindlicher Kern, ADRs als Archiv der wenigen
+    domainübergreifenden oder teuer umkehrbaren Entscheidungen (keine
+    Schablone für neue Features),
     die Roadmap als Navigation durchs Offene, Masterplan und
     Architektur-Guide optional. Dazu, welches Proposal einen Konflikt
     gewinnt, wie ein gebautes Proposal konsolidiert wird, und wer was ändern
-    darf — Proposals der Agent, ADRs nur nach Abstimmung.
+    darf — Proposals der Agent, ADRs nur nach Abstimmung. Ein Doctor-Lauf
+    prüft die Docs gegen dieses Modell und bringt sie mit einer gebündelten
+    Freigaberunde in Ordnung.
 - **[`global-behavior/`](./global-behavior/)** — *kein* Skill, sondern
   Anweisungen dazu, wie sich Claude generell verhalten soll (z. B.
   Fortschritts-Meldungen im Scheibenwelt-Stil, eine Sammlung absurder
