@@ -42,7 +42,11 @@ chaotisch, gelegentlich gefährlich, und der Bibliothekar sagt zu allem nur
     Materials, Lighting, Post-Processing. Jeder Befund nennt das Indiz im
     Bild, an dem er hängt, und trägt seine Konfidenz offen. Heraus kommt eine
     `./graphics-pipeline-analysis.md` mit einer nach Wirkung sortierten
-    Roadmap für Browser, WebGPU und three.js.
+    Roadmap für Browser, WebGPU und three.js. **Installiert wird er als ZIP
+    über die Claude-Web-App** (siehe [Claude Desktop](#claude-desktop)), nicht
+    per Symlink wie die anderen: Von dort kommt er synchronisiert auch in
+    Claude Code an, ein lokaler Link würde ihn doppelt laden. Lokal verlinkt
+    wird er nur auf ausdrücklichen Wunsch.
   - [`project-harness-dev-docs`](./project-harness-dev-docs/) — legt fest,
     wie die Dev-Docs eines Projekts das Harness für Coding Agents bilden:
     Proposals als verbindlicher Kern, ADRs als Archiv der wenigen

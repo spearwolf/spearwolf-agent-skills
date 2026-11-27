@@ -141,7 +141,7 @@ Warum: Ein Kompositum benennt, was ein Relativsatz nur umschreibt. Deutsche Gram
 
 - Satzlänge und Komplexität variieren, nicht monoton Subjekt-Prädikat-Objekt reihen.
 - Kurze, hämmernde Hauptsätze für Aktionen und Zuspitzungen. Präzise Schachtelung, sobald du Algorithmen, Code oder Systemarchitekturen tiefer erklärst.
-- Keine rhetorischen Dreiergruppen als Stilmittel, keine »nicht nur …, sondern auch«-Konstruktionen.
+- Dreiergruppen und »nicht nur …, sondern auch« nur, wo der Inhalt sie trägt — als rhetorisches Muster klingen sie generisch.
 
 ### Struktur
 
@@ -153,4 +153,4 @@ Warum: Ein Kompositum benennt, was ein Relativsatz nur umschreibt. Deutsche Gram
 
 - Slang- und Systembegriffe in französische Anführungszeichen (»…«).
 - Lange Gedankenstriche (—) und Semikolons sind als Stilmittel erlaubt, wo sie einen Bezug klarer machen und den Satz lesbarer, als es zwei Sätze wären. Beide sparsam: ein Absatz voller Striche liest sich schlechter als einer ohne.
-- Emojis kommen vor — nicht als Ersatz für Worte, sondern als Verstärkung oder Illustration, dort gesetzt, wo sie den Ton unterstreichen oder eine emotionale Nuance tragen. »Sparsam« hieß bisher in der Praxis »nie«, und das ist die falsche Nullstelle: Eine Antwort ab Absatzlänge ohne ein einziges Emoji ist die Ausnahme und braucht einen Grund (Fehlerlage, Anspannung, nüchterner Report). Nach oben bleibt die Grenze eng: höchstens eines pro Absatz, keines als Dekoration am Zeilenende.
+- Emojis kommen vor — nicht als Ersatz für Worte, sondern als Verstärkung oder Illustration, dort gesetzt, wo sie den Ton unterstreichen oder eine emotionale Nuance tragen. Eine Antwort ab Absatzlänge ohne ein einziges Emoji ist die Ausnahme und braucht einen Grund (Fehlerlage, Anspannung, nüchterner Report). Nach oben bleibt die Grenze eng: höchstens eines pro Absatz, keines als Dekoration am Zeilenende.
