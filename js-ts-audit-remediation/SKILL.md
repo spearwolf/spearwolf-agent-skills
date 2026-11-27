@@ -14,7 +14,7 @@ schließt ab — den Rest siehst du nicht.
 
 1. Findings laden (1), Baseline messen (2), Scope festlegen (3).
 2. Offene Entscheidungen gebündelt klären (4).
-3. Pakete schnüren, ordnen, Grobplan schreiben, Freigabe holen (5).
+3. Pakete schnüren, ordnen, Grobplan schreiben, Freigabe holen — oder, wenn nichts zu entscheiden bleibt, als stille Freigabe ansagen (5).
 4. `scripts/remediate.sh` starten und laufen lassen, bis kein Paket mehr offen ist (6).
 5. Befund-Queue leeren, `./audit.html` nachführen, Report schreiben, tmux-Session schließen (7) — ohne Rückfrage.
 
@@ -37,7 +37,9 @@ Code und steht in `docs/remediation/paket-<N>.md`.
 Diese Regeln stehen über jeder Abwägung im Einzelfall:
 
 - **Ohne Freigabe des Grobplans wird keine Zeile Projektcode geändert.** Auch
-  nicht »schon mal das Triviale vorziehen«.
+  nicht »schon mal das Triviale vorziehen«. Freigabe heißt: ausdrücklich, oder
+  still unter den Bedingungen aus Schritt 5 — nie aus deinem Eindruck, der Plan
+  sei unstrittig.
 - **Wer committet, hat den Verify-Lauf selbst gefahren und seine Ausgabe
   gelesen.** Das ist der Runner, nicht der Implementierer. Ein Report ist keine
   Evidenz.
@@ -48,7 +50,8 @@ Diese Regeln stehen über jeder Abwägung im Einzelfall:
 - **Kein Push, kein Merge, kein Pull Request, kein Tag, kein Publish.** Der
   Lauf endet mit lokalen Commits.
 - **Kein Worktree, kein neuer Branch von sich aus.** Gearbeitet wird auf dem
-  Branch, den Schritt 5 benennt und der Nutzer freigibt.
+  Branch, den Schritt 5 benennt und der Nutzer freigibt — ausdrücklich oder
+  still.
 - **Du schreibst keinen Projektcode und startest keinen Runner.** Weder als
   schnelle Korrektur noch nachdem das Skript abgebrochen ist. Die Pakete fährt
   `scripts/remediate.sh`, und sonst niemand.
@@ -62,10 +65,10 @@ Diese Regeln stehen über jeder Abwägung im Einzelfall:
   Zielsetzung, Paketschnitt und Reihenfolge. Wer davon im Kern abweichen will,
   hält an und legt es dir vor, und du legst es dem Nutzer vor.
 - **Eine Ansage ist keine Frage.** Gewartet wird nur, wo eine Frage steht:
-  unsauberer Arbeitsbaum (2), Klärungsrunde (4), Freigabe des Grobplans (5),
-  eine Rückfrage aus der Schleife (6). »Widersprich, sonst mache ich X« heißt:
-  X passiert jetzt, ein späterer Widerspruch wird eingearbeitet. Der Abschluss
-  (7) besteht nur aus Ansagen.
+  unsauberer Arbeitsbaum (2), Klärungsrunde (4), Freigabe des Grobplans, sofern
+  sie eine Frage hat (5), eine Rückfrage aus der Schleife (6). »Widersprich,
+  sonst mache ich X« heißt: X passiert jetzt, ein späterer Widerspruch wird
+  eingearbeitet. Der Abschluss (7) besteht nur aus Ansagen.
 
 ## Workflow
 
@@ -120,7 +123,9 @@ ist ein Stopp mit Rückfrage: stashen, committen oder abbrechen.
 
 Vorschlag: alle Findings außer `info`, Anzahl je Severity nennen, bestätigen
 lassen. Der Nutzer kann eingrenzen (Severity, Kategorie, IDs, Verzeichnis).
-Was draußen bleibt, steht im Plan.
+Was draußen bleibt, steht im Plan. Hat er den Scope im Auftrag schon genannt
+(»alles ab medium«), ist das die Bestätigung: Anzahl je Severity nennen, als
+Ansage, ohne zu warten.
 
 Festgehalten wird **die Regel, die die Auswahl erzeugt hat**, nicht die
 Auswahl: sobald im Lauf ein Befund auffällt, den das Audit nicht kennt,
@@ -342,7 +347,7 @@ gemessen und nicht am Eindruck:
 | --- | --- |
 | Schnitt: Findings je Paket, Kaltstarts aus dem Plan-Kopf, grob die Laufzeit | unter fünf Findings je Paket; dann steht der Blocker, der das erzwingt, in der Zeile — der Nutzer soll einen zu feinen Schnitt zurückweisen können, bevor er bezahlt ist |
 | Fremde Aufrufer: Pakete, deren Änderung sieht, wer das Projekt einbindet | eines davon ist durch keine Zeile in »Entscheidungen« gedeckt |
-| Abweichungen von einer Empfehlung des Audits | mindestens eine |
+| Abweichungen von einer Empfehlung des Audits | mindestens eine, die nicht der Nutzer selbst in der Klärungsrunde dieser Session beschlossen hat — seine eigene Antwort ist ✓ mit Verweis auf die Zeile in »Entscheidungen« |
 | `decision` aus dem Audit im Scope | eine ist unbeantwortet — dann ist Schritt 4 nicht fertig |
 | Severity im Paket | ein `critical` oder `high` teilt ein Paket mit Kosmetik |
 | Baseline | rot außerhalb der namentlich notierten vorbestehenden Fehler |
@@ -385,6 +390,37 @@ eingearbeitet:
 Diese Freigabe ist die Vollmacht für den ganzen Abschluss; danach wird nicht
 mehr gefragt. Ohne sie beginnt die Umsetzung nicht. Was ein pauschales »ok«
 deckt und was nicht, steht in der Vorlage unter »Wenn die Antwort kommt«.
+
+**Stille Freigabe.** Bleibt nach den Prüfzeilen kein Kipp-Punkt übrig, ist
+die Gesamtfrage keine Frage mehr, sondern eine Ansage
+(`references/entscheidungsvorlage.md`, »Die Form«, Probe 2). Sie entfällt,
+wenn alles davon zutrifft:
+
+- Der Auftrag lautet auf Beheben, nicht auf Planen, Vorlegen oder
+  Durchsprechen.
+- Der Scope stand im Auftrag oder ist in Schritt 3 bestätigt.
+- Jede Prüfzeile steht auf ✓.
+- Keine Vorlage ist offen — die Klärungsrunde ist beantwortet oder gab es
+  nicht.
+- Kein Paket migriert Daten oder lässt sich nicht per `git revert`
+  zurücknehmen. Das deckt nicht einmal ein ausdrückliches »ok« (Vorlage, »Wenn
+  die Antwort kommt«), also erst recht keine stille Freigabe.
+- Commits gehen auf den Branch, der beim Start ausgecheckt war; kein Paket
+  braucht einen anderen.
+
+Damit entfällt der Haltepunkt, an dem der Nutzer Schnitt und Reihenfolge vor
+dem ersten Paket umstellt. Korrigieren kann er beides trotzdem: Zug 0 jedes
+Pakets wartet in seinem Fenster auf ihn, und ein Widerspruch im Chat kommt
+datiert in »Entscheidungen«, woran der nächste Zug 0 misst.
+
+Dann geht dieselbe Nachricht hinaus — Kopfzeile, Prüfzeilen, Ansagen —, an
+der Stelle der Gesamtfrage aber eine Zeile: »Stille Freigabe: alle Prüfzeilen
+✓, nichts offen. Der Lauf startet jetzt; Schnitt und Reihenfolge korrigierst
+du in Zug 0 jedes Pakets oder per Widerspruch hier, abbrechen mit `tmux
+kill-session` und dem Session-Namen aus der Startausgabe darunter.« Im Plan
+steht unter »Entscheidungen«: `- Grobplan still freigegeben, alle Prüfzeilen ✓
+(<Datum>, Orchestrator nach Schritt 5)`. Schritt 6 folgt in derselben Antwort.
+Kippt eine Bedingung, gilt die Gesamtfrage wie oben — im Zweifel fragen.
 
 ### 6. Die Schleife
 

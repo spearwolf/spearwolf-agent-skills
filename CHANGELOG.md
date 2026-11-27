@@ -2,6 +2,11 @@
 
 Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisungen in diesem Repo werden hier dokumentiert. Neueste Einträge oben. Datumsformat: `YYYY-MM-DD`.
 
+## 2026-11-27
+
+### Geändert
+- **`js-ts-audit-remediation`: stille Freigabe des Grobplans.** Lautet der Auftrag auf Beheben, ist der Scope genannt oder bestätigt, steht jede Prüfzeile auf ✓, ist keine Vorlage offen, migriert kein Paket Daten und ist jedes per `git revert` rücknehmbar, entfällt die Gesamtfrage. Der Orchestrator sagt die Freigabe an, vermerkt sie in »Entscheidungen« und startet den Lauf in derselben Antwort. Schnitt und Reihenfolge korrigiert der Nutzer dann in Zug 0 jedes Pakets oder per Widerspruch. Dazu gilt ein im Auftrag genannter Scope als bestätigt, und eine Abweichung vom Audit, die der Nutzer selbst in der Klärungsrunde beschlossen hat, steht auf ✓ statt ⚠.
+
 ## 2026-11-18
 
 ### Hinzugefügt
