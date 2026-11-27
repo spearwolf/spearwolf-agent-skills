@@ -14,6 +14,9 @@ Alle nennenswerten Änderungen an den Skills und den globalen Verhaltensanweisun
 - **`js-ts-audit-remediation`: stille Freigabe des Grobplans.** Lautet der Auftrag auf Beheben, ist der Scope genannt oder bestätigt, steht jede Prüfzeile auf ✓, ist keine Vorlage offen, migriert kein Paket Daten und ist jedes per `git revert` rücknehmbar, entfällt die Gesamtfrage. Der Orchestrator sagt die Freigabe an, vermerkt sie in »Entscheidungen« und startet den Lauf in derselben Antwort. Schnitt und Reihenfolge korrigiert der Nutzer dann in Zug 0 jedes Pakets oder per Widerspruch. Dazu gilt ein im Auftrag genannter Scope als bestätigt, und eine Abweichung vom Audit, die der Nutzer selbst in der Klärungsrunde beschlossen hat, steht auf ✓ statt ⚠.
 - **`js-ts-audit-remediation`: Beschluss und Folgerung getrennt.** Eine Zeile in »Entscheidungen« trägt vorn, was der Nutzer beschlossen hat, und hinter `· Folgerung:` die Ableitung des Orchestrators über den Code. Eine Folgerung, die der Code widerlegt, berichtigt der Runner selbst mit Vermerk `(berichtigt …)`, statt den Nutzer zu unterbrechen. Die Gegenprobe nach Zug 0 lässt nur diese Berichtigung durch: eine ohne Nutzer neu angefügte, gestrichene oder ohne Vermerk geänderte Folgerung gilt als erfundene Entscheidung (Exit 20). Die Prüfzeilen der Grobplan-Freigabe zählen nur den Beschluss; eine Folgerung deckt weder fremde Aufrufer noch eine Abweichung vom Audit. »Geprüft« und »Angenommen« aus der Entscheidungsvorlage gehören nie in den Beschluss-Teil.
 
+### Entfernt
+- **`testing-on-mac-safari` ist nicht mehr Teil dieses Repos.** Der Skill wird ab jetzt außerhalb gepflegt; README, die Testzuordnung in `CLAUDE.md` und `scenario-tests/STATUS.md` nennen ihn nicht mehr.
+
 ## 2026-11-18
 
 ### Hinzugefügt

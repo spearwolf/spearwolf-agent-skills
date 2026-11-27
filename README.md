@@ -33,9 +33,6 @@ chaotisch, gelegentlich gefährlich, und der Bibliothekar sagt zu allem nur
     Findings werden zu englischen, für sich stehenden Issues mit Labels, und
     was auf GitHub passiert — geschlossen, abgelehnt, kommentiert — kommt in
     den Report zurück.
-  - [`testing-on-mac-safari`](./testing-on-mac-safari/) — Ein extrem nützlicher
-    Skill, der beim Testen von Webanwendungen auf macOS/Safari und auch dem iOS-Simulator hilft.
-    Er bedient sich dabei einem im lokalen Netzwerk befindlichen Mac mit `ssh` Zugang.
   - [`deconstruct-graphics-pipeline`](./deconstruct-graphics-pipeline/) —
     bekommt ein Referenzbild, einen Screenshot oder die URL einer Demo und
     zerlegt den Look in die Pipeline dahinter: Render-Passes, Geometry,
